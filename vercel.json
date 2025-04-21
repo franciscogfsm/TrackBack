@@ -11,8 +11,22 @@
   ],
   "routes": [
     {
+      "src": "/assets/(.*)\\.js",
+      "headers": {
+        "Content-Type": "application/javascript"
+      },
+      "continue": true
+    },
+    {
+      "src": "/assets/(.*)\\.mjs",
+      "headers": {
+        "Content-Type": "application/javascript"
+      },
+      "continue": true
+    },
+    {
       "src": "/(.*)",
-      "dest": "/"
+      "dest": "/index.html"
     }
   ]
 }
