@@ -83,13 +83,14 @@ export default function Register() {
         return;
       }
 
-      // Create profile
+      // Create profile regardless of email confirmation
       const { data: profile, error: insertError } = await supabase
         .from("profiles")
         .insert({
           id: authData.user.id,
           full_name: fullName,
           role: role,
+          email: email,
         })
         .select()
         .single();
@@ -120,17 +121,44 @@ export default function Register() {
           }
 
           localStorage.setItem("userProfile", JSON.stringify(existingProfile));
-          navigate("/login?registered=true");
-          return;
         }
-
-        setError("Failed to create user profile");
-        await supabase.auth.signOut();
-        return;
+      } else {
+        localStorage.setItem("userProfile", JSON.stringify(profile));
       }
 
-      localStorage.setItem("userProfile", JSON.stringify(profile));
-      navigate("/login?registered=true");
+      // If the user is a manager, create initial daily form status
+      if (role === "manager") {
+        // Get current date in YYYY-MM-DD format
+        const today = new Date();
+        const formattedDate = today.toISOString().split("T")[0];
+
+        // Set default open time (00:00) and close time (23:59) in proper time format
+        const defaultOpenTime = "00:00:00+00";
+        const defaultCloseTime = "23:59:59+00";
+
+        const { error: formStatusError } = await supabase
+          .from("daily_form_status")
+          .insert({
+            manager_id: authData.user.id,
+            date: formattedDate,
+            is_open: true,
+            created_at: today.toISOString(),
+            open_time: defaultOpenTime,
+            close_time: defaultCloseTime,
+          });
+
+        if (formStatusError) {
+          console.error("Error creating initial form status:", formStatusError);
+          // Don't block registration if this fails
+        }
+      }
+
+      // Check if email confirmation is required
+      if (authData.session === null) {
+        navigate("/login?registered=true&confirmation=pending");
+      } else {
+        navigate("/login?registered=true");
+      }
     } catch (err) {
       console.error("Unexpected error during registration:", err);
       setError("An unexpected error occurred");
