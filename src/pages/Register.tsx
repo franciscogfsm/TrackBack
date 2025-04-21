@@ -91,6 +91,9 @@ export default function Register() {
           full_name: fullName,
           role: role,
           email: email,
+          created_at: new Date().toISOString(),
+          manager_id: null, // Explicitly set to null for new users
+          avatar_url: null, // Explicitly set to null for new users
         })
         .select()
         .single();
@@ -121,6 +124,11 @@ export default function Register() {
           }
 
           localStorage.setItem("userProfile", JSON.stringify(existingProfile));
+        } else {
+          // If it's not a duplicate key error, handle it as a failure
+          setError("Failed to create user profile");
+          await supabase.auth.signOut();
+          return;
         }
       } else {
         localStorage.setItem("userProfile", JSON.stringify(profile));

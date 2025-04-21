@@ -131,23 +131,12 @@ function App() {
   // Function to fetch profile
   const fetchProfile = useCallback(async (userId: string) => {
     try {
-      // Create a timeout promise
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error("Profile fetch timeout")), 5000);
-      });
-
-      // Create the query promise
-      const queryPromise = supabase
+      const { data, error } = await supabase
         .from("profiles")
-        .select("id, role, full_name, created_at, manager_id, avatar_url")
+        .select("*")
         .eq("id", userId)
-        .single();
-
-      // Race between the timeout and the query
-      const { data, error } = (await Promise.race([
-        queryPromise,
-        timeoutPromise,
-      ])) as any;
+        .limit(1)
+        .maybeSingle();
 
       if (error) {
         console.error("Profile fetch error:", error.message);
@@ -155,6 +144,31 @@ function App() {
       }
 
       if (!data) {
+        console.log("No profile found for user:", userId);
+        // Try to create profile if it doesn't exist
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData?.user) {
+          const { data: newProfile, error: createError } = await supabase
+            .from("profiles")
+            .insert({
+              id: userId,
+              email: userData.user.email,
+              full_name: userData.user.user_metadata.full_name || "",
+              role: userData.user.user_metadata.role || "athlete",
+              created_at: new Date().toISOString(),
+              manager_id: null,
+              avatar_url: null,
+            })
+            .select()
+            .single();
+
+          if (createError) {
+            console.error("Error creating missing profile:", createError);
+            return null;
+          }
+
+          return newProfile;
+        }
         return null;
       }
 
