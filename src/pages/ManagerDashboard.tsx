@@ -790,6 +790,7 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
     if (!profile?.id) return;
 
     try {
+      const today = new Date().toISOString().split("T")[0];
       const formattedOpenTime = formatTimeForDatabase(openTime);
       const formattedCloseTime = formatTimeForDatabase(closeTime);
 
@@ -798,6 +799,7 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
         open_time: formattedOpenTime,
         close_time: formattedCloseTime,
         manager_id: profile.id,
+        date: today, // Add the date field
       };
 
       // First check if any record exists for this manager
@@ -814,14 +816,21 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
           .update(updateData)
           .eq("manager_id", profile.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error("Error updating form status:", error);
+          throw error;
+        }
       } else {
         // Create first record for this manager
-        const { error } = await supabase
-          .from("daily_form_status")
-          .insert(updateData);
+        const { error } = await supabase.from("daily_form_status").insert({
+          ...updateData,
+          created_at: new Date().toISOString(),
+        });
 
-        if (error) throw error;
+        if (error) {
+          console.error("Error creating form status:", error);
+          throw error;
+        }
       }
 
       // Update local state

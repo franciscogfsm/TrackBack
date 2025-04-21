@@ -361,13 +361,20 @@ export default function Landing() {
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
+          const target = entry.target;
           if (entry.isIntersecting) {
             setVisibleSections((prev) => new Set([...prev, entry.target.id]));
-            setActiveSection(entry.target.id as SectionName);
+            target.classList.add("animate-in");
+            if (target.id) {
+              setActiveSection(target.id as SectionName);
+            }
           }
         });
       },
-      { threshold: 0.3 }
+      {
+        threshold: 0.2,
+        rootMargin: "-50px",
+      }
     );
 
     Object.values(sectionsRef.current).forEach((ref) => {
@@ -376,7 +383,15 @@ export default function Landing() {
       }
     });
 
-    return () => observer.disconnect();
+    // Also observe all animatable elements
+    const animatableElements = document.querySelectorAll(".animate-on-scroll");
+    animatableElements.forEach((element) => {
+      observer.observe(element);
+    });
+
+    return () => {
+      observer.disconnect();
+    };
   }, []);
 
   const scrollToSection = (section: SectionName) => {
@@ -661,9 +676,10 @@ export default function Landing() {
         </section>
 
         {/* Use Cases Section */}
-        <section className="py-24 bg-white/5 backdrop-blur-lg">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-16">
+        <section className="py-24 bg-white/5 backdrop-blur-lg relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 to-blue-400/20 animate-gradient-x"></div>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+            <div className="text-center mb-16 animate-on-scroll">
               <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
                 Tailored Solutions for Everyone
               </h2>
@@ -677,26 +693,24 @@ export default function Landing() {
               {useCases.map((useCase, index) => (
                 <div
                   key={useCase.title}
-                  className={clsx(
-                    "bg-white/10 backdrop-blur-lg rounded-2xl p-8 transform transition-all duration-500 hover:scale-105",
-                    visibleSections.has("features") && "animate-fade-in"
-                  )}
+                  className="group bg-white/10 backdrop-blur-lg rounded-2xl p-8 transform transition-all duration-500 hover:scale-105 hover:bg-white/15 animate-on-scroll"
                   style={{ animationDelay: `${index * 200}ms` }}
                 >
-                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center mb-6 shadow-lg">
+                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center mb-6 shadow-lg transform transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
                     <useCase.icon className="w-8 h-8 text-white" />
                   </div>
-                  <h3 className="text-2xl font-bold text-white mb-4">
+                  <h3 className="text-2xl font-bold text-white mb-4 transform transition-all duration-300 group-hover:translate-x-1">
                     {useCase.title}
                   </h3>
-                  <ul className="space-y-3">
+                  <ul className="space-y-3 stagger-animate">
                     {useCase.benefits.map((benefit, index) => (
                       <li
                         key={index}
-                        className="flex items-center gap-3 text-blue-100"
+                        className="flex items-center gap-3 text-blue-100 transform transition-all duration-300 hover:translate-x-1"
+                        style={{ animationDelay: `${(index + 1) * 100}ms` }}
                       >
-                        <Check className="w-5 h-5 text-blue-400" />
-                        {benefit}
+                        <Check className="w-5 h-5 text-blue-400 flex-shrink-0" />
+                        <span>{benefit}</span>
                       </li>
                     ))}
                   </ul>
@@ -718,7 +732,7 @@ export default function Landing() {
           </div>
 
           <div className="max-w-7xl mx-auto relative">
-            <div className="text-center mb-16">
+            <div className="text-center mb-16 animate-on-scroll">
               <h2 className="text-4xl font-bold text-white mb-6">
                 Core Features
               </h2>
@@ -727,184 +741,68 @@ export default function Landing() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {/* Training Load Monitoring */}
-              <div className="group relative bg-gradient-to-br from-blue-600/10 to-blue-800/10 backdrop-blur-sm rounded-2xl p-8 hover:scale-105 transition-all duration-300 overflow-hidden border border-white/10">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <div className="relative z-10">
-                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl flex items-center justify-center mb-6 group-hover:rotate-6 transition-transform duration-300">
-                    <Activity className="w-8 h-8 text-white" />
+            {/* Mobile Features Grid */}
+            <div className="md:hidden space-y-6">
+              {platformFeatures.map((feature, index) => (
+                <div
+                  key={feature.title}
+                  className="group bg-white/10 backdrop-blur-lg rounded-xl p-6 transform transition-all duration-300 active:scale-98 animate-on-scroll"
+                  style={{ animationDelay: `${index * 150}ms` }}
+                >
+                  <div className="flex items-start gap-4">
+                    <div
+                      className={clsx(
+                        "w-14 h-14 rounded-xl flex items-center justify-center transform transition-all duration-300 group-hover:scale-110 group-hover:rotate-3",
+                        feature.color
+                      )}
+                    >
+                      <feature.icon className="w-7 h-7 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-xl font-bold text-white mb-2 group-hover:translate-x-1 transition-transform">
+                        {feature.title}
+                      </h3>
+                      <p className="text-sm text-blue-100 leading-relaxed">
+                        {feature.description}
+                      </p>
+                    </div>
                   </div>
-                  <h3 className="text-2xl font-bold text-white mb-4">
-                    Training Load
-                  </h3>
-                  <ul className="space-y-3 text-blue-100">
-                    <li className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                      <span>Session RPE tracking</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                      <span>Daily load calculation</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                      <span>Weekly monitoring</span>
-                    </li>
-                  </ul>
                 </div>
-              </div>
-
-              {/* Team Management */}
-              <div className="group relative bg-gradient-to-br from-purple-600/10 to-purple-800/10 backdrop-blur-sm rounded-2xl p-8 hover:scale-105 transition-all duration-300 overflow-hidden border border-white/10">
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-600/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <div className="relative z-10">
-                  <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-700 rounded-2xl flex items-center justify-center mb-6 group-hover:rotate-6 transition-transform duration-300">
-                    <Users className="w-8 h-8 text-white" />
-                  </div>
-                  <h3 className="text-2xl font-bold text-white mb-4">
-                    Team Hub
-                  </h3>
-                  <ul className="space-y-3 text-blue-100">
-                    <li className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
-                      <span>Athlete profiles</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
-                      <span>Role management</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
-                      <span>Team coordination</span>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-
-              {/* Performance Analytics */}
-              <div className="group relative bg-gradient-to-br from-green-600/10 to-green-800/10 backdrop-blur-sm rounded-2xl p-8 hover:scale-105 transition-all duration-300 overflow-hidden border border-white/10">
-                <div className="absolute inset-0 bg-gradient-to-br from-green-600/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <div className="relative z-10">
-                  <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-green-700 rounded-2xl flex items-center justify-center mb-6 group-hover:rotate-6 transition-transform duration-300">
-                    <BarChart2 className="w-8 h-8 text-white" />
-                  </div>
-                  <h3 className="text-2xl font-bold text-white mb-4">
-                    Analytics
-                  </h3>
-                  <ul className="space-y-3 text-blue-100">
-                    <li className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                      <span>Performance trends</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                      <span>Load analysis</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                      <span>Progress tracking</span>
-                    </li>
-                  </ul>
-                </div>
-              </div>
+              ))}
             </div>
 
-            {/* Interactive Feature Showcase */}
-            <div className="mt-24 grid grid-cols-1 lg:grid-cols-2 gap-12">
-              <div className="space-y-8">
-                <div className="inline-flex items-center gap-2 bg-blue-500/20 rounded-full px-4 py-2 text-blue-200">
-                  <Sparkles className="w-5 h-5" />
-                  <span className="text-sm font-medium">
-                    Interactive Features
-                  </span>
-                </div>
-                <h3 className="text-3xl font-bold text-white">
-                  Powerful Tools for Athletes and Coaches
-                </h3>
-                <div className="space-y-6">
-                  <div className="flex items-center gap-4 group cursor-pointer">
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <Activity className="w-6 h-6 text-white" />
+            {/* Desktop Features Grid (unchanged) */}
+            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {platformFeatures.map((feature, index) => (
+                <div
+                  key={feature.title}
+                  className="group relative bg-gradient-to-br from-blue-600/10 to-blue-800/10 backdrop-blur-sm rounded-2xl p-8 hover:scale-105 transition-all duration-300 overflow-hidden border border-white/10 animate-on-scroll"
+                  style={{ animationDelay: `${index * 150}ms` }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div className="relative z-10">
+                    <div
+                      className={clsx(
+                        "w-16 h-16 rounded-2xl flex items-center justify-center mb-6 group-hover:rotate-6 transition-transform duration-300",
+                        feature.color
+                      )}
+                    >
+                      <feature.icon className="w-8 h-8 text-white transform transition-transform group-hover:scale-110" />
                     </div>
-                    <div>
-                      <h4 className="text-xl font-semibold text-white mb-1">
-                        Daily Tracking
-                      </h4>
-                      <p className="text-blue-100">
-                        Monitor training sessions and performance metrics
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4 group cursor-pointer">
-                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <Users className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h4 className="text-xl font-semibold text-white mb-1">
-                        Team Collaboration
-                      </h4>
-                      <p className="text-blue-100">
-                        Seamless communication between athletes and coaches
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4 group cursor-pointer">
-                    <div className="w-12 h-12 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <BarChart2 className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h4 className="text-xl font-semibold text-white mb-1">
-                        Data Insights
-                      </h4>
-                      <p className="text-blue-100">
-                        Comprehensive performance analytics and trends
-                      </p>
-                    </div>
+                    <h3 className="text-2xl font-bold text-white mb-4 group-hover:translate-x-1 transition-transform">
+                      {feature.title}
+                    </h3>
+                    <p className="text-blue-100 group-hover:translate-x-1 transition-transform">
+                      {feature.description}
+                    </p>
                   </div>
                 </div>
-              </div>
-
-              {/* Animated Feature Preview */}
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-3xl transform -rotate-6"></div>
-                <div className="relative bg-gradient-to-br from-blue-600/10 to-purple-600/10 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-                  <div className="bg-gradient-to-br from-gray-900/50 to-gray-800/50 rounded-xl p-4">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="flex items-center gap-3">
-                        <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                        <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                        <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full animate-pulse"></div>
-                        <span className="text-white text-sm">Live Preview</span>
-                      </div>
-                    </div>
-                    <div className="space-y-4">
-                      <div className="h-4 bg-white/10 rounded animate-pulse"></div>
-                      <div
-                        className="h-4 bg-white/10 rounded animate-pulse"
-                        style={{ width: "75%" }}
-                      ></div>
-                      <div
-                        className="h-4 bg-white/10 rounded animate-pulse"
-                        style={{ width: "60%" }}
-                      ></div>
-                    </div>
-                    <div className="mt-6 grid grid-cols-3 gap-4">
-                      <div className="h-20 bg-white/5 rounded-lg animate-pulse"></div>
-                      <div className="h-20 bg-white/5 rounded-lg animate-pulse"></div>
-                      <div className="h-20 bg-white/5 rounded-lg animate-pulse"></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* Interactive Dashboard Demo Section */}
+        {/* Dashboard Section */}
         <section
           id="dashboard"
           ref={sectionsRef.current.dashboard}
@@ -916,12 +814,14 @@ export default function Landing() {
           </div>
 
           <div className="max-w-7xl mx-auto relative z-10">
-            <h2 className="text-4xl font-bold text-white text-center mb-4">
-              Powerful Dashboard
-            </h2>
-            <p className="text-xl text-blue-100 text-center max-w-3xl mx-auto mb-12">
-              Experience the future of athletic management
-            </p>
+            <div className="text-center mb-12 animate-on-scroll">
+              <h2 className="text-4xl font-bold text-white text-center mb-4">
+                Powerful Dashboard
+              </h2>
+              <p className="text-xl text-blue-100 text-center max-w-3xl mx-auto">
+                Experience the future of athletic management
+              </p>
+            </div>
 
             {/* Mobile Version */}
             <div className="md:hidden">
@@ -929,7 +829,7 @@ export default function Landing() {
                 {dashboardFeatures.map((feature, index) => (
                   <div
                     key={feature.id}
-                    className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 transform transition-all duration-500 hover:scale-105"
+                    className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 transform transition-all duration-500 hover:scale-105 animate-on-scroll"
                     style={{ animationDelay: `${index * 200}ms` }}
                   >
                     <div className="flex items-center gap-4 mb-4">
@@ -962,26 +862,31 @@ export default function Landing() {
               <div className="grid lg:grid-cols-5 gap-8 items-start">
                 {/* Feature Navigation */}
                 <div className="lg:col-span-2 space-y-4">
-                  {dashboardFeatures.map((feature) => (
+                  {dashboardFeatures.map((feature, index) => (
                     <button
                       key={feature.id}
                       onClick={() => setSelectedFeature(feature.id)}
                       className={clsx(
-                        "w-full text-left p-4 rounded-xl transition-all duration-300",
+                        "w-full text-left p-4 rounded-xl transition-all duration-300 transform hover:translate-x-1 group",
                         selectedFeature === feature.id
-                          ? "bg-white/20 transform scale-105 shadow-xl"
+                          ? "bg-white/20 scale-105 shadow-xl"
                           : "bg-white/10 hover:bg-white/15"
                       )}
                     >
                       <div className="flex items-start gap-4">
-                        <div className={clsx("p-3 rounded-xl", feature.color)}>
+                        <div
+                          className={clsx(
+                            "p-3 rounded-xl transition-all duration-300 group-hover:scale-110",
+                            feature.color
+                          )}
+                        >
                           <feature.icon className="w-6 h-6 text-white" />
                         </div>
-                        <div>
-                          <h3 className="text-lg font-semibold text-white mb-1">
+                        <div className="flex-1">
+                          <h3 className="text-lg font-semibold text-white mb-1 transition-all duration-300">
                             {feature.title}
                           </h3>
-                          <p className="text-sm text-blue-100">
+                          <p className="text-sm text-blue-100 transition-all duration-300">
                             {feature.description}
                           </p>
                         </div>
@@ -992,342 +897,342 @@ export default function Landing() {
 
                 {/* Feature Preview */}
                 <div className="lg:col-span-3">
-                  {selectedFeature === "athletes" && (
-                    <div className="dashboard-preview bg-white rounded-lg shadow-xl overflow-hidden max-w-2xl mx-auto animate-fade-in">
-                      {/* Header */}
-                      <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 flex justify-between items-center animate-gradient-x">
-                        <h2 className="text-sm font-semibold text-white animate-fade-in">
-                          Manager Dashboard
-                        </h2>
-                        <div className="flex items-center gap-2">
-                          <button className="bg-white/10 hover:bg-white/20 text-white px-2 py-1 rounded text-xs flex items-center gap-1 transition-all hover:scale-105 hover:shadow-lg">
-                            <BarChart2 className="w-3.5 h-3.5 transition-transform group-hover:rotate-6" />
-                            Stats
-                          </button>
-                          <button className="bg-white/10 hover:bg-white/20 text-white px-2 py-1 rounded text-xs flex items-center gap-1 transition-all hover:scale-105 hover:shadow-lg">
-                            <Activity className="w-3.5 h-3.5 transition-transform group-hover:rotate-6" />
-                            Metrics
-                          </button>
-                          <div className="flex items-center bg-white/20 rounded-full px-2 py-1 hover:bg-white/30 transition-colors">
-                            <User2 className="w-3.5 h-3.5 text-white" />
-                            <span className="text-white text-xs ml-1">
-                              Manager
-                            </span>
+                  <div className="transition-all duration-500 transform">
+                    {selectedFeature === "athletes" && (
+                      <div className="dashboard-preview bg-white rounded-lg shadow-xl overflow-hidden max-w-2xl mx-auto animate-scale-in">
+                        {/* Header */}
+                        <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 flex justify-between items-center animate-gradient-x">
+                          <h2 className="text-sm font-semibold text-white animate-fade-in">
+                            Manager Dashboard
+                          </h2>
+                          <div className="flex items-center gap-2">
+                            <button className="bg-white/10 hover:bg-white/20 text-white px-2 py-1 rounded text-xs flex items-center gap-1 transition-all hover:scale-105 hover:shadow-lg">
+                              <BarChart2 className="w-3.5 h-3.5 transition-transform group-hover:rotate-6" />
+                              Stats
+                            </button>
+                            <button className="bg-white/10 hover:bg-white/20 text-white px-2 py-1 rounded text-xs flex items-center gap-1 transition-all hover:scale-105 hover:shadow-lg">
+                              <Activity className="w-3.5 h-3.5 transition-transform group-hover:rotate-6" />
+                              Metrics
+                            </button>
+                            <div className="flex items-center bg-white/20 rounded-full px-2 py-1 hover:bg-white/30 transition-colors">
+                              <User2 className="w-3.5 h-3.5 text-white" />
+                              <span className="text-white text-xs ml-1">
+                                Manager
+                              </span>
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      {/* Content Area */}
-                      <div className="p-3 space-y-3">
-                        {/* Form Status Settings */}
-                        <div
-                          className="bg-white rounded-lg p-3 shadow-sm border border-gray-100 hover:border-blue-200 transition-all hover:shadow-md animate-slide-up"
-                          style={{ animationDelay: "0.1s" }}
-                        >
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                              <div className="bg-blue-100 p-1.5 rounded group transition-all hover:bg-blue-200 hover:rotate-12">
-                                <Calendar className="w-4 h-4 text-blue-600 transition-transform group-hover:scale-110" />
+                        {/* Content Area */}
+                        <div className="p-3 space-y-3">
+                          {/* Form Status Settings */}
+                          <div
+                            className="bg-white rounded-lg p-3 shadow-sm border border-gray-100 hover:border-blue-200 transition-all hover:shadow-md animate-slide-up"
+                            style={{ animationDelay: "0.1s" }}
+                          >
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                <div className="bg-blue-100 p-1.5 rounded group transition-all hover:bg-blue-200 hover:rotate-12">
+                                  <Calendar className="w-4 h-4 text-blue-600 transition-transform group-hover:scale-110" />
+                                </div>
+                                <h3 className="text-sm font-medium text-gray-900">
+                                  Form Status
+                                </h3>
                               </div>
-                              <h3 className="text-sm font-medium text-gray-900">
-                                Form Status
-                              </h3>
+                              <span className="bg-red-50 text-red-600 px-2 py-0.5 rounded text-xs font-medium animate-pulse">
+                                Closed
+                              </span>
                             </div>
-                            <span className="bg-red-50 text-red-600 px-2 py-0.5 rounded text-xs font-medium animate-pulse">
-                              Closed
-                            </span>
-                          </div>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="transform transition-all hover:scale-102">
-                              <label className="block text-xs font-medium text-gray-600 mb-1">
-                                Open
-                              </label>
-                              <input
-                                type="time"
-                                defaultValue="00:00"
-                                className="w-full px-2 py-1 border rounded text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                              />
-                            </div>
-                            <div className="transform transition-all hover:scale-102">
-                              <label className="block text-xs font-medium text-gray-600 mb-1">
-                                Close
-                              </label>
-                              <input
-                                type="time"
-                                defaultValue="00:00"
-                                className="w-full px-2 py-1 border rounded text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                              />
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="transform transition-all hover:scale-102">
+                                <label className="block text-xs font-medium text-gray-600 mb-1">
+                                  Open
+                                </label>
+                                <input
+                                  type="time"
+                                  defaultValue="00:00"
+                                  className="w-full px-2 py-1 border rounded text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                />
+                              </div>
+                              <div className="transform transition-all hover:scale-102">
+                                <label className="block text-xs font-medium text-gray-600 mb-1">
+                                  Close
+                                </label>
+                                <input
+                                  type="time"
+                                  defaultValue="00:00"
+                                  className="w-full px-2 py-1 border rounded text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                />
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        {/* Athletes Section */}
-                        <div
-                          className="bg-white rounded-lg p-3 shadow-sm border border-gray-100 hover:border-blue-200 transition-all hover:shadow-md animate-slide-up"
-                          style={{ animationDelay: "0.2s" }}
-                        >
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2">
+                          {/* Athletes Section */}
+                          <div
+                            className="bg-white rounded-lg p-3 shadow-sm border border-gray-100 hover:border-blue-200 transition-all hover:shadow-md animate-slide-up"
+                            style={{ animationDelay: "0.2s" }}
+                          >
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                <div className="bg-blue-100 p-1.5 rounded group transition-all hover:bg-blue-200 hover:rotate-12">
+                                  <Users className="w-4 h-4 text-blue-600 transition-transform group-hover:scale-110" />
+                                </div>
+                                <h3 className="text-sm font-medium text-gray-900">
+                                  Athletes
+                                </h3>
+                              </div>
+                              <button className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs flex items-center gap-1 transition-all hover:scale-105 hover:shadow-lg group">
+                                <UserPlus className="w-3.5 h-3.5 transition-transform group-hover:rotate-12" />
+                                <span>Invite</span>
+                              </button>
+                            </div>
+                            <div className="overflow-x-auto">
+                              <table className="w-full">
+                                <thead>
+                                  <tr className="border-b border-gray-100">
+                                    <th className="text-left py-1.5 text-xs font-medium text-gray-500">
+                                      NAME
+                                    </th>
+                                    <th className="text-left py-1.5 text-xs font-medium text-gray-500">
+                                      EMAIL
+                                    </th>
+                                    <th className="text-right py-1.5 text-xs font-medium text-gray-500">
+                                      ACTIONS
+                                    </th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  <tr>
+                                    <td
+                                      className="py-2 text-gray-500 text-center text-xs animate-pulse"
+                                      colSpan={3}
+                                    >
+                                      No athletes found
+                                    </td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+
+                          {/* Pending Invitations */}
+                          <div
+                            className="bg-white rounded-lg p-3 shadow-sm border border-gray-100 hover:border-blue-200 transition-all hover:shadow-md animate-slide-up"
+                            style={{ animationDelay: "0.3s" }}
+                          >
+                            <div className="flex items-center gap-2 mb-2">
                               <div className="bg-blue-100 p-1.5 rounded group transition-all hover:bg-blue-200 hover:rotate-12">
                                 <Users className="w-4 h-4 text-blue-600 transition-transform group-hover:scale-110" />
                               </div>
                               <h3 className="text-sm font-medium text-gray-900">
-                                Athletes
+                                Pending Invitations
                               </h3>
                             </div>
-                            <button className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs flex items-center gap-1 transition-all hover:scale-105 hover:shadow-lg group">
-                              <UserPlus className="w-3.5 h-3.5 transition-transform group-hover:rotate-12" />
-                              <span>Invite</span>
+                            <div className="text-center text-gray-500 text-xs py-2 animate-pulse">
+                              No pending invitations
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {selectedFeature === "analytics" && (
+                      <div className="dashboard-preview bg-white rounded-lg shadow-xl overflow-hidden max-w-2xl mx-auto">
+                        {/* Header with blue-purple gradient */}
+                        <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <button className="text-white hover:text-white/80 text-xs flex items-center gap-1">
+                              <ChevronLeft className="w-3.5 h-3.5" />
+                              <span>Back to Dashboard</span>
+                            </button>
+                            <h2 className="text-sm font-semibold text-white">
+                              Performance Statistics
+                            </h2>
+                          </div>
+                          <div className="flex items-center bg-white/20 rounded-full px-2 py-1">
+                            <User2 className="w-3.5 h-3.5 text-white mr-1" />
+                            <span className="text-white text-xs">
+                              Manager Name
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Content Area */}
+                        <div className="p-3 space-y-3">
+                          {/* Week Navigation */}
+                          <div className="flex justify-between items-center text-xs px-1">
+                            <button className="flex items-center gap-1 text-gray-600">
+                              <ChevronLeft className="w-3.5 h-3.5" />
+                              <span>Previous Week</span>
+                            </button>
+                            <span className="font-medium">
+                              April 14 - April 20, 2025
+                            </span>
+                            <button className="flex items-center gap-1 text-gray-600">
+                              <span>Next Week</span>
+                              <ChevronRight className="w-3.5 h-3.5" />
                             </button>
                           </div>
-                          <div className="overflow-x-auto">
-                            <table className="w-full">
-                              <thead>
-                                <tr className="border-b border-gray-100">
-                                  <th className="text-left py-1.5 text-xs font-medium text-gray-500">
-                                    NAME
-                                  </th>
-                                  <th className="text-left py-1.5 text-xs font-medium text-gray-500">
-                                    EMAIL
-                                  </th>
-                                  <th className="text-right py-1.5 text-xs font-medium text-gray-500">
-                                    ACTIONS
-                                  </th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                <tr>
-                                  <td
-                                    className="py-2 text-gray-500 text-center text-xs animate-pulse"
-                                    colSpan={3}
-                                  >
-                                    No athletes found
-                                  </td>
-                                </tr>
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
 
-                        {/* Pending Invitations */}
-                        <div
-                          className="bg-white rounded-lg p-3 shadow-sm border border-gray-100 hover:border-blue-200 transition-all hover:shadow-md animate-slide-up"
-                          style={{ animationDelay: "0.3s" }}
-                        >
-                          <div className="flex items-center gap-2 mb-2">
-                            <div className="bg-blue-100 p-1.5 rounded group transition-all hover:bg-blue-200 hover:rotate-12">
-                              <Users className="w-4 h-4 text-blue-600 transition-transform group-hover:scale-110" />
+                          {/* RPE Table */}
+                          <div className="bg-white rounded-lg overflow-hidden shadow-sm">
+                            <div className="bg-red-600 text-white text-center py-2">
+                              <h3 className="text-sm font-semibold">
+                                RATE OF PERCEIVED EXERTION (RPE) WEEK
+                              </h3>
                             </div>
-                            <h3 className="text-sm font-medium text-gray-900">
-                              Pending Invitations
-                            </h3>
-                          </div>
-                          <div className="text-center text-gray-500 text-xs py-2 animate-pulse">
-                            No pending invitations
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {selectedFeature === "analytics" && (
-                    <div className="dashboard-preview bg-white rounded-lg shadow-xl overflow-hidden max-w-2xl mx-auto">
-                      {/* Header with blue-purple gradient */}
-                      <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                          <button className="text-white hover:text-white/80 text-xs flex items-center gap-1">
-                            <ChevronLeft className="w-3.5 h-3.5" />
-                            <span>Back to Dashboard</span>
-                          </button>
-                          <h2 className="text-sm font-semibold text-white">
-                            Performance Statistics
-                          </h2>
-                        </div>
-                        <div className="flex items-center bg-white/20 rounded-full px-2 py-1">
-                          <User2 className="w-3.5 h-3.5 text-white mr-1" />
-                          <span className="text-white text-xs">
-                            Manager Name
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Content Area */}
-                      <div className="p-3 space-y-3">
-                        {/* Week Navigation */}
-                        <div className="flex justify-between items-center text-xs px-1">
-                          <button className="flex items-center gap-1 text-gray-600">
-                            <ChevronLeft className="w-3.5 h-3.5" />
-                            <span>Previous Week</span>
-                          </button>
-                          <span className="font-medium">
-                            April 14 - April 20, 2025
-                          </span>
-                          <button className="flex items-center gap-1 text-gray-600">
-                            <span>Next Week</span>
-                            <ChevronRight className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-
-                        {/* RPE Table */}
-                        <div className="bg-white rounded-lg overflow-hidden shadow-sm">
-                          <div className="bg-red-600 text-white text-center py-2">
-                            <h3 className="text-sm font-semibold">
-                              RATE OF PERCEIVED EXERTION (RPE) WEEK
-                            </h3>
-                          </div>
-                          <div className="p-2">
-                            <table className="min-w-full">
-                              <thead>
-                                <tr className="border-b">
-                                  <th className="text-left py-1.5 px-2 text-[11px] font-medium text-gray-500">
-                                    DAY
-                                  </th>
-                                  <th className="text-left py-1.5 px-2 text-[11px] font-medium text-gray-500">
-                                    AM/PM
-                                  </th>
-                                  <th className="text-left py-1.5 px-2 text-[11px] font-medium text-gray-500">
-                                    TYPE OF SESSION
-                                  </th>
-                                  <th className="text-left py-1.5 px-2 text-[11px] font-medium text-gray-500">
-                                    RPE (1-10)
-                                  </th>
-                                  <th className="text-left py-1.5 px-2 text-[11px] font-medium text-gray-500">
-                                    DURATION (MIN)
-                                  </th>
-                                  <th className="text-left py-1.5 px-2 text-[11px] font-medium text-gray-500">
-                                    UNIT LOAD
-                                  </th>
-                                  <th className="text-right py-1.5 px-2 text-[11px] font-medium text-gray-500">
-                                    DAILY LOAD
-                                  </th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-gray-200 text-xs">
-                                {[
-                                  "Monday",
-                                  "Tuesday",
-                                  "Wednesday",
-                                  "Thursday",
-                                  "Friday",
-                                ].map((day) => (
-                                  <>
-                                    <tr key={`${day}-AM`}>
-                                      <td className="py-2 px-2 font-medium">
-                                        {day}
-                                      </td>
-                                      <td className="py-2 px-2">AM</td>
-                                      <td className="py-2 px-2"></td>
-                                      <td className="py-2 px-2"></td>
-                                      <td className="py-2 px-2"></td>
-                                      <td className="py-2 px-2"></td>
-                                      <td className="py-2 px-2 text-right">
-                                        0
-                                      </td>
-                                    </tr>
-                                    <tr key={`${day}-PM`}>
-                                      <td className="py-2 px-2"></td>
-                                      <td className="py-2 px-2">PM</td>
-                                      <td className="py-2 px-2"></td>
-                                      <td className="py-2 px-2"></td>
-                                      <td className="py-2 px-2"></td>
-                                      <td className="py-2 px-2"></td>
-                                      <td className="py-2 px-2"></td>
-                                    </tr>
-                                  </>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {selectedFeature === "insights" && (
-                    <div className="dashboard-preview bg-white rounded-lg shadow-xl overflow-hidden max-w-2xl mx-auto">
-                      {/* Header */}
-                      <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                          <button className="text-white hover:text-white/80 text-xs flex items-center gap-1">
-                            <ChevronLeft className="w-3.5 h-3.5" />
-                            <span>Back to Dashboard</span>
-                          </button>
-                          <h2 className="text-sm font-semibold text-white">
-                            Smart Insights
-                          </h2>
-                        </div>
-                        <div className="flex items-center bg-white/20 rounded-full px-2 py-1">
-                          <User2 className="w-3.5 h-3.5 text-white mr-1" />
-                          <span className="text-white text-xs">
-                            Manager Name
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Content Area */}
-                      <div className="p-3">
-                        <div className="bg-gradient-to-br from-blue-50 to-white rounded-xl p-4 shadow-sm border border-blue-100">
-                          <div className="flex items-start gap-3">
-                            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                              <Brain className="w-5 h-5 text-white" />
+                            <div className="p-2">
+                              <table className="min-w-full">
+                                <thead>
+                                  <tr className="border-b">
+                                    <th className="text-left py-1.5 px-2 text-[11px] font-medium text-gray-500">
+                                      DAY
+                                    </th>
+                                    <th className="text-left py-1.5 px-2 text-[11px] font-medium text-gray-500">
+                                      AM/PM
+                                    </th>
+                                    <th className="text-left py-1.5 px-2 text-[11px] font-medium text-gray-500">
+                                      TYPE OF SESSION
+                                    </th>
+                                    <th className="text-left py-1.5 px-2 text-[11px] font-medium text-gray-500">
+                                      RPE (1-10)
+                                    </th>
+                                    <th className="text-left py-1.5 px-2 text-[11px] font-medium text-gray-500">
+                                      DURATION (MIN)
+                                    </th>
+                                    <th className="text-left py-1.5 px-2 text-[11px] font-medium text-gray-500">
+                                      UNIT LOAD
+                                    </th>
+                                    <th className="text-right py-1.5 px-2 text-[11px] font-medium text-gray-500">
+                                      DAILY LOAD
+                                    </th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-200 text-xs">
+                                  {[
+                                    "Monday",
+                                    "Tuesday",
+                                    "Wednesday",
+                                    "Thursday",
+                                    "Friday",
+                                  ].map((day) => (
+                                    <>
+                                      <tr key={`${day}-AM`}>
+                                        <td className="py-2 px-2 font-medium">
+                                          {day}
+                                        </td>
+                                        <td className="py-2 px-2">AM</td>
+                                        <td className="py-2 px-2"></td>
+                                        <td className="py-2 px-2"></td>
+                                        <td className="py-2 px-2"></td>
+                                        <td className="py-2 px-2"></td>
+                                        <td className="py-2 px-2 text-right">
+                                          0
+                                        </td>
+                                      </tr>
+                                      <tr key={`${day}-PM`}>
+                                        <td className="py-2 px-2"></td>
+                                        <td className="py-2 px-2">PM</td>
+                                        <td className="py-2 px-2"></td>
+                                        <td className="py-2 px-2"></td>
+                                        <td className="py-2 px-2"></td>
+                                        <td className="py-2 px-2"></td>
+                                        <td className="py-2 px-2"></td>
+                                      </tr>
+                                    </>
+                                  ))}
+                                </tbody>
+                              </table>
                             </div>
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-3">
-                                <h3 className="text-sm font-semibold text-gray-900">
-                                  Athlete Name
-                                </h3>
-                                <span className="px-2 py-0.5 bg-blue-100 rounded-full text-xs font-medium text-blue-700">
-                                  Performance
-                                </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {selectedFeature === "insights" && (
+                      <div className="dashboard-preview bg-white rounded-lg shadow-xl overflow-hidden max-w-2xl mx-auto">
+                        {/* Header */}
+                        <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <button className="text-white hover:text-white/80 text-xs flex items-center gap-1">
+                              <ChevronLeft className="w-3.5 h-3.5" />
+                              <span>Back to Dashboard</span>
+                            </button>
+                            <h2 className="text-sm font-semibold text-white">
+                              Smart Insights
+                            </h2>
+                          </div>
+                          <div className="flex items-center bg-white/20 rounded-full px-2 py-1">
+                            <User2 className="w-3.5 h-3.5 text-white mr-1" />
+                            <span className="text-white text-xs">
+                              Manager Name
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Content Area */}
+                        <div className="p-3">
+                          <div className="bg-gradient-to-br from-blue-50 to-white rounded-xl p-4 shadow-sm border border-blue-100">
+                            <div className="flex items-start gap-3">
+                              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <Brain className="w-5 h-5 text-white" />
                               </div>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-3">
+                                  <h3 className="text-sm font-semibold text-gray-900">
+                                    Athlete Name
+                                  </h3>
+                                  <span className="px-2 py-0.5 bg-blue-100 rounded-full text-xs font-medium text-blue-700">
+                                    Performance
+                                  </span>
+                                </div>
 
-                              <div className="space-y-3">
-                                <div className="bg-white rounded-lg p-3 border border-blue-100">
-                                  <div className="flex items-start gap-2">
-                                    <TrendingUp className="w-4 h-4 text-blue-600 mt-0.5" />
-                                    <div>
-                                      <p className="text-xs font-medium text-gray-900 mb-1">
-                                        Performance Trend
-                                      </p>
-                                      <p className="text-xs text-gray-600">
-                                        Mixed performance metrics with lower
-                                        motivation and recovery indicators
-                                        compared to baseline.
-                                      </p>
+                                <div className="space-y-3">
+                                  <div className="bg-white rounded-lg p-3 border border-blue-100">
+                                    <div className="flex items-start gap-2">
+                                      <TrendingUp className="w-4 h-4 text-blue-600 mt-0.5" />
+                                      <div>
+                                        <p className="text-xs font-medium text-gray-900 mb-1">
+                                          Performance Trend
+                                        </p>
+                                        <p className="text-xs text-gray-600">
+                                          Mixed performance metrics with lower
+                                          motivation and recovery indicators
+                                          compared to baseline.
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="bg-white rounded-lg p-3 border border-blue-100">
+                                    <div className="flex items-start gap-2">
+                                      <Battery className="w-4 h-4 text-blue-600 mt-0.5" />
+                                      <div>
+                                        <p className="text-xs font-medium text-gray-900 mb-1">
+                                          Recovery Status
+                                        </p>
+                                        <p className="text-xs text-gray-600">
+                                          Elevated stress levels detected. Focus
+                                          on rest and recovery recommended.
+                                        </p>
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
 
-                                <div className="bg-white rounded-lg p-3 border border-blue-100">
-                                  <div className="flex items-start gap-2">
-                                    <Battery className="w-4 h-4 text-blue-600 mt-0.5" />
-                                    <div>
-                                      <p className="text-xs font-medium text-gray-900 mb-1">
-                                        Recovery Status
-                                      </p>
-                                      <p className="text-xs text-gray-600">
-                                        Elevated stress levels detected. Focus
-                                        on rest and recovery recommended.
-                                      </p>
-                                    </div>
-                                  </div>
+                                <div className="mt-3 flex items-center justify-end gap-2">
+                                  <button className="px-3 py-1.5 text-xs font-medium text-blue-700 hover:text-blue-800">
+                                    View Details
+                                  </button>
+                                  <button className="px-3 py-1.5 bg-blue-600 text-xs font-medium text-white rounded-lg hover:bg-blue-700">
+                                    Take Action
+                                  </button>
                                 </div>
-                              </div>
-
-                              <div className="mt-3 flex items-center justify-end gap-2">
-                                <button className="px-3 py-1.5 text-xs font-medium text-blue-700 hover:text-blue-800">
-                                  View Details
-                                </button>
-                                <button className="px-3 py-1.5 bg-blue-600 text-xs font-medium text-white rounded-lg hover:bg-blue-700">
-                                  Take Action
-                                </button>
                               </div>
                             </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1340,13 +1245,8 @@ export default function Landing() {
           ref={sectionsRef.current.pricing}
           className="py-12 sm:py-24 relative overflow-hidden"
         >
-          <div className="absolute inset-0 opacity-30">
-            <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-blue-400/20 rounded-full filter blur-3xl animate-pulse"></div>
-            <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-indigo-400/20 rounded-full filter blur-3xl animate-pulse delay-1000"></div>
-          </div>
-
           <div className="max-w-7xl mx-auto px-4 relative">
-            <div className="text-center mb-8 sm:mb-12">
+            <div className="text-center mb-8 sm:mb-12 animate-on-scroll">
               <h2 className="text-2xl sm:text-4xl font-bold text-white mb-4">
                 Choose Your Plan
               </h2>
@@ -1355,18 +1255,15 @@ export default function Landing() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 stagger-animate">
               {pricingPlans.map((plan, index) => (
                 <div
                   key={plan.name}
                   className={clsx(
-                    "bg-white/10 backdrop-blur-lg rounded-xl p-5 sm:p-6 transform transition-all duration-700 hover:scale-105 relative",
-                    plan.popular && "ring-2 ring-blue-400",
-                    visibleSections.has("pricing")
-                      ? "translate-y-0 opacity-100"
-                      : "translate-y-10 opacity-0"
+                    "bg-white/10 backdrop-blur-lg rounded-xl p-5 sm:p-6 transform transition-all duration-700 hover:scale-105 relative animate-on-scroll",
+                    plan.popular && "ring-2 ring-blue-400"
                   )}
-                  style={{ transitionDelay: `${index * 100}ms` }}
+                  style={{ animationDelay: `${index * 150}ms` }}
                 >
                   {plan.popular && (
                     <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
@@ -1427,30 +1324,6 @@ export default function Landing() {
                 </div>
               ))}
             </div>
-
-            <div className="mt-16 text-center">
-              <p className="text-xl text-white font-medium mb-4">
-                All paid plans include:
-              </p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto">
-                <div className="flex items-center gap-2 text-blue-100">
-                  <Shield className="w-5 h-5 text-blue-400" />
-                  <span>14-day free trial</span>
-                </div>
-                <div className="flex items-center gap-2 text-blue-100">
-                  <CreditCard className="w-5 h-5 text-blue-400" />
-                  <span>No credit card required</span>
-                </div>
-                <div className="flex items-center gap-2 text-blue-100">
-                  <Clock className="w-5 h-5 text-blue-400" />
-                  <span>Cancel anytime</span>
-                </div>
-                <div className="flex items-center gap-2 text-blue-100">
-                  <MessageSquare className="w-5 h-5 text-blue-400" />
-                  <span>24/7 Support</span>
-                </div>
-              </div>
-            </div>
           </div>
         </section>
 
@@ -1462,7 +1335,7 @@ export default function Landing() {
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid lg:grid-cols-2 gap-12 items-center">
-              <div>
+              <div className="animate-on-scroll">
                 <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6">
                   Ready to Transform Your Athletic Program?
                 </h2>
@@ -1470,7 +1343,7 @@ export default function Landing() {
                   Get in touch with us to learn how TrackBack can help you
                   achieve your athletic goals.
                 </p>
-                <div className="space-y-4">
+                <div className="space-y-4 stagger-animate">
                   <div className="flex items-center gap-4 text-blue-100">
                     <Mail className="w-6 h-6" />
                     <span>martinsfrancisco2005@gmail.com</span>
@@ -1482,8 +1355,11 @@ export default function Landing() {
                 </div>
               </div>
 
-              <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8">
-                <form onSubmit={handleFormSubmit} className="space-y-6">
+              <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 animate-on-scroll">
+                <form
+                  onSubmit={handleFormSubmit}
+                  className="space-y-6 stagger-animate"
+                >
                   <div>
                     <label className="block text-sm font-medium text-blue-100 mb-2">
                       Name
@@ -1571,10 +1447,10 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* Footer with legal links */}
+        {/* Footer */}
         <footer className="py-8 px-4 border-t border-white/10">
           <div className="max-w-6xl mx-auto">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8 stagger-animate">
               <div>
                 <h3 className="text-xl font-semibold text-white mb-4">
                   TrackBack
@@ -1610,9 +1486,10 @@ export default function Landing() {
                 </div>
               </div>
             </div>
-            <div className="text-center text-blue-100 border-t border-white/10 pt-8">
+            <div className="text-center text-blue-100 border-t border-white/10 pt-8 animate-on-scroll">
               <p>
-                © {new Date().getFullYear()} TrackBack. All rights reserved.
+                © {new Date().getFullYear()} TrackBack. Developed by Francisco
+                Martins. All rights reserved.
               </p>
             </div>
           </div>
@@ -1933,6 +1810,339 @@ export default function Landing() {
 
         .animate-circle-progress {
           animation: circle-progress 2s ease-out forwards;
+        }
+
+        .animate-on-scroll {
+          opacity: 0;
+          transform: translateY(20px);
+          transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .animate-on-scroll.animate-in {
+          opacity: 1;
+          transform: translateY(0);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .animate-on-scroll {
+            transition: none;
+            opacity: 1;
+            transform: none;
+          }
+        }
+
+        .animate-fade-up {
+          animation: fadeUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        @keyframes fadeUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .animate-fade-in {
+          animation: fadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+
+        .animate-scale-in {
+          animation: scaleIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        @keyframes scaleIn {
+          from {
+            opacity: 0;
+            transform: scale(0.9);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+
+        /* Smooth scrolling for the entire page */
+        html {
+          scroll-behavior: smooth;
+        }
+
+        /* Add transition to all interactive elements */
+        button, a {
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Enhance hover effects */
+        .hover-lift {
+          transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .hover-lift:hover {
+          transform: translateY(-5px);
+        }
+
+        /* Add smooth transitions to background effects */
+        .bg-gradient-animate {
+          background-size: 200% 200%;
+          animation: gradientMove 15s ease infinite;
+        }
+
+        @keyframes gradientMove {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+
+        /* Add stagger effect for lists */
+        .stagger-animate > * {
+          opacity: 0;
+          transform: translateY(10px);
+          animation: staggerFade 0.5s ease forwards;
+        }
+
+        .stagger-animate > *:nth-child(1) { animation-delay: 0.1s; }
+        .stagger-animate > *:nth-child(2) { animation-delay: 0.2s; }
+        .stagger-animate > *:nth-child(3) { animation-delay: 0.3s; }
+        .stagger-animate > *:nth-child(4) { animation-delay: 0.4s; }
+        .stagger-animate > *:nth-child(5) { animation-delay: 0.5s; }
+
+        @keyframes staggerFade {
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        /* Smooth transition for section changes */
+        section {
+          transition: opacity 0.5s ease;
+        }
+
+        /* Enhanced scroll behavior */
+        .smooth-scroll {
+          scroll-behavior: smooth;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        /* Enhanced stagger animation for benefits */
+        .stagger-animate > li {
+          opacity: 0;
+          transform: translateX(-10px);
+        }
+
+        .animate-in .stagger-animate > li {
+          animation: slideInRight 0.5s ease forwards;
+        }
+
+        @keyframes slideInRight {
+          from {
+            opacity: 0;
+            transform: translateX(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+
+        /* Smooth gradient animation */
+        .animate-gradient-x {
+          background-size: 200% 200%;
+          animation: gradientPosition 15s ease infinite;
+        }
+
+        @keyframes gradientPosition {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+
+        /* Enhanced hover effects */
+        .group:hover .group-hover\\:scale-110 {
+          transform: scale(1.1);
+        }
+
+        .group:hover .group-hover\\:rotate-3 {
+          transform: rotate(3deg);
+        }
+
+        .group:hover .group-hover\\:translate-x-1 {
+          transform: translateX(0.25rem);
+        }
+
+        /* Smooth backdrop blur transition */
+        .backdrop-blur-lg {
+          transition: backdrop-filter 0.3s ease;
+        }
+
+        .group:hover .backdrop-blur-lg {
+          backdrop-filter: blur(20px);
+        }
+
+        /* Enhanced scale-in animation */
+        @keyframes scaleIn {
+          from {
+            opacity: 0;
+            transform: scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+
+        .animate-scale-in {
+          animation: scaleIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        /* Smooth feature transitions */
+        .feature-transition {
+          transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Enhanced float animations */
+        @keyframes float {
+          0%, 100% { transform: translateY(0) scale(1); }
+          50% { transform: translateY(-20px) scale(1.05); }
+        }
+
+        .animate-float {
+          animation: float 6s ease-in-out infinite;
+        }
+
+        .animate-float-delayed {
+          animation: float 6s ease-in-out infinite;
+          animation-delay: 3s;
+        }
+
+        /* Dashboard preview transitions */
+        .dashboard-preview {
+          transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .dashboard-preview:hover {
+          transform: translateY(-5px);
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        /* Enhanced button interactions */
+        button.group {
+          transform-origin: center left;
+          will-change: transform, background-color;
+        }
+
+        button.group:active {
+          transform: scale(0.98);
+        }
+
+        .group-hover\\:scale-110 {
+          transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Smooth preview transitions */
+        .dashboard-preview {
+          opacity: 1;
+          transform: translateY(0);
+          transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .dashboard-preview.animate-scale-in {
+          animation: scaleIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        @keyframes scaleIn {
+          from {
+            opacity: 0;
+            transform: scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+
+        /* Ensure content visibility */
+        .opacity-100 {
+          opacity: 1 !important;
+        }
+
+        .visible {
+          visibility: visible !important;
+        }
+
+        /* Smooth state transitions */
+        .transition-transform {
+          transition-property: transform;
+          transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+          transition-duration: 300ms;
+        }
+
+        .transition-opacity {
+          transition-property: opacity;
+          transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+          transition-duration: 300ms;
+        }
+
+        /* Mobile-specific animations */
+        @media (max-width: 768px) {
+          .animate-on-scroll {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+
+          .animate-on-scroll.animate-in {
+            opacity: 1;
+            transform: translateY(0);
+          }
+
+          .active\\:scale-98:active {
+            transform: scale(0.98);
+          }
+
+          /* Enhanced card styling */
+          .group {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+                       0 2px 4px -1px rgba(0, 0, 0, 0.06);
+          }
+
+          .group:active {
+            box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1),
+                       0 1px 2px -1px rgba(0, 0, 0, 0.06);
+          }
+
+          /* Smooth icon transitions */
+          .group-hover\\:scale-110 {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+
+          .group-hover\\:rotate-3 {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+
+          /* Enhanced text transitions */
+          .group-hover\\:translate-x-1 {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+
+          /* Improved backdrop blur */
+          .backdrop-blur-lg {
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+          }
         }
       `,
         }}

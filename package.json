@@ -10,11 +10,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@radix-ui/react-scroll-area": "^1.2.5",
+    "@shadcn/ui": "^0.0.4",
     "@supabase/supabase-js": "^2.39.7",
     "chart.js": "^4.4.8",
     "chartjs-plugin-annotation": "^3.1.0",
-    "clsx": "^2.1.0",
+    "clsx": "^2.1.1",
     "date-fns": "^3.3.1",
+    "framer-motion": "^12.7.4",
     "lucide-react": "^0.344.0",
     "openai": "^4.95.1",
     "react": "^18.3.1",

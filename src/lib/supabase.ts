@@ -84,16 +84,14 @@ if (shouldClearSession) {
 const supabaseInstance = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
-    storageKey: "app-storage-key", // Use a unique storage key
     autoRefreshToken: true,
     detectSessionInUrl: true,
   },
-  db: {
-    schema: "public",
-  },
   global: {
     headers: {
+      Accept: "application/json",
       "Cache-Control": "no-cache",
+      Prefer: "return=minimal",
     },
   },
 });
@@ -107,9 +105,9 @@ export const supabase = supabaseInstance;
 // Add event listener for auth state changes
 supabase.auth.onAuthStateChange(
   (event: AuthChangeEvent, session: Session | null) => {
-    if (event === "SIGNED_IN" && session?.user && isPasswordResetFlow()) {
-      // We're in a password reset flow and just signed in
-      console.log("Password reset flow detected with new session");
+    if (event === "SIGNED_OUT") {
+      // Clear any cached data when user signs out
+      localStorage.removeItem("userProfile");
     }
   }
 );

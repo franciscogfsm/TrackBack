@@ -36,6 +36,7 @@ export default function Login() {
   const redirectTo = searchParams.get("redirect") || "/dashboard";
   const joinCode = searchParams.get("code");
   const isRegistered = searchParams.get("registered") === "true";
+  const isPendingConfirmation = searchParams.get("confirmation") === "pending";
 
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -93,8 +94,21 @@ export default function Login() {
                 </div>
                 {isRegistered ? (
                   <div className="bg-green-50 text-green-700 px-4 py-3 rounded-xl mb-6">
-                    <p className="font-medium">Account created successfully!</p>
-                    <p className="text-sm">Please sign in to continue.</p>
+                    {isPendingConfirmation ? (
+                      <>
+                        <p className="font-medium">Check your email!</p>
+                        <p className="text-sm">
+                          Please verify your email address to continue.
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-medium">
+                          Account created successfully!
+                        </p>
+                        <p className="text-sm">Please sign in to continue.</p>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <div>
