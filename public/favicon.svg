@@ -1,8 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:svgjs="http://svgjs.dev/svgjs" width="512" height="512"><svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Background -->
-  <rect width="512" height="512" rx="128" fill="#2563eb"></rect>
-  <!-- Letter T -->
-  <path d="M160 128H352M256 128V384" stroke="white" stroke-width="48" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg><style>@media (prefers-color-scheme: light) { :root { filter: none; } }
-@media (prefers-color-scheme: dark) { :root { filter: none; } }
-</style></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <rect width="16" height="16" rx="4" fill="#2563eb"/>
+  <text x="8" y="12" font-family="Arial" font-size="12" font-weight="bold" fill="white" text-anchor="middle">T</text>
+</svg>
