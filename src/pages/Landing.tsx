@@ -120,69 +120,56 @@ const platformBenefits = [
 
 const pricingPlans = [
   {
-    name: "Free",
-    price: "0",
-    period: "forever",
+    name: "Starter",
+    monthlyPrice: "19",
+    yearlyPrice: "190",
+    period: "month",
     features: [
       "Up to 5 athletes",
-      "Basic performance tracking",
-      "Limited analytics",
+      "Basic analytics dashboard",
+      "Daily check-in forms",
+      "Basic feedback tools",
       "Email support",
       "Mobile app access",
     ],
-    limitations: ["No AI insights", "Basic reports only", "No team features"],
-    cta: "Get Started Free",
+    limitations: ["No AI insights", "Basic reports only"],
+    cta: "Get Started",
     popular: false,
   },
   {
     name: "Pro",
-    price: "49",
+    monthlyPrice: "39",
+    yearlyPrice: "375",
     period: "month",
     features: [
-      "Up to 25 athletes",
+      "Up to 20 athletes",
+      "Full performance history",
       "Advanced analytics",
       "AI-powered insights",
+      "Feedback templates",
       "Team management",
       "Priority support",
       "Custom reports",
-      "Injury prevention",
-      "Training plans",
     ],
     cta: "Start Free Trial",
     popular: true,
   },
   {
     name: "Elite",
-    price: "99",
-    period: "month",
-    features: [
-      "Up to 100 athletes",
-      "Premium analytics",
-      "Advanced AI insights",
-      "Multi-team management",
-      "24/7 priority support",
-      "Custom branding",
-      "API access",
-      "Data exports",
-    ],
-    cta: "Start Free Trial",
-    popular: false,
-  },
-  {
-    name: "Enterprise",
-    price: "Custom",
+    monthlyPrice: "79",
+    yearlyPrice: "790",
     period: "month",
     features: [
       "Unlimited athletes",
-      "Custom solutions",
-      "Dedicated support",
+      "Premium analytics",
+      "Advanced AI insights",
+      "Team branding",
+      "Report exports",
+      "Priority 24/7 support",
       "Custom integrations",
-      "SLA guarantee",
-      "Training & setup",
-      "Custom features",
-      "White labeling",
+      "API access",
     ],
-    cta: "Contact Sales",
+    cta: "Start Free Trial",
     popular: false,
   },
 ];
@@ -310,7 +297,13 @@ const dashboardFeatures = [
   },
 ];
 
-type SectionName = "hero" | "features" | "dashboard" | "pricing" | "contact";
+type SectionName =
+  | "hero"
+  | "how-it-works"
+  | "features"
+  | "dashboard"
+  | "pricing"
+  | "contact";
 
 interface Section {
   id: SectionName;
@@ -319,6 +312,7 @@ interface Section {
 
 const sections: Section[] = [
   { id: "hero", label: "Home" },
+  { id: "how-it-works", label: "How It Works" },
   { id: "features", label: "Features" },
   { id: "dashboard", label: "Dashboard" },
   { id: "pricing", label: "Pricing" },
@@ -347,10 +341,13 @@ export default function Landing() {
   const [selectedFeature, setSelectedFeature] = useState(
     dashboardFeatures[0].id
   );
+  const [billingPeriod, setBillingPeriod] = useState("monthly");
+  const [activeCard, setActiveCard] = useState(0);
 
   const sectionsRef = useRef<Record<SectionName, React.RefObject<HTMLElement>>>(
     {
       hero: useRef(null),
+      "how-it-works": useRef(null),
       features: useRef(null),
       dashboard: useRef(null),
       pricing: useRef(null),
@@ -463,6 +460,15 @@ export default function Landing() {
     }
   };
 
+  // Add scroll handler for pricing cards
+  const handlePricingScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const container = e.currentTarget;
+    const scrollPosition = container.scrollLeft;
+    const cardWidth = container.offsetWidth * 0.85; // 85% of container width
+    const newActiveCard = Math.round(scrollPosition / (cardWidth + 16)); // 16 is the gap
+    setActiveCard(newActiveCard);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600">
       {/* Background Effects */}
@@ -539,13 +545,13 @@ export default function Landing() {
         {/* Mobile Navigation */}
         <div
           className={clsx(
-            "fixed inset-x-0 top-16 md:hidden bg-gradient-to-b from-blue-600/95 to-blue-700/95 backdrop-blur-lg transition-all duration-300 ease-in-out",
+            "fixed inset-x-0 top-16 md:hidden bg-gradient-to-b from-blue-600/95 to-blue-700/95 backdrop-blur-lg transition-all duration-300 ease-in-out z-50",
             isMenuOpen
               ? "h-screen opacity-100"
               : "h-0 opacity-0 pointer-events-none"
           )}
         >
-          <div className="px-4 py-6 space-y-3">
+          <div className="px-4 py-6 space-y-4">
             {sections.map((section) => (
               <button
                 key={section.id}
@@ -554,10 +560,10 @@ export default function Landing() {
                   setIsMenuOpen(false);
                 }}
                 className={clsx(
-                  "block w-full text-left px-4 py-2 rounded-full text-sm font-medium transition-colors",
+                  "block w-full text-left px-6 py-3 rounded-xl text-base font-medium transition-all duration-200",
                   activeSection === section.id
                     ? "bg-white/20 text-white"
-                    : "text-blue-100 hover:bg-white/10 hover:text-white"
+                    : "text-blue-100 hover:bg-white/10 hover:text-white active:scale-95"
                 )}
               >
                 {section.label}
@@ -566,14 +572,14 @@ export default function Landing() {
             <div className="pt-4 mt-4 space-y-3 border-t border-white/10">
               <Link
                 to="/register"
-                className="block w-full px-4 py-2.5 text-center text-blue-600 bg-white hover:bg-blue-50 rounded-full font-medium transition-all shadow-lg transform hover:scale-105"
+                className="block w-full px-6 py-3.5 text-center text-blue-600 bg-white hover:bg-blue-50 rounded-xl font-medium transition-all shadow-lg transform active:scale-95"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Register
               </Link>
               <Link
                 to="/login"
-                className="block w-full px-4 py-2.5 text-center text-white bg-white/10 hover:bg-white/20 rounded-full font-medium transition-all transform hover:scale-105"
+                className="block w-full px-6 py-3.5 text-center text-white bg-white/10 hover:bg-white/20 rounded-xl font-medium transition-all transform active:scale-95"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Sign In
@@ -588,7 +594,7 @@ export default function Landing() {
         <section
           id="hero"
           ref={sectionsRef.current.hero}
-          className="relative min-h-screen flex items-center justify-center overflow-hidden"
+          className="relative min-h-[calc(100vh-4rem)] flex items-center justify-center overflow-hidden py-16 sm:py-0"
         >
           <div className="absolute inset-0 z-0">
             <img
@@ -600,16 +606,9 @@ export default function Landing() {
             <div className="absolute inset-0 bg-[url('/patterns/grid.svg')] opacity-20 pattern-grid" />
           </div>
 
-          <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full py-12 sm:py-20">
-            <div className="grid lg:grid-cols-2 gap-12 items-center">
-              <div
-                className={clsx(
-                  "transform transition-all duration-1000 text-left max-w-xl mx-auto",
-                  visibleSections.has("hero")
-                    ? "translate-y-0 opacity-100"
-                    : "translate-y-10 opacity-0"
-                )}
-              >
+          <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full py-8 sm:py-20">
+            <div className="grid lg:grid-cols-2 gap-8 sm:gap-12 items-center">
+              <div className="text-center sm:text-left max-w-xl mx-auto">
                 <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-6 leading-tight">
                   Transform <span className="inline-block">Your</span>{" "}
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-blue-400 animate-gradient">
@@ -622,7 +621,7 @@ export default function Landing() {
                   progress, optimizing their training, and reaching their full
                   potential.
                 </p>
-                <div className="mobile-buttons flex flex-col sm:flex-row gap-4">
+                <div className="flex flex-col sm:flex-row gap-4 max-w-sm mx-auto sm:max-w-none">
                   <button
                     onClick={() => navigate("/register")}
                     className="px-8 py-4 bg-white text-blue-600 rounded-xl font-medium hover:bg-blue-50 transition-all transform hover:scale-105 shadow-lg hover:shadow-white/20 group flex items-center justify-center"
@@ -631,7 +630,7 @@ export default function Landing() {
                     <ChevronRight className="inline-block ml-2 transform group-hover:translate-x-1 transition-transform" />
                   </button>
                   <button
-                    onClick={() => scrollToSection("features")}
+                    onClick={() => scrollToSection("how-it-works")}
                     className="px-8 py-4 bg-white/10 text-white rounded-xl font-medium hover:bg-white/20 transition-all transform hover:scale-105 backdrop-blur-sm group flex items-center justify-center"
                   >
                     How It Works
@@ -696,47 +695,173 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* Use Cases Section */}
-        <section className="py-24 bg-white/5 backdrop-blur-lg relative overflow-hidden">
+        {/* Add new How It Works section after hero and before features */}
+        <section
+          id="how-it-works"
+          ref={sectionsRef.current["how-it-works"]}
+          className="py-16 sm:py-24 bg-white/5 backdrop-blur-lg relative overflow-hidden"
+        >
           <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 to-blue-400/20 animate-gradient-x"></div>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-            <div className="text-center mb-16 animate-on-scroll">
+            <div className="text-center mb-12 sm:mb-16 animate-on-scroll">
               <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-                Tailored Solutions for Everyone
+                Simplifying Athlete-Coach Communication
               </h2>
-              <p className="text-xl text-blue-100 max-w-3xl mx-auto">
-                Whether you're a coach, club, or athlete, TrackBack provides the
-                tools you need to excel.
+              <p className="text-lg sm:text-xl text-blue-100 max-w-3xl mx-auto">
+                Track your daily wellness and training sessions in minutes,
+                helping coaches make better decisions
               </p>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-8">
-              {useCases.map((useCase, index) => (
-                <div
-                  key={useCase.title}
-                  className="group bg-white/10 backdrop-blur-lg rounded-2xl p-8 transform transition-all duration-500 hover:scale-105 hover:bg-white/15 animate-on-scroll"
-                  style={{ animationDelay: `${index * 200}ms` }}
-                >
-                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center mb-6 shadow-lg transform transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
-                    <useCase.icon className="w-8 h-8 text-white" />
-                  </div>
-                  <h3 className="text-2xl font-bold text-white mb-4 transform transition-all duration-300 group-hover:translate-x-1">
-                    {useCase.title}
+            <div className="grid md:grid-cols-3 gap-6 sm:gap-8 mb-12 sm:mb-16">
+              <div className="bg-white/10 backdrop-blur-lg rounded-xl sm:rounded-2xl p-6 sm:p-8 transform transition-all duration-500 hover:scale-105 hover:bg-white/15 animate-on-scroll">
+                <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center mb-6 shadow-lg">
+                  <FileText className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-4">
+                  1. Daily Check-in
+                </h3>
+                <p className="text-blue-100 mb-4">
+                  Take 2 minutes each day to rate your:
+                </p>
+                <ul className="space-y-3">
+                  <li className="flex items-center gap-3 text-blue-100">
+                    <Check className="w-5 h-5 text-green-400" />
+                    <span>Sleep Quality</span>
+                  </li>
+                  <li className="flex items-center gap-3 text-blue-100">
+                    <Check className="w-5 h-5 text-green-400" />
+                    <span>Fatigue Level</span>
+                  </li>
+                  <li className="flex items-center gap-3 text-blue-100">
+                    <Check className="w-5 h-5 text-green-400" />
+                    <span>Muscle Soreness</span>
+                  </li>
+                  <li className="flex items-center gap-3 text-blue-100">
+                    <Check className="w-5 h-5 text-green-400" />
+                    <span>Overall Readiness</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-lg rounded-xl sm:rounded-2xl p-6 sm:p-8 transform transition-all duration-500 hover:scale-105 hover:bg-white/15 animate-on-scroll">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center mb-6 shadow-lg">
+                  <Activity className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-4">
+                  2. Log Training
+                </h3>
+                <p className="text-blue-100 mb-4">
+                  Record your training sessions with:
+                </p>
+                <ul className="space-y-3">
+                  <li className="flex items-center gap-3 text-blue-100">
+                    <Check className="w-5 h-5 text-blue-400" />
+                    <span>Training Type</span>
+                  </li>
+                  <li className="flex items-center gap-3 text-blue-100">
+                    <Check className="w-5 h-5 text-blue-400" />
+                    <span>Session Duration</span>
+                  </li>
+                  <li className="flex items-center gap-3 text-blue-100">
+                    <Check className="w-5 h-5 text-blue-400" />
+                    <span>Intensity Level (RPE)</span>
+                  </li>
+                  <li className="flex items-center gap-3 text-blue-100">
+                    <Check className="w-5 h-5 text-blue-400" />
+                    <span>Session Notes</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-lg rounded-xl sm:rounded-2xl p-6 sm:p-8 transform transition-all duration-500 hover:scale-105 hover:bg-white/15 animate-on-scroll">
+                <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center mb-6 shadow-lg">
+                  <Brain className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-4">
+                  3. Smart Analysis
+                </h3>
+                <p className="text-blue-100 mb-4">
+                  Get insights and optimize training:
+                </p>
+                <ul className="space-y-3">
+                  <li className="flex items-center gap-3 text-blue-100">
+                    <Check className="w-5 h-5 text-purple-400" />
+                    <span>Training Load Analysis</span>
+                  </li>
+                  <li className="flex items-center gap-3 text-blue-100">
+                    <Check className="w-5 h-5 text-purple-400" />
+                    <span>Recovery Tracking</span>
+                  </li>
+                  <li className="flex items-center gap-3 text-blue-100">
+                    <Check className="w-5 h-5 text-purple-400" />
+                    <span>Performance Trends</span>
+                  </li>
+                  <li className="flex items-center gap-3 text-blue-100">
+                    <Check className="w-5 h-5 text-purple-400" />
+                    <span>Wellness Patterns</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="bg-white/10 backdrop-blur-lg rounded-xl sm:rounded-2xl p-6 sm:p-8 max-w-3xl mx-auto animate-on-scroll">
+              <div className="flex flex-col sm:flex-row gap-6 sm:gap-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center flex-shrink-0 mx-auto sm:mx-0">
+                  <Sparkles className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white mb-4 text-center sm:text-left">
+                    Why It Matters
                   </h3>
-                  <ul className="space-y-3 stagger-animate">
-                    {useCase.benefits.map((benefit, index) => (
-                      <li
-                        key={index}
-                        className="flex items-center gap-3 text-blue-100 transform transition-all duration-300 hover:translate-x-1"
-                        style={{ animationDelay: `${(index + 1) * 100}ms` }}
-                      >
-                        <Check className="w-5 h-5 text-blue-400 flex-shrink-0" />
-                        <span>{benefit}</span>
-                      </li>
-                    ))}
+                  <p className="text-blue-100 mb-6 text-center sm:text-left">
+                    TrackBack bridges the communication gap between athletes and
+                    coaches. By consistently tracking daily wellness and
+                    training data, coaches can:
+                  </p>
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <li className="bg-white/5 rounded-lg p-4">
+                      <div className="flex items-center gap-2 text-white mb-2">
+                        <TrendingUp className="w-5 h-5 text-amber-400" />
+                        <span className="font-medium">Optimize Training</span>
+                      </div>
+                      <p className="text-sm text-blue-100">
+                        Adjust training loads based on athlete readiness and
+                        recovery status
+                      </p>
+                    </li>
+                    <li className="bg-white/5 rounded-lg p-4">
+                      <div className="flex items-center gap-2 text-white mb-2">
+                        <Shield className="w-5 h-5 text-amber-400" />
+                        <span className="font-medium">Prevent Injuries</span>
+                      </div>
+                      <p className="text-sm text-blue-100">
+                        Identify early warning signs through wellness trends
+                      </p>
+                    </li>
+                    <li className="bg-white/5 rounded-lg p-4">
+                      <div className="flex items-center gap-2 text-white mb-2">
+                        <Target className="w-5 h-5 text-amber-400" />
+                        <span className="font-medium">Track Progress</span>
+                      </div>
+                      <p className="text-sm text-blue-100">
+                        Monitor performance improvements and training
+                        adaptations
+                      </p>
+                    </li>
+                    <li className="bg-white/5 rounded-lg p-4">
+                      <div className="flex items-center gap-2 text-white mb-2">
+                        <Users className="w-5 h-5 text-amber-400" />
+                        <span className="font-medium">Build Trust</span>
+                      </div>
+                      <p className="text-sm text-blue-100">
+                        Strengthen athlete-coach relationships through
+                        data-driven communication
+                      </p>
+                    </li>
                   </ul>
                 </div>
-              ))}
+              </div>
             </div>
           </div>
         </section>
@@ -1269,14 +1394,213 @@ export default function Landing() {
           <div className="max-w-7xl mx-auto px-4 relative">
             <div className="text-center mb-8 sm:mb-12 animate-on-scroll">
               <h2 className="text-2xl sm:text-4xl font-bold text-white mb-4">
-                Choose Your Plan
+                Simple, Transparent Pricing
               </h2>
               <p className="text-lg sm:text-xl text-blue-100 max-w-3xl mx-auto">
-                Start with our free plan or upgrade for advanced features
+                Choose the plan that best fits your team's needs
               </p>
+
+              {/* Billing Toggle */}
+              <div className="flex items-center justify-center mt-6 gap-3">
+                <span className="text-sm text-blue-100">Monthly</span>
+                <button
+                  onClick={() =>
+                    setBillingPeriod((prev) =>
+                      prev === "monthly" ? "yearly" : "monthly"
+                    )
+                  }
+                  className={clsx(
+                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                    billingPeriod === "yearly" ? "bg-blue-500" : "bg-white/20"
+                  )}
+                >
+                  <span
+                    className={clsx(
+                      "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                      billingPeriod === "yearly"
+                        ? "translate-x-6"
+                        : "translate-x-1"
+                    )}
+                  />
+                </button>
+                <span className="text-sm text-blue-100">
+                  Yearly <span className="text-blue-300">(Save ~20%)</span>
+                </span>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 stagger-animate">
+            {/* Mobile Pricing Cards (Horizontal Scroll) */}
+            <div className="md:hidden relative">
+              {/* Add scroll indicator text */}
+              <div className="text-center mb-4">
+                <p className="text-blue-100 text-sm flex items-center justify-center gap-2">
+                  <ChevronLeft className="w-4 h-4 animate-bounce-x" />
+                  Scroll to see more plans
+                  <ChevronRight className="w-4 h-4 animate-bounce-x" />
+                </p>
+              </div>
+
+              <div
+                className="overflow-x-auto hide-scrollbar snap-x snap-mandatory flex gap-4 pb-6 -mx-4 px-4"
+                onScroll={handlePricingScroll}
+              >
+                {pricingPlans.map((plan, index) => (
+                  <div
+                    key={plan.name}
+                    className={clsx(
+                      "flex-shrink-0 w-[85%] snap-center bg-white/10 backdrop-blur-lg rounded-xl p-5 transform transition-all duration-700 relative pricing-card",
+                      plan.popular && "ring-2 ring-blue-400"
+                    )}
+                    style={{
+                      animationDelay: `${index * 150}ms`,
+                    }}
+                  >
+                    {plan.popular && (
+                      <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                        <div className="bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-medium">
+                          Most Popular
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="text-center mb-4">
+                      <h3 className="text-xl font-bold text-white mb-2">
+                        {plan.name}
+                      </h3>
+                      <div className="flex items-baseline justify-center mb-4">
+                        <span className="text-lg text-blue-200 mr-1">€</span>
+                        <span className="text-3xl font-bold text-white">
+                          {billingPeriod === "monthly"
+                            ? plan.monthlyPrice
+                            : plan.yearlyPrice}
+                        </span>
+                        <span className="text-blue-200 ml-2">
+                          /{billingPeriod === "monthly" ? "month" : "year"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <ul className="space-y-2 mb-6">
+                      {plan.features.map((feature) => (
+                        <li
+                          key={feature}
+                          className="flex items-start gap-2 text-blue-100 text-sm"
+                        >
+                          <Check className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <button
+                      onClick={() => navigate("/register")}
+                      className={clsx(
+                        "w-full py-2.5 rounded-lg font-medium transition-all active:scale-95",
+                        plan.popular
+                          ? "bg-blue-500 text-white hover:bg-blue-600"
+                          : "bg-white/10 text-white hover:bg-white/20"
+                      )}
+                    >
+                      {plan.cta}
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Scroll Indicator Dots */}
+              <div className="flex justify-center gap-2 mt-4">
+                {pricingPlans.map((_, index) => (
+                  <div
+                    key={index}
+                    className={clsx(
+                      "h-2 rounded-full transition-all duration-300",
+                      activeCard === index
+                        ? "w-6 bg-blue-500"
+                        : "w-2 bg-white/20"
+                    )}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Add mobile-specific styles */}
+            <style
+              dangerouslySetInnerHTML={{
+                __html: `
+                /* Hide scrollbar but keep functionality */
+                .hide-scrollbar {
+                  -ms-overflow-style: none;
+                  scrollbar-width: none;
+                }
+                .hide-scrollbar::-webkit-scrollbar {
+                  display: none;
+                }
+
+                /* Smooth snap scrolling */
+                .snap-x {
+                  scroll-snap-type: x mandatory;
+                  -webkit-overflow-scrolling: touch;
+                  scroll-behavior: smooth;
+                }
+
+                .snap-center {
+                  scroll-snap-align: center;
+                }
+
+                /* Enhanced card animations */
+                @media (max-width: 768px) {
+                  .pricing-card {
+                    transform: scale(0.95);
+                    opacity: 0.8;
+                    transition: all 0.3s ease;
+                  }
+
+                  .pricing-card.active {
+                    transform: scale(1);
+                    opacity: 1;
+                  }
+
+                  /* Add parallax effect */
+                  .pricing-card {
+                    perspective: 1000px;
+                  }
+
+                  .pricing-card:hover {
+                    transform: translateZ(20px);
+                  }
+
+                  /* Smooth animations */
+                  .animate-card-in {
+                    animation: cardIn 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+                  }
+
+                  @keyframes cardIn {
+                    from {
+                      opacity: 0;
+                      transform: translateX(50px) scale(0.9);
+                    }
+                    to {
+                      opacity: 1;
+                      transform: translateX(0) scale(1);
+                    }
+                  }
+
+                  /* Add bounce animation for scroll indicators */
+                  @keyframes bounceX {
+                    0%, 100% { transform: translateX(0); }
+                    50% { transform: translateX(3px); }
+                  }
+
+                  .animate-bounce-x {
+                    animation: bounceX 1s infinite;
+                  }
+                }
+              `,
+              }}
+            />
+
+            {/* Desktop Pricing Cards (Grid) */}
+            <div className="hidden md:grid md:grid-cols-3 gap-6 stagger-animate">
               {pricingPlans.map((plan, index) => (
                 <div
                   key={plan.name}
@@ -1299,19 +1623,15 @@ export default function Landing() {
                       {plan.name}
                     </h3>
                     <div className="flex items-baseline justify-center mb-4">
-                      {plan.price === "Custom" ? (
-                        <span className="text-3xl font-bold text-white">
-                          Custom
-                        </span>
-                      ) : (
-                        <>
-                          <span className="text-lg text-blue-200 mr-1">$</span>
-                          <span className="text-3xl font-bold text-white">
-                            {plan.price}
-                          </span>
-                        </>
-                      )}
-                      <span className="text-blue-200 ml-2">/{plan.period}</span>
+                      <span className="text-lg text-blue-200 mr-1">€</span>
+                      <span className="text-3xl font-bold text-white">
+                        {billingPeriod === "monthly"
+                          ? plan.monthlyPrice
+                          : plan.yearlyPrice}
+                      </span>
+                      <span className="text-blue-200 ml-2">
+                        /{billingPeriod === "monthly" ? "month" : "year"}
+                      </span>
                     </div>
                   </div>
 
@@ -1328,13 +1648,9 @@ export default function Landing() {
                   </ul>
 
                   <button
-                    onClick={() =>
-                      plan.name === "Enterprise"
-                        ? scrollToSection("contact")
-                        : navigate("/register")
-                    }
+                    onClick={() => navigate("/register")}
                     className={clsx(
-                      "w-full py-2.5 rounded-lg font-medium transition-all",
+                      "w-full py-2.5 rounded-lg font-medium transition-all active:scale-95",
                       plan.popular
                         ? "bg-blue-500 text-white hover:bg-blue-600"
                         : "bg-white/10 text-white hover:bg-white/20"

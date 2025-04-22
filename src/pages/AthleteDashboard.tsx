@@ -409,37 +409,6 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
         return;
       }
 
-      // If metrics haven't been submitted yet, submit them first
-      if (!metricsSubmitted) {
-        const responsesToInsert = metrics.map((metric) => ({
-          athlete_id: profile.id,
-          metric_id: metric.id,
-          rating_value:
-            metric.type === "rating"
-              ? localResponses[metric.id]?.rating_value
-              : null,
-          text_value:
-            metric.type === "text"
-              ? localResponses[metric.id]?.text_value
-              : null,
-          date: submissionDate,
-        }));
-
-        const { error: metricsError } = await supabase
-          .from("metric_responses")
-          .upsert(responsesToInsert, {
-            onConflict: "athlete_id,metric_id,date",
-          });
-
-        if (metricsError) {
-          console.error("Error submitting metrics:", metricsError);
-          throw metricsError;
-        }
-
-        setMetricsSubmitted(true);
-        setHasLocalChanges(false);
-      }
-
       // Delete existing session for this type if it exists
       const { error: deleteError } = await supabase
         .from("training_sessions")
@@ -489,6 +458,84 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
       showNotification("error", "Error submitting form. Please try again.");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const submitMetrics = async () => {
+    try {
+      setSubmitting(true);
+      const submissionDate = getLocalDate();
+
+      // Validate metrics
+      if (!validateMetrics()) {
+        showNotification(
+          "error",
+          "Please fill in all metrics before submitting"
+        );
+        return;
+      }
+
+      // Prepare responses for insertion
+      const responsesToInsert = metrics.map((metric) => ({
+        athlete_id: profile.id,
+        metric_id: metric.id,
+        rating_value:
+          metric.type === "rating"
+            ? localResponses[metric.id]?.rating_value
+            : null,
+        text_value:
+          metric.type === "text" ? localResponses[metric.id]?.text_value : null,
+        date: submissionDate,
+      }));
+
+      // Insert all responses
+      const { error: metricsError } = await supabase
+        .from("metric_responses")
+        .upsert(responsesToInsert, {
+          onConflict: "athlete_id,metric_id,date",
+        });
+
+      if (metricsError) {
+        console.error("Error submitting metrics:", metricsError);
+        throw metricsError;
+      }
+
+      setMetricsSubmitted(true);
+      setHasLocalChanges(false);
+      showNotification("success", "Metrics submitted successfully!");
+    } catch (error) {
+      console.error("Error submitting metrics:", error);
+      showNotification("error", "Error submitting metrics. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSubmitAll = async () => {
+    try {
+      // Submit metrics if they have changes
+      if (!metricsSubmitted && hasLocalChanges) {
+        await submitMetrics();
+      }
+
+      // Submit AM session if it has data
+      if (amSession.rpe > 0 && !amSession.submitted) {
+        await submitForm("AM");
+      }
+
+      // Submit PM session if it has data
+      if (pmSession.rpe > 0 && !pmSession.submitted) {
+        await submitForm("PM");
+      }
+
+      setHasSubmittedAll(true);
+      showNotification("success", "All responses submitted successfully!");
+    } catch (error) {
+      console.error("Error submitting all responses:", error);
+      showNotification(
+        "error",
+        "Error submitting responses. Please try again."
+      );
     }
   };
 
@@ -563,67 +610,6 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
     setHighlightTraining(true);
     // Remove highlight after 5 seconds
     setTimeout(() => setHighlightTraining(false), 5000);
-  };
-
-  const handleSubmitAll = async () => {
-    try {
-      // Submit AM session first if it has data
-      if (amSession.rpe > 0 && !amSession.submitted) {
-        await submitForm("AM");
-      }
-
-      // Then submit PM session if it has data
-      if (pmSession.rpe > 0 && !pmSession.submitted) {
-        await submitForm("PM");
-      }
-
-      // If no sessions were submitted but metrics changed, submit just metrics
-      if (
-        !amSession.submitted &&
-        !pmSession.submitted &&
-        !metricsSubmitted &&
-        hasLocalChanges
-      ) {
-        // Prepare responses for insertion
-        const responsesToInsert = metrics.map((metric) => ({
-          athlete_id: profile.id,
-          metric_id: metric.id,
-          rating_value:
-            metric.type === "rating"
-              ? localResponses[metric.id]?.rating_value
-              : null,
-          text_value:
-            metric.type === "text"
-              ? localResponses[metric.id]?.text_value
-              : null,
-          date: selectedDate,
-        }));
-
-        // Insert all responses
-        const { error: metricsError } = await supabase
-          .from("metric_responses")
-          .upsert(responsesToInsert, {
-            onConflict: "athlete_id,metric_id,date",
-          });
-
-        if (metricsError) {
-          console.error("Error submitting metrics:", metricsError);
-          throw metricsError;
-        }
-
-        setMetricsSubmitted(true);
-        setHasLocalChanges(false);
-      }
-
-      setHasSubmittedAll(true);
-      showNotification("success", "All responses submitted successfully!");
-    } catch (error) {
-      console.error("Error submitting all responses:", error);
-      showNotification(
-        "error",
-        "Error submitting responses. Please try again."
-      );
-    }
   };
 
   const renderTrainingSessionForm = (
@@ -969,9 +955,11 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
                 <div className="space-y-6 sm:space-y-8">
                   {!metricsSubmitted && (
                     <div className="mb-8">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-6">
-                        Daily Metrics
-                      </h3>
+                      <div className="flex items-center mb-6">
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          Daily Wellness Check-in
+                        </h3>
+                      </div>
 
                       {/* Single Athlete Header */}
                       <div className="bg-white/50 backdrop-blur-sm rounded-xl p-4 mb-6">
@@ -1037,6 +1025,33 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
                               </div>
                             );
                           })}
+                        </div>
+
+                        {/* Submit button moved here */}
+                        <div className="mt-6 flex justify-end">
+                          <button
+                            onClick={submitMetrics}
+                            disabled={submitting || !validateMetrics()}
+                            className={clsx(
+                              "px-6 py-3 rounded-xl font-medium transition-all duration-200",
+                              "flex items-center gap-2",
+                              submitting || !validateMetrics()
+                                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                : "bg-blue-600 text-white hover:bg-blue-700 shadow-sm hover:shadow transform hover:scale-105"
+                            )}
+                          >
+                            {submitting ? (
+                              <>
+                                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                <span>Submitting...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="w-4 h-4" />
+                                <span>Submit Daily Check-in</span>
+                              </>
+                            )}
+                          </button>
                         </div>
                       </div>
                     </div>

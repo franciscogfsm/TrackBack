@@ -26,6 +26,11 @@ import {
   RefreshCw,
   Brain,
   Sparkles,
+  HelpCircle,
+  Info,
+  Moon,
+  Sun,
+  Monitor,
 } from "lucide-react";
 import clsx from "clsx";
 import ProfilePicture from "../components/ProfilePicture";
@@ -83,6 +88,9 @@ interface ManagerInvitationWithProfile extends Tables<"manager_invitations"> {
     email: string;
   };
 }
+
+// Add theme types
+type Theme = "light" | "dark" | "system";
 
 const RatingInput = ({
   value,
@@ -179,32 +187,65 @@ const MetricForm = ({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [type, setType] = useState<"rating" | "text">("rating");
+  const [showHelp, setShowHelp] = useState(false);
+
+  const helpContent = {
+    title:
+      "The name of your metric (e.g., 'Sleep Quality', 'Training Intensity')",
+    description:
+      "Additional details to help athletes understand what to report",
+    type: {
+      rating: "1-5 scale for quick numerical feedback",
+      text: "Free-form text for detailed responses",
+    },
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    e.stopPropagation(); // Prevent event bubbling
+    e.stopPropagation();
     onSubmit({ title, description, type });
-    // Reset form
     setTitle("");
     setDescription("");
     setType("rating");
   };
 
-  const handleCancel = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation(); // Prevent event bubbling
-    onCancel();
-  };
-
   return (
     <form onSubmit={handleSubmit} className="bg-white rounded-lg space-y-6">
-      <div>
+      <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-6">
+        <div className="flex items-start gap-3">
+          <Info className="w-5 h-5 text-blue-500 mt-0.5" />
+          <div>
+            <h4 className="text-sm font-medium text-blue-900 mb-1">
+              Creating Metrics
+            </h4>
+            <p className="text-sm text-blue-700">
+              Metrics help you track athlete performance and well-being. You can
+              create up to 10 metrics. Each metric can be either a rating (1-5
+              scale) or text response.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="relative">
         <label
           htmlFor="title"
           className="block text-base font-medium text-gray-900 mb-2"
         >
           Title
+          <button
+            type="button"
+            className="ml-2 text-gray-400 hover:text-gray-600"
+            onClick={() => setShowHelp(!showHelp)}
+          >
+            <HelpCircle className="w-4 h-4" />
+          </button>
         </label>
+        {showHelp && (
+          <div className="absolute z-10 mt-1 w-64 px-4 py-3 bg-gray-900 text-white text-sm rounded-lg shadow-lg">
+            <p>{helpContent.title}</p>
+          </div>
+        )}
         <input
           type="text"
           id="title"
@@ -215,12 +256,20 @@ const MetricForm = ({
           className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
-      <div>
+
+      <div className="relative">
         <label
           htmlFor="description"
           className="block text-base font-medium text-gray-900 mb-2"
         >
           Description
+          <button
+            type="button"
+            className="ml-2 text-gray-400 hover:text-gray-600"
+            onClick={() => setShowHelp(!showHelp)}
+          >
+            <HelpCircle className="w-4 h-4" />
+          </button>
         </label>
         <textarea
           id="description"
@@ -231,12 +280,20 @@ const MetricForm = ({
           className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
-      <div>
+
+      <div className="relative">
         <label
           htmlFor="type"
           className="block text-base font-medium text-gray-900 mb-2"
         >
           Type
+          <button
+            type="button"
+            className="ml-2 text-gray-400 hover:text-gray-600"
+            onClick={() => setShowHelp(!showHelp)}
+          >
+            <HelpCircle className="w-4 h-4" />
+          </button>
         </label>
         <select
           id="type"
@@ -247,11 +304,15 @@ const MetricForm = ({
           <option value="rating">Rating (1-5)</option>
           <option value="text">Text</option>
         </select>
+        <p className="mt-2 text-sm text-gray-500">
+          {type === "rating" ? helpContent.type.rating : helpContent.type.text}
+        </p>
       </div>
+
       <div className="flex justify-end space-x-4 pt-4">
         <button
           type="button"
-          onClick={handleCancel}
+          onClick={onCancel}
           className="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
         >
           Cancel
@@ -519,6 +580,24 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
   const [selectedAthleteForInsights, setSelectedAthleteForInsights] =
     useState<Profile | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [theme, setTheme] = useState<Theme>(() => {
+    const saved = localStorage.getItem("theme") as Theme;
+    return saved || "system";
+  });
+
+  // Theme management
+  useEffect(() => {
+    const root = window.document.documentElement;
+    const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
+      .matches
+      ? "dark"
+      : "light";
+    const activeTheme = theme === "system" ? systemTheme : theme;
+
+    root.classList.remove("light", "dark");
+    root.classList.add(activeTheme);
+    localStorage.setItem("theme", theme);
+  }, [theme]);
 
   useEffect(() => {
     fetchInitialData();
@@ -1173,25 +1252,96 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+    <div
+      className={clsx(
+        "min-h-screen transition-colors duration-200",
+        "bg-gradient-to-br",
+        theme === "dark"
+          ? "from-[#0F172A] via-[#1E293B] to-[#0F172A]"
+          : "from-blue-50 via-indigo-50 to-purple-50"
+      )}
+    >
       {/* Header */}
-      <nav className="bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600">
+      <nav
+        className={clsx(
+          "transition-colors duration-200",
+          theme === "dark"
+            ? "bg-[#1E293B] border-b border-slate-700/50 backdrop-blur-xl bg-opacity-80"
+            : "bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600"
+        )}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg">
-                <span className="text-blue-600 text-xl font-bold">T</span>
+              <div
+                className={clsx(
+                  "w-10 h-10 rounded-xl flex items-center justify-center shadow-lg",
+                  theme === "dark" ? "bg-gray-700" : "bg-white"
+                )}
+              >
+                <span
+                  className={clsx(
+                    "text-xl font-bold",
+                    theme === "dark" ? "text-blue-400" : "text-blue-600"
+                  )}
+                >
+                  T
+                </span>
               </div>
               <h1 className="text-2xl font-bold text-white">TrackBack</h1>
             </div>
+
             <div className="flex items-center gap-4">
+              {/* Theme Switcher */}
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-white/10 rounded-lg">
+                <button
+                  onClick={() => setTheme("light")}
+                  className={clsx(
+                    "p-1.5 rounded-md transition-colors",
+                    theme === "light"
+                      ? "bg-white/20 text-white"
+                      : "text-white/60 hover:text-white"
+                  )}
+                >
+                  <Sun className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setTheme("system")}
+                  className={clsx(
+                    "p-1.5 rounded-md transition-colors",
+                    theme === "system"
+                      ? "bg-white/20 text-white"
+                      : "text-white/60 hover:text-white"
+                  )}
+                >
+                  <Monitor className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setTheme("dark")}
+                  className={clsx(
+                    "p-1.5 rounded-md transition-colors",
+                    theme === "dark"
+                      ? "bg-white/20 text-white"
+                      : "text-white/60 hover:text-white"
+                  )}
+                >
+                  <Moon className="w-4 h-4" />
+                </button>
+              </div>
+
               <Link
                 to="/statistics"
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-100 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                className={clsx(
+                  "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors",
+                  theme === "dark"
+                    ? "text-gray-300 hover:text-white hover:bg-white/10"
+                    : "text-blue-100 hover:text-white hover:bg-white/10"
+                )}
               >
                 <BarChart2 className="h-4 w-4" />
                 <span>Statistics</span>
               </Link>
+
               <Link
                 to="#daily-responses"
                 onClick={(e) => {
@@ -1203,19 +1353,30 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
                     responsesSection.scrollIntoView({ behavior: "smooth" });
                   }
                 }}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-100 hover:text-white hover:bg-white/10 rounded-lg transition-colors group relative"
+                className={clsx(
+                  "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors",
+                  theme === "dark"
+                    ? "text-gray-300 hover:text-white hover:bg-white/10"
+                    : "text-blue-100 hover:text-white hover:bg-white/10"
+                )}
               >
-                <CalendarIcon className="h-4 w-4 transition-transform group-hover:scale-110" />
+                <CalendarIcon className="h-4 w-4" />
                 <span>Daily Responses</span>
-                <div className="absolute inset-x-0 -bottom-px h-px bg-white transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
               </Link>
+
               <button
                 onClick={() => setShowMetricsModal(true)}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-100 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                className={clsx(
+                  "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors",
+                  theme === "dark"
+                    ? "text-gray-300 hover:text-white hover:bg-white/10"
+                    : "text-blue-100 hover:text-white hover:bg-white/10"
+                )}
               >
                 <Settings className="h-4 w-4" />
                 <span>Metrics</span>
               </button>
+
               <div className="h-6 w-px bg-white/20"></div>
               <div className="flex items-center bg-white/10 rounded-full py-1 pl-1 pr-4">
                 <ProfilePicture
@@ -1233,7 +1394,12 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
               </div>
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-100 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                className={clsx(
+                  "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors",
+                  theme === "dark"
+                    ? "text-gray-300 hover:text-white hover:bg-white/10"
+                    : "text-blue-100 hover:text-white hover:bg-white/10"
+                )}
               >
                 <LogOut className="h-4 w-4" />
                 <span className="hidden sm:inline">Sign out</span>
@@ -1246,19 +1412,48 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
         {/* Form Status Settings */}
-        <div className="bg-white rounded-2xl shadow-sm p-6 mb-8 border border-gray-100">
+        <div
+          className={clsx(
+            "rounded-2xl shadow-sm p-6 mb-8 transition-colors duration-200",
+            theme === "dark"
+              ? "bg-[#1E293B]/80 border border-slate-700/50 backdrop-blur-sm"
+              : "bg-white border border-gray-100"
+          )}
+        >
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
-              <div className="p-3.5 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl">
-                <Calendar className="w-5 h-5 text-white" />
+              <div
+                className={clsx(
+                  "p-3.5 rounded-xl",
+                  theme === "dark"
+                    ? "bg-blue-500/10 text-blue-400"
+                    : "bg-gradient-to-br from-indigo-500 to-indigo-600"
+                )}
+              >
+                <Calendar
+                  className={clsx(
+                    "w-5 h-5",
+                    theme === "dark" ? "text-blue-400" : "text-white"
+                  )}
+                />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">
+                <h2
+                  className={clsx(
+                    "text-xl font-semibold",
+                    theme === "dark" ? "text-slate-100" : "text-gray-900"
+                  )}
+                >
                   Form Status Settings
                 </h2>
                 {formStatus?.is_open && (
-                  <p className="text-sm text-green-600 mt-1 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  <p
+                    className={clsx(
+                      "text-sm mt-1 flex items-center gap-2",
+                      theme === "dark" ? "text-emerald-400" : "text-green-600"
+                    )}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                     Forms open until {formatTimeForInput(formStatus.close_time)}
                   </p>
                 )}
@@ -1268,7 +1463,11 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
               className={clsx(
                 "px-4 py-2 rounded-xl text-sm font-medium",
                 formStatus?.is_open
-                  ? "bg-green-100 text-green-800"
+                  ? theme === "dark"
+                    ? "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-400/30"
+                    : "bg-green-100 text-green-800"
+                  : theme === "dark"
+                  ? "bg-red-500/10 text-red-400 ring-1 ring-red-400/30"
                   : "bg-red-100 text-red-800"
               )}
             >
@@ -1278,7 +1477,12 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                className={clsx(
+                  "block text-sm font-medium mb-2",
+                  theme === "dark" ? "text-slate-300" : "text-gray-700"
+                )}
+              >
                 Open Time
               </label>
               <input
@@ -1291,11 +1495,21 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
                     formStatus?.close_time || "23:59"
                   )
                 }
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                className={clsx(
+                  "w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500/50 transition-colors",
+                  theme === "dark"
+                    ? "bg-slate-800/50 border-slate-700/50 text-slate-100 focus:border-blue-500/50"
+                    : "bg-white border-gray-300 text-gray-900"
+                )}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                className={clsx(
+                  "block text-sm font-medium mb-2",
+                  theme === "dark" ? "text-slate-300" : "text-gray-700"
+                )}
+              >
                 Close Time
               </label>
               <input
@@ -1308,65 +1522,154 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
                     e.target.value
                   )
                 }
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                className={clsx(
+                  "w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500/50 transition-colors",
+                  theme === "dark"
+                    ? "bg-slate-800/50 border-slate-700/50 text-slate-100 focus:border-blue-500/50"
+                    : "bg-white border-gray-300 text-gray-900"
+                )}
               />
             </div>
           </div>
         </div>
 
         {/* Athletes List */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-8 border border-gray-100">
-          <div className="px-6 py-5 border-b border-gray-100">
+        <div
+          className={clsx(
+            "rounded-2xl shadow-sm overflow-hidden mb-8 transition-colors duration-200",
+            theme === "dark"
+              ? "bg-[#1E293B]/80 border border-slate-700/50 backdrop-blur-sm"
+              : "bg-white border border-gray-100"
+          )}
+        >
+          <div
+            className={clsx(
+              "px-6 py-5 border-b",
+              theme === "dark" ? "border-slate-700/50" : "border-gray-100"
+            )}
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-3.5 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl">
-                  <Users className="w-5 h-5 text-white" />
+                <div
+                  className={clsx(
+                    "p-3.5 rounded-xl",
+                    theme === "dark"
+                      ? "bg-blue-500/10 text-blue-400"
+                      : "bg-gradient-to-br from-blue-500 to-blue-600"
+                  )}
+                >
+                  <Users
+                    className={clsx(
+                      "w-5 h-5",
+                      theme === "dark" ? "text-blue-400" : "text-white"
+                    )}
+                  />
                 </div>
-                <h2 className="text-xl font-semibold text-gray-900">
+                <h2
+                  className={clsx(
+                    "text-xl font-semibold",
+                    theme === "dark" ? "text-slate-100" : "text-gray-900"
+                  )}
+                >
                   Athletes
                 </h2>
               </div>
               <button
                 onClick={() => setShowInviteModal(true)}
-                className="inline-flex items-center px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-sm font-medium rounded-xl hover:from-blue-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors shadow-sm"
+                className={clsx(
+                  "inline-flex items-center px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 shadow-sm",
+                  theme === "dark"
+                    ? "bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 ring-1 ring-blue-400/30"
+                    : "bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700"
+                )}
               >
                 <UserPlus className="h-4 w-4 mr-2" />
                 Invite Athlete
               </button>
             </div>
           </div>
+
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table
+              className={clsx(
+                "min-w-full divide-y",
+                theme === "dark" ? "divide-slate-700/50" : "divide-gray-200"
+              )}
+            >
               <thead>
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
+                <tr
+                  className={clsx(
+                    theme === "dark" ? "bg-slate-800/50" : "bg-gray-50"
+                  )}
+                >
+                  <th
+                    className={clsx(
+                      "px-6 py-3 text-left text-xs font-medium uppercase tracking-wider",
+                      theme === "dark" ? "text-slate-400" : "text-gray-500"
+                    )}
+                  >
                     Name
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
+                  <th
+                    className={clsx(
+                      "px-6 py-3 text-left text-xs font-medium uppercase tracking-wider",
+                      theme === "dark" ? "text-slate-400" : "text-gray-500"
+                    )}
+                  >
                     Email
                   </th>
-                  <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
+                  <th
+                    className={clsx(
+                      "px-6 py-3 text-right text-xs font-medium uppercase tracking-wider",
+                      theme === "dark" ? "text-slate-400" : "text-gray-500"
+                    )}
+                  >
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody
+                className={clsx(
+                  "divide-y",
+                  theme === "dark" ? "divide-slate-700/50" : "divide-gray-200"
+                )}
+              >
                 {athletes.map((athlete) => (
-                  <tr key={athlete.id} className="hover:bg-gray-50">
+                  <tr
+                    key={athlete.id}
+                    className={clsx(
+                      "transition-colors",
+                      theme === "dark"
+                        ? "hover:bg-slate-800/50"
+                        : "hover:bg-gray-50"
+                    )}
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10">
                           <ProfilePicture profile={athlete} size="md" />
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
+                          <div
+                            className={clsx(
+                              "text-sm font-medium",
+                              theme === "dark"
+                                ? "text-slate-100"
+                                : "text-gray-900"
+                            )}
+                          >
                             {athlete.full_name}
                           </div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">
+                      <div
+                        className={clsx(
+                          "text-sm",
+                          theme === "dark" ? "text-slate-400" : "text-gray-500"
+                        )}
+                      >
                         {athlete.email}
                       </div>
                     </td>
@@ -1426,10 +1729,22 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
         </div>
 
         {/* Date and Athlete Selection */}
-        <div className="bg-white rounded-2xl shadow-sm p-6 mb-8 border border-gray-100">
+        <div
+          className={clsx(
+            "rounded-2xl shadow-sm p-6 mb-8 transition-colors duration-200",
+            theme === "dark"
+              ? "bg-[#1E293B]/80 border border-slate-700/50 backdrop-blur-sm"
+              : "bg-white border border-gray-100"
+          )}
+        >
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                className={clsx(
+                  "block text-sm font-medium mb-2",
+                  theme === "dark" ? "text-slate-300" : "text-gray-700"
+                )}
+              >
                 Date
               </label>
               <div className="relative">
@@ -1437,18 +1752,33 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
                   type="date"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  className={clsx(
+                    "w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500/50 transition-colors",
+                    theme === "dark"
+                      ? "bg-slate-800/50 border-slate-700/50 text-slate-100 focus:border-blue-500/50"
+                      : "bg-white border-gray-300 text-gray-900"
+                  )}
                 />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                className={clsx(
+                  "block text-sm font-medium mb-2",
+                  theme === "dark" ? "text-slate-300" : "text-gray-700"
+                )}
+              >
                 Athlete
               </label>
               <select
                 value={selectedAthlete}
                 onChange={(e) => setSelectedAthlete(e.target.value)}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                className={clsx(
+                  "w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500/50 transition-colors",
+                  theme === "dark"
+                    ? "bg-slate-800/50 border-slate-700/50 text-slate-100 focus:border-blue-500/50"
+                    : "bg-white border-gray-300 text-gray-900"
+                )}
               >
                 <option value="all">All Athletes</option>
                 {athletes.map((athlete) => (
@@ -1462,21 +1792,55 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
         </div>
 
         {/* Team Invitations Section - More Compact */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-8 border border-gray-100">
-          <div className="px-6 py-4 border-b border-gray-100">
+        <div
+          className={clsx(
+            "rounded-2xl shadow-sm overflow-hidden mb-8",
+            theme === "dark"
+              ? "bg-[#1E293B]/80 border border-slate-700/50 backdrop-blur-sm"
+              : "bg-white border border-gray-100"
+          )}
+        >
+          <div
+            className={clsx(
+              "px-6 py-4 border-b",
+              theme === "dark" ? "border-slate-700/50" : "border-gray-100"
+            )}
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl">
-                  <Users className="h-4 w-4 text-white" />
+                <div
+                  className={clsx(
+                    "p-2.5 rounded-xl",
+                    theme === "dark"
+                      ? "bg-blue-500/10 text-blue-400"
+                      : "bg-gradient-to-br from-blue-500 to-blue-600"
+                  )}
+                >
+                  <Users
+                    className={clsx(
+                      "h-4 w-4",
+                      theme === "dark" ? "text-blue-400" : "text-white"
+                    )}
+                  />
                 </div>
-                <h2 className="text-base font-semibold text-gray-900">
+                <h2
+                  className={clsx(
+                    "text-base font-semibold",
+                    theme === "dark" ? "text-slate-100" : "text-gray-900"
+                  )}
+                >
                   Invitation Links
                 </h2>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setRefreshKey((k) => k + 1)}
-                  className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"
+                  className={clsx(
+                    "p-2 rounded-lg transition-colors",
+                    theme === "dark"
+                      ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                      : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
+                  )}
                   title="Refresh invitations"
                 >
                   <RefreshCw className="h-4 w-4" />
@@ -1490,13 +1854,21 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
               <div className="animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent mx-auto"></div>
             </div>
           ) : visibleInvitations.length === 0 ? (
-            <div className="px-6 py-8 text-center">
-              <p className="text-sm text-gray-500">
-                No active invitation links
-              </p>
+            <div
+              className={clsx(
+                "px-6 py-8 text-center",
+                theme === "dark" ? "text-slate-400" : "text-gray-500"
+              )}
+            >
+              <p className="text-sm">No active invitation links</p>
               <button
                 onClick={() => setShowInviteModal(true)}
-                className="mt-4 inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className={clsx(
+                  "mt-4 inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200",
+                  theme === "dark"
+                    ? "bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 ring-1 ring-blue-400/30"
+                    : "text-white bg-blue-600 hover:bg-blue-700"
+                )}
               >
                 <UserPlus className="h-4 w-4 mr-2" />
                 Generate New Link
@@ -1504,42 +1876,87 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
+              <table
+                className={clsx(
+                  "min-w-full divide-y",
+                  theme === "dark" ? "divide-slate-700/50" : "divide-gray-200"
+                )}
+              >
                 <thead>
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
+                  <tr
+                    className={
+                      theme === "dark" ? "bg-slate-800/50" : "bg-gray-50"
+                    }
+                  >
+                    <th
+                      className={clsx(
+                        "px-6 py-3 text-left text-xs font-medium uppercase tracking-wider",
+                        theme === "dark" ? "text-slate-400" : "text-gray-500"
+                      )}
+                    >
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
+                    <th
+                      className={clsx(
+                        "px-6 py-3 text-left text-xs font-medium uppercase tracking-wider",
+                        theme === "dark" ? "text-slate-400" : "text-gray-500"
+                      )}
+                    >
                       Expires
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
+                    <th
+                      className={clsx(
+                        "px-6 py-3 text-right text-xs font-medium uppercase tracking-wider",
+                        theme === "dark" ? "text-slate-400" : "text-gray-500"
+                      )}
+                    >
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody
+                  className={clsx(
+                    "divide-y",
+                    theme === "dark" ? "divide-slate-700/50" : "divide-gray-200"
+                  )}
+                >
                   {visibleInvitations.map((invitation) => {
                     const isExpired =
                       new Date(invitation.expires_at) < new Date();
                     return (
                       <tr
                         key={invitation.id}
-                        className="hover:bg-gray-50 transition-colors"
+                        className={clsx(
+                          "transition-colors",
+                          theme === "dark"
+                            ? "hover:bg-slate-800/50"
+                            : "hover:bg-gray-50"
+                        )}
                       >
                         <td className="px-6 py-3 whitespace-nowrap">
                           <span
                             className={clsx(
                               "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
                               isExpired
-                                ? "bg-gray-100 text-gray-800"
+                                ? theme === "dark"
+                                  ? "bg-gray-500/10 text-gray-400 ring-1 ring-gray-400/30"
+                                  : "bg-gray-100 text-gray-800"
+                                : theme === "dark"
+                                ? "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-400/30"
                                 : "bg-green-100 text-green-800"
                             )}
                           >
                             {isExpired ? "Expired" : "Active"}
                           </span>
                         </td>
-                        <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500">
+                        <td
+                          className={clsx(
+                            "px-6 py-3 whitespace-nowrap text-sm",
+                            theme === "dark"
+                              ? "text-slate-400"
+                              : "text-gray-500"
+                          )}
+                        >
                           {new Date(invitation.expires_at).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
@@ -1549,7 +1966,12 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
                                 onClick={() =>
                                   handleCopyLink(invitation.invitation_code)
                                 }
-                                className="inline-flex items-center px-2 py-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors text-sm"
+                                className={clsx(
+                                  "inline-flex items-center px-2 py-1 rounded-lg transition-colors text-sm",
+                                  theme === "dark"
+                                    ? "text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
+                                    : "text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                )}
                               >
                                 {showCopyNotification ===
                                 invitation.invitation_code ? (
@@ -1569,7 +1991,12 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
                               onClick={() =>
                                 handleDeleteInvitation(invitation.id)
                               }
-                              className="inline-flex items-center px-2 py-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors text-sm"
+                              className={clsx(
+                                "inline-flex items-center px-2 py-1 rounded-lg transition-colors text-sm",
+                                theme === "dark"
+                                  ? "text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                                  : "text-red-600 hover:text-red-700 hover:bg-red-50"
+                              )}
                             >
                               <Trash2 className="h-3 w-3 mr-1" />
                               Remove
@@ -1588,11 +2015,31 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
         {/* Daily Responses */}
         <div
           id="daily-responses-section"
-          className="bg-white/90 backdrop-blur-sm rounded-xl shadow-sm overflow-hidden"
+          className={clsx(
+            "rounded-xl shadow-sm overflow-hidden",
+            theme === "dark"
+              ? "bg-[#1E293B]/80 border border-slate-700/50 backdrop-blur-sm"
+              : "bg-white/90 backdrop-blur-sm"
+          )}
         >
-          <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-blue-600" />
+          <div
+            className={clsx(
+              "px-4 sm:px-6 py-4 border-b",
+              theme === "dark" ? "border-slate-700/50" : "border-gray-200"
+            )}
+          >
+            <h2
+              className={clsx(
+                "text-lg font-semibold flex items-center gap-2",
+                theme === "dark" ? "text-slate-100" : "text-gray-900"
+              )}
+            >
+              <Calendar
+                className={clsx(
+                  "w-5 h-5",
+                  theme === "dark" ? "text-blue-400" : "text-blue-600"
+                )}
+              />
               Daily Responses
             </h2>
           </div>
@@ -1601,13 +2048,33 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
             <GroupedMetricResponses responses={metricResponses} />
           ) : (
             <div className="p-8 text-center">
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">
-                <Calendar className="h-6 w-6 text-blue-600" />
+              <div
+                className={clsx(
+                  "mx-auto flex items-center justify-center h-12 w-12 rounded-full mb-4",
+                  theme === "dark" ? "bg-blue-500/10" : "bg-blue-100"
+                )}
+              >
+                <Calendar
+                  className={clsx(
+                    "h-6 w-6",
+                    theme === "dark" ? "text-blue-400" : "text-blue-600"
+                  )}
+                />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <h3
+                className={clsx(
+                  "text-lg font-medium mb-2",
+                  theme === "dark" ? "text-slate-100" : "text-gray-900"
+                )}
+              >
                 No Responses Yet
               </h3>
-              <p className="text-sm text-gray-500">
+              <p
+                className={clsx(
+                  "text-sm",
+                  theme === "dark" ? "text-slate-400" : "text-gray-500"
+                )}
+              >
                 No feedback has been submitted for the selected date.
               </p>
             </div>
@@ -1616,8 +2083,15 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
       </main>
 
       {showMetricsModal && !showDeleteConfirmation && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-40">
-          <div className="bg-white rounded-xl shadow-xl p-4 sm:p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-40">
+          <div
+            className={clsx(
+              "rounded-xl shadow-xl p-4 sm:p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto transition-colors duration-200",
+              theme === "dark"
+                ? "bg-[#1E293B] border border-slate-700/50"
+                : "bg-white"
+            )}
+          >
             <div className="flex justify-between items-center mb-4 sm:mb-8">
               <div>
                 <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
@@ -1633,6 +2107,50 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
               >
                 <X className="h-5 w-5 sm:h-6 sm:w-6" />
               </button>
+            </div>
+
+            {/* Quick Start Guide */}
+            <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-100">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <Info className="w-5 h-5 text-blue-500" />
+                Quick Start Guide
+              </h3>
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium">
+                    1
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    Create metrics to track athlete performance and well-being
+                    (max 10 metrics)
+                  </p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium">
+                    2
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    Choose between rating (1-5 scale) or text response types
+                  </p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium">
+                    3
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    Add clear descriptions to help athletes understand what to
+                    report
+                  </p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium">
+                    4
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    Monitor responses in the Daily Responses section
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* Success Message */}
@@ -1787,47 +2305,99 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
       )}
 
       {/* Add footer */}
-      <footer className="bg-white border-t border-gray-200 mt-8">
+      <footer
+        className={clsx(
+          "border-t transition-colors duration-200 mt-8",
+          theme === "dark"
+            ? "bg-[#1E293B]/80 border-slate-700/50 backdrop-blur-sm"
+            : "bg-white border-gray-200"
+        )}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              <h3
+                className={clsx(
+                  "text-lg font-semibold mb-4",
+                  theme === "dark" ? "text-slate-100" : "text-gray-900"
+                )}
+              >
                 TrackBack
               </h3>
-              <p className="text-sm text-gray-500">
+              <p
+                className={clsx(
+                  "text-sm",
+                  theme === "dark" ? "text-slate-400" : "text-gray-500"
+                )}
+              >
                 Empowering athletes and managers with data-driven insights.
               </p>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              <h3
+                className={clsx(
+                  "text-lg font-semibold mb-4",
+                  theme === "dark" ? "text-slate-100" : "text-gray-900"
+                )}
+              >
                 Contact
               </h3>
-              <p className="text-sm text-gray-500">
+              <p
+                className={clsx(
+                  "text-sm",
+                  theme === "dark" ? "text-slate-400" : "text-gray-500"
+                )}
+              >
                 Email: martinsfrancisco2005@gmail.com
               </p>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              <h3
+                className={clsx(
+                  "text-lg font-semibold mb-4",
+                  theme === "dark" ? "text-slate-100" : "text-gray-900"
+                )}
+              >
                 Legal
               </h3>
               <div className="space-y-2">
                 <a
                   href="/privacy-policy"
-                  className="text-sm text-gray-500 hover:text-gray-900 block"
+                  className={clsx(
+                    "text-sm block",
+                    theme === "dark"
+                      ? "text-slate-400 hover:text-slate-200"
+                      : "text-gray-500 hover:text-gray-900"
+                  )}
                 >
                   Privacy Policy
                 </a>
                 <a
                   href="/terms-of-service"
-                  className="text-sm text-gray-500 hover:text-gray-900 block"
+                  className={clsx(
+                    "text-sm block",
+                    theme === "dark"
+                      ? "text-slate-400 hover:text-slate-200"
+                      : "text-gray-500 hover:text-gray-900"
+                  )}
                 >
                   Terms of Service
                 </a>
               </div>
             </div>
           </div>
-          <div className="mt-8 pt-8 border-t border-gray-200">
-            <p className="text-sm text-gray-500 text-center">
+          <div
+            className={clsx(
+              "mt-8 pt-8 border-t",
+              theme === "dark" ? "border-slate-700/50" : "border-gray-200"
+            )}
+          >
+            <p
+              className={clsx(
+                "text-sm text-center",
+                theme === "dark" ? "text-slate-400" : "text-gray-500"
+              )}
+            >
               © {new Date().getFullYear()} TrackBack. All rights reserved.
             </p>
           </div>
