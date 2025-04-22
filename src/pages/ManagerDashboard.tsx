@@ -518,6 +518,7 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
   const [showInsightsModal, setShowInsightsModal] = useState(false);
   const [selectedAthleteForInsights, setSelectedAthleteForInsights] =
     useState<Profile | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
     fetchInitialData();
@@ -732,6 +733,12 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
     if (!profile?.id) return;
 
     try {
+      // Check if manager has reached the limit
+      if (metrics.length >= 10) {
+        setError("You have reached the maximum limit of 10 metrics");
+        return;
+      }
+
       // Create the new metric
       const { error: createError } = await supabase
         .from("custom_metrics")
@@ -745,6 +752,7 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
 
       if (createError) {
         console.error("Error creating metric:", createError);
+        setError("Failed to create metric. Please try again.");
         return;
       }
 
@@ -763,10 +771,13 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
       // Update state with new metrics
       setMetrics(updatedMetrics || []);
 
-      // Close the modal
-      setShowMetricsModal(false);
+      // Show success message
+      setSuccessMessage("Metric created successfully!");
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (error) {
       console.error("Error in handleCreateMetric:", error);
+      setError("An unexpected error occurred. Please try again.");
     }
   };
 
@@ -1174,13 +1185,30 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
               <h1 className="text-2xl font-bold text-white">TrackBack</h1>
             </div>
             <div className="flex items-center gap-4">
-              <button
-                onClick={() => navigate("/statistics")}
+              <Link
+                to="/statistics"
                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-100 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
               >
                 <BarChart2 className="h-4 w-4" />
                 <span>Statistics</span>
-              </button>
+              </Link>
+              <Link
+                to="#daily-responses"
+                onClick={(e) => {
+                  e.preventDefault();
+                  const responsesSection = document.querySelector(
+                    "#daily-responses-section"
+                  );
+                  if (responsesSection) {
+                    responsesSection.scrollIntoView({ behavior: "smooth" });
+                  }
+                }}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-100 hover:text-white hover:bg-white/10 rounded-lg transition-colors group relative"
+              >
+                <CalendarIcon className="h-4 w-4 transition-transform group-hover:scale-110" />
+                <span>Daily Responses</span>
+                <div className="absolute inset-x-0 -bottom-px h-px bg-white transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
+              </Link>
               <button
                 onClick={() => setShowMetricsModal(true)}
                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-100 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
@@ -1442,7 +1470,7 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
                   <Users className="h-4 w-4 text-white" />
                 </div>
                 <h2 className="text-base font-semibold text-gray-900">
-                  Pending Invitations
+                  Invitation Links
                 </h2>
               </div>
               <div className="flex items-center gap-2">
@@ -1463,7 +1491,16 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
             </div>
           ) : visibleInvitations.length === 0 ? (
             <div className="px-6 py-8 text-center">
-              <p className="text-sm text-gray-500">No pending invitations</p>
+              <p className="text-sm text-gray-500">
+                No active invitation links
+              </p>
+              <button
+                onClick={() => setShowInviteModal(true)}
+                className="mt-4 inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <UserPlus className="h-4 w-4 mr-2" />
+                Generate New Link
+              </button>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -1471,7 +1508,7 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
                 <thead>
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
-                      Email
+                      Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
                       Expires
@@ -1482,39 +1519,52 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {visibleInvitations.map((invitation) => (
-                    <tr
-                      key={invitation.id}
-                      className="hover:bg-gray-50 transition-colors"
-                    >
-                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-900">
-                        {invitation.email || "No email"}
-                      </td>
-                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(invitation.expires_at).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
-                        {invitation.status === "pending" && (
+                  {visibleInvitations.map((invitation) => {
+                    const isExpired =
+                      new Date(invitation.expires_at) < new Date();
+                    return (
+                      <tr
+                        key={invitation.id}
+                        className="hover:bg-gray-50 transition-colors"
+                      >
+                        <td className="px-6 py-3 whitespace-nowrap">
+                          <span
+                            className={clsx(
+                              "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
+                              isExpired
+                                ? "bg-gray-100 text-gray-800"
+                                : "bg-green-100 text-green-800"
+                            )}
+                          >
+                            {isExpired ? "Expired" : "Active"}
+                          </span>
+                        </td>
+                        <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(invitation.expires_at).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex items-center justify-end gap-2">
-                            <button
-                              onClick={() =>
-                                handleCopyLink(invitation.invitation_code)
-                              }
-                              className="inline-flex items-center px-2 py-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors text-sm"
-                            >
-                              {showCopyNotification ===
-                              invitation.invitation_code ? (
-                                <span className="flex items-center">
-                                  <Check className="h-3 w-3 mr-1" />
-                                  Copied
-                                </span>
-                              ) : (
-                                <>
-                                  <Copy className="h-3 w-3 mr-1" />
-                                  Copy
-                                </>
-                              )}
-                            </button>
+                            {!isExpired && (
+                              <button
+                                onClick={() =>
+                                  handleCopyLink(invitation.invitation_code)
+                                }
+                                className="inline-flex items-center px-2 py-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors text-sm"
+                              >
+                                {showCopyNotification ===
+                                invitation.invitation_code ? (
+                                  <span className="flex items-center">
+                                    <Check className="h-3 w-3 mr-1" />
+                                    Copied
+                                  </span>
+                                ) : (
+                                  <>
+                                    <Copy className="h-3 w-3 mr-1" />
+                                    Copy Link
+                                  </>
+                                )}
+                              </button>
+                            )}
                             <button
                               onClick={() =>
                                 handleDeleteInvitation(invitation.id)
@@ -1522,13 +1572,13 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
                               className="inline-flex items-center px-2 py-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors text-sm"
                             >
                               <Trash2 className="h-3 w-3 mr-1" />
-                              Delete
+                              Remove
                             </button>
                           </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -1536,7 +1586,10 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
         </div>
 
         {/* Daily Responses */}
-        <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-sm overflow-hidden">
+        <div
+          id="daily-responses-section"
+          className="bg-white/90 backdrop-blur-sm rounded-xl shadow-sm overflow-hidden"
+        >
           <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
               <Calendar className="w-5 h-5 text-blue-600" />
@@ -1566,9 +1619,14 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-40">
           <div className="bg-white rounded-xl shadow-xl p-4 sm:p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4 sm:mb-8">
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
-                Manage Metrics
-              </h2>
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+                  Manage Metrics
+                </h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  {metrics.length}/10 metrics used
+                </p>
+              </div>
               <button
                 onClick={closeMetricsModal}
                 className="text-gray-500 hover:text-gray-700 transition-colors"
@@ -1577,11 +1635,35 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
               </button>
             </div>
 
+            {/* Success Message */}
+            {successMessage && (
+              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-sm text-green-800 flex items-center">
+                  <Check className="h-4 w-4 mr-2" />
+                  {successMessage}
+                </p>
+              </div>
+            )}
+
             {metrics.length > 0 && (
               <div className="mb-4 sm:mb-8">
-                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">
-                  Current Metrics
-                </h3>
+                <div className="flex items-center justify-between mb-3 sm:mb-4">
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900">
+                    Current Metrics
+                  </h3>
+                  <span
+                    className={clsx(
+                      "text-sm px-2 py-1 rounded-full",
+                      metrics.length >= 10
+                        ? "bg-red-100 text-red-800"
+                        : metrics.length >= 7
+                        ? "bg-yellow-100 text-yellow-800"
+                        : "bg-green-100 text-green-800"
+                    )}
+                  >
+                    {10 - metrics.length} remaining
+                  </span>
+                </div>
                 <div className="space-y-3 sm:space-y-4">
                   {metrics.map((metric) => (
                     <div

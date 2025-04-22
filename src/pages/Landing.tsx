@@ -47,6 +47,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import clsx from "clsx";
+import { sendContactMessage } from "../lib/email";
 
 const features = [
   {
@@ -429,9 +430,11 @@ export default function Landing() {
     });
 
     try {
-      // Here you would typically make an API call to your backend
-      // For now, we'll simulate a successful submission
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const result = await sendContactMessage(formData);
+
+      if (!result.success) {
+        throw new Error("Failed to send message");
+      }
 
       setFormStatus({
         type: "success",
@@ -487,27 +490,35 @@ export default function Landing() {
             </div>
 
             {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center gap-4 lg:gap-8">
+            <div className="hidden md:flex items-center gap-6">
               {sections.map((section) => (
                 <button
                   key={section.id}
                   onClick={() => scrollToSection(section.id)}
                   className={clsx(
-                    "text-sm font-medium transition-colors",
+                    "text-sm font-medium transition-colors hover:text-white",
                     activeSection === section.id
                       ? "text-white"
-                      : "text-blue-100 hover:text-white"
+                      : "text-blue-100"
                   )}
                 >
                   {section.label}
                 </button>
               ))}
-              <Link
-                to="/login"
-                className="px-6 py-2 bg-white text-blue-600 rounded-xl font-medium hover:bg-blue-50 transition-all shadow-lg"
-              >
-                Sign In
-              </Link>
+              <div className="flex items-center gap-3 ml-4 pl-4 border-l border-white/10">
+                <Link
+                  to="/register"
+                  className="px-5 py-2 bg-white hover:bg-blue-50 text-blue-600 rounded-full font-medium transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+                >
+                  Register
+                </Link>
+                <Link
+                  to="/login"
+                  className="px-5 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full font-medium transition-all transform hover:scale-105"
+                >
+                  Sign In
+                </Link>
+              </div>
             </div>
 
             {/* Mobile menu button */}
@@ -543,22 +554,31 @@ export default function Landing() {
                   setIsMenuOpen(false);
                 }}
                 className={clsx(
-                  "block w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                  "block w-full text-left px-4 py-2 rounded-full text-sm font-medium transition-colors",
                   activeSection === section.id
-                    ? "bg-blue-500 text-white"
+                    ? "bg-white/20 text-white"
                     : "text-blue-100 hover:bg-white/10 hover:text-white"
                 )}
               >
                 {section.label}
               </button>
             ))}
-            <Link
-              to="/login"
-              className="block w-full px-4 py-3 mt-4 text-center text-lg font-medium text-blue-600 bg-white hover:bg-blue-50 rounded-xl transition-colors shadow-lg"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Sign In
-            </Link>
+            <div className="pt-4 mt-4 space-y-3 border-t border-white/10">
+              <Link
+                to="/register"
+                className="block w-full px-4 py-2.5 text-center text-blue-600 bg-white hover:bg-blue-50 rounded-full font-medium transition-all shadow-lg transform hover:scale-105"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Register
+              </Link>
+              <Link
+                to="/login"
+                className="block w-full px-4 py-2.5 text-center text-white bg-white/10 hover:bg-white/20 rounded-full font-medium transition-all transform hover:scale-105"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Sign In
+              </Link>
+            </div>
           </div>
         </div>
       </nav>
@@ -593,20 +613,21 @@ export default function Landing() {
                 <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-6 leading-tight">
                   Transform <span className="inline-block">Your</span>{" "}
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-blue-400 animate-gradient">
-                    Athletic Program
+                    Athletic Performance
                   </span>
                 </h1>
                 <p className="text-lg sm:text-xl text-blue-100 mb-8">
                   TrackBack is your all-in-one platform for athletic performance
-                  management. Empower coaches, clubs, and athletes with advanced
-                  analytics and professional training tools.
+                  management. Join thousands of athletes tracking their
+                  progress, optimizing their training, and reaching their full
+                  potential.
                 </p>
                 <div className="mobile-buttons flex flex-col sm:flex-row gap-4">
                   <button
                     onClick={() => navigate("/register")}
                     className="px-8 py-4 bg-white text-blue-600 rounded-xl font-medium hover:bg-blue-50 transition-all transform hover:scale-105 shadow-lg hover:shadow-white/20 group flex items-center justify-center"
                   >
-                    Start Free Trial
+                    Join as an Athlete
                     <ChevronRight className="inline-block ml-2 transform group-hover:translate-x-1 transition-transform" />
                   </button>
                   <button
