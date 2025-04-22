@@ -662,10 +662,32 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
 
   const fetchMetricResponses = async () => {
     try {
+      // First get the manager's athletes
+      const { data: athletesData, error: athletesError } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("manager_id", profile.id)
+        .eq("role", "athlete");
+
+      if (athletesError) {
+        console.error("Error fetching athletes:", athletesError);
+        return;
+      }
+
+      if (!athletesData || athletesData.length === 0) {
+        setMetricResponses([]);
+        return;
+      }
+
+      // Get the athlete IDs
+      const athleteIds = athletesData.map((athlete) => athlete.id);
+
+      // Then fetch responses only for those athletes
       const { data: responses, error } = await supabase
         .from("metric_responses")
         .select("*")
-        .eq("date", selectedDate);
+        .eq("date", selectedDate)
+        .in("athlete_id", athleteIds);
 
       if (error) {
         console.error("Error fetching responses:", error);
@@ -677,8 +699,7 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
         return;
       }
 
-      // Get unique athlete IDs and metric IDs
-      const athleteIds = [...new Set(responses.map((r) => r.athlete_id))];
+      // Get unique metric IDs
       const metricIds = [...new Set(responses.map((r) => r.metric_id))];
 
       // Fetch athletes and metrics in parallel
