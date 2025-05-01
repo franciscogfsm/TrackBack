@@ -1818,187 +1818,170 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
                     theme === "dark" ? "text-slate-100" : "text-gray-900"
                   )}
                 >
-                  Invitation Links
+                  Athletes
                 </h2>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setRefreshKey((k) => k + 1)}
-                  className={clsx(
-                    "p-2 rounded-lg transition-colors",
-                    theme === "dark"
-                      ? "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                      : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
-                  )}
-                  title="Refresh invitations"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {loading ? (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-4 border-blue-500 border-t-transparent mx-auto"></div>
-            </div>
-          ) : visibleInvitations.length === 0 ? (
-            <div
-              className={clsx(
-                "px-6 py-8 text-center",
-                theme === "dark" ? "text-slate-400" : "text-gray-500"
-              )}
-            >
-              <p className="text-sm">No active invitation links</p>
               <button
                 onClick={() => setShowInviteModal(true)}
                 className={clsx(
-                  "mt-4 inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200",
+                  "inline-flex items-center px-6 py-3 text-sm font-medium rounded-xl transition-all duration-200",
                   theme === "dark"
                     ? "bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 ring-1 ring-blue-400/30"
-                    : "text-white bg-blue-600 hover:bg-blue-700"
+                    : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700"
                 )}
               >
                 <UserPlus className="h-4 w-4 mr-2" />
-                Generate New Link
+                Invite Athlete
               </button>
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table
+          </div>
+
+          <div className="overflow-x-auto">
+            <table
+              className={clsx(
+                "min-w-full divide-y",
+                theme === "dark" ? "divide-slate-700/50" : "divide-gray-200"
+              )}
+            >
+              <thead>
+                <tr
+                  className={clsx(
+                    theme === "dark" ? "bg-slate-800/50" : "bg-gray-50/50"
+                  )}
+                >
+                  <th
+                    className={clsx(
+                      "px-8 py-4 text-left text-xs font-medium uppercase tracking-wider",
+                      theme === "dark" ? "text-slate-400" : "text-gray-500"
+                    )}
+                  >
+                    Name
+                  </th>
+                  <th
+                    className={clsx(
+                      "px-8 py-4 text-left text-xs font-medium uppercase tracking-wider",
+                      theme === "dark" ? "text-slate-400" : "text-gray-500"
+                    )}
+                  >
+                    Email
+                  </th>
+                  <th
+                    className={clsx(
+                      "px-8 py-4 text-right text-xs font-medium uppercase tracking-wider",
+                      theme === "dark" ? "text-slate-400" : "text-gray-500"
+                    )}
+                  >
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody
                 className={clsx(
-                  "min-w-full divide-y",
+                  "divide-y",
                   theme === "dark" ? "divide-slate-700/50" : "divide-gray-200"
                 )}
               >
-                <thead>
+                {athletes.map((athlete) => (
                   <tr
-                    className={
-                      theme === "dark" ? "bg-slate-800/50" : "bg-gray-50"
-                    }
+                    key={athlete.id}
+                    className={clsx(
+                      "transition-all duration-200",
+                      theme === "dark"
+                        ? "hover:bg-slate-700/50"
+                        : "hover:bg-gray-50"
+                    )}
                   >
-                    <th
-                      className={clsx(
-                        "px-6 py-3 text-left text-xs font-medium uppercase tracking-wider",
-                        theme === "dark" ? "text-slate-400" : "text-gray-500"
-                      )}
-                    >
-                      Status
-                    </th>
-                    <th
-                      className={clsx(
-                        "px-6 py-3 text-left text-xs font-medium uppercase tracking-wider",
-                        theme === "dark" ? "text-slate-400" : "text-gray-500"
-                      )}
-                    >
-                      Expires
-                    </th>
-                    <th
-                      className={clsx(
-                        "px-6 py-3 text-right text-xs font-medium uppercase tracking-wider",
-                        theme === "dark" ? "text-slate-400" : "text-gray-500"
-                      )}
-                    >
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody
-                  className={clsx(
-                    "divide-y",
-                    theme === "dark" ? "divide-slate-700/50" : "divide-gray-200"
-                  )}
-                >
-                  {visibleInvitations.map((invitation) => {
-                    const isExpired =
-                      new Date(invitation.expires_at) < new Date();
-                    return (
-                      <tr
-                        key={invitation.id}
-                        className={clsx(
-                          "transition-colors",
-                          theme === "dark"
-                            ? "hover:bg-slate-800/50"
-                            : "hover:bg-gray-50"
-                        )}
-                      >
-                        <td className="px-6 py-3 whitespace-nowrap">
-                          <span
+                    <td className="px-8 py-5 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 h-12 w-12">
+                          <ProfilePicture profile={athlete} size="md" />
+                        </div>
+                        <div className="ml-4">
+                          <div
                             className={clsx(
-                              "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
-                              isExpired
-                                ? theme === "dark"
-                                  ? "bg-gray-500/10 text-gray-400 ring-1 ring-gray-400/30"
-                                  : "bg-gray-100 text-gray-800"
-                                : theme === "dark"
-                                ? "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-400/30"
-                                : "bg-green-100 text-green-800"
+                              "text-sm font-medium",
+                              theme === "dark" ? "text-white" : "text-gray-900"
                             )}
                           >
-                            {isExpired ? "Expired" : "Active"}
-                          </span>
-                        </td>
-                        <td
+                            {athlete.full_name}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-8 py-5 whitespace-nowrap">
+                      <div
+                        className={clsx(
+                          "text-sm",
+                          theme === "dark" ? "text-slate-400" : "text-gray-500"
+                        )}
+                      >
+                        {athlete.email}
+                      </div>
+                    </td>
+                    <td className="px-8 py-5 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex items-center justify-end space-x-4">
+                        <div className="relative group">
+                          <button
+                            onClick={() => {
+                              setSelectedAthleteForInsights(athlete);
+                              setShowInsightsModal(true);
+                            }}
+                            className={clsx(
+                              "group relative inline-flex items-center px-4 py-2 rounded-xl font-medium shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl active:scale-95",
+                              theme === "dark"
+                                ? "bg-gradient-to-r from-blue-500/20 to-indigo-500/20 text-blue-400 ring-1 ring-blue-500/30"
+                                : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
+                            )}
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-indigo-400/20 rounded-xl blur-lg transition-opacity duration-300 opacity-0 group-hover:opacity-100" />
+                            <Brain className="h-4 w-4 mr-1.5 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12" />
+                            <span className="relative">AI Insights</span>
+                            <div className="absolute -top-1 -right-1">
+                              <div className="animate-ping">
+                                <div className="h-2 w-2 rounded-full bg-blue-400" />
+                              </div>
+                              <div className="absolute inset-0">
+                                <div className="h-2 w-2 rounded-full bg-blue-400" />
+                              </div>
+                            </div>
+                          </button>
+
+                          {/* Floating tooltip */}
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                            <div className="bg-gray-900 text-white text-xs rounded-lg p-2 text-center">
+                              <div className="flex items-center justify-center gap-1 mb-1">
+                                <Sparkles className="h-3 w-3 text-blue-400" />
+                                <span className="font-medium">
+                                  AI-Powered Analysis
+                                </span>
+                              </div>
+                              <p className="text-gray-300 text-[10px]">
+                                Get personalized insights and recommendations
+                              </p>
+                            </div>
+                            <div className="w-2 h-2 bg-gray-900 rotate-45 absolute left-1/2 -translate-x-1/2 -bottom-1"></div>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={(e) => handleRemoveAthlete(athlete.id, e)}
                           className={clsx(
-                            "px-6 py-3 whitespace-nowrap text-sm",
+                            "inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium transition-colors duration-200",
                             theme === "dark"
-                              ? "text-slate-400"
-                              : "text-gray-500"
+                              ? "text-red-400 hover:bg-red-500/10"
+                              : "text-red-600 hover:bg-red-50"
                           )}
                         >
-                          {new Date(invitation.expires_at).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
-                          <div className="flex items-center justify-end gap-2">
-                            {!isExpired && (
-                              <button
-                                onClick={() =>
-                                  handleCopyLink(invitation.invitation_code)
-                                }
-                                className={clsx(
-                                  "inline-flex items-center px-2 py-1 rounded-lg transition-colors text-sm",
-                                  theme === "dark"
-                                    ? "text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
-                                    : "text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                )}
-                              >
-                                {showCopyNotification ===
-                                invitation.invitation_code ? (
-                                  <span className="flex items-center">
-                                    <Check className="h-3 w-3 mr-1" />
-                                    Copied
-                                  </span>
-                                ) : (
-                                  <>
-                                    <Copy className="h-3 w-3 mr-1" />
-                                    Copy Link
-                                  </>
-                                )}
-                              </button>
-                            )}
-                            <button
-                              onClick={() =>
-                                handleDeleteInvitation(invitation.id)
-                              }
-                              className={clsx(
-                                "inline-flex items-center px-2 py-1 rounded-lg transition-colors text-sm",
-                                theme === "dark"
-                                  ? "text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                                  : "text-red-600 hover:text-red-700 hover:bg-red-50"
-                              )}
-                            >
-                              <Trash2 className="h-3 w-3 mr-1" />
-                              Remove
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+                          <Trash2 className="h-4 w-4 mr-1.5" />
+                          Remove
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* Daily Responses */}
