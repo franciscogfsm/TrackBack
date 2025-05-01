@@ -13,6 +13,11 @@ import { LogOut, Calendar, Upload, AlertCircle, Check } from "lucide-react";
 import clsx from "clsx";
 import ProfilePicture from "../components/ProfilePicture";
 import styles from "./AthleteDashboard.module.css";
+import {
+  getReminderPreferences,
+  updateReminderPreferences,
+  createReminderPreferences,
+} from "../lib/reminderService";
 
 const TRAINING_TYPES: { value: TrainingType; label: string }[] = [
   { value: "regenerative", label: "Regenerative" },
@@ -42,6 +47,13 @@ interface NoTrainingModalProps {
   isOpen: boolean;
   onConfirm: (sessionType: "AM" | "PM" | "ALL") => void;
   onCancel: () => void;
+}
+
+interface ConfirmationModalProps {
+  isOpen: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+  message: string;
 }
 
 const RatingInput = ({
@@ -153,10 +165,79 @@ const NoTrainingModal = ({
   );
 };
 
+const ConfirmationModal = ({
+  isOpen,
+  onConfirm,
+  onCancel,
+  message,
+}: ConfirmationModalProps) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 transform transition-all">
+        <div className="text-center">
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">
+            <Calendar className="h-6 w-6 text-blue-600" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            Confirm Submission
+          </h3>
+          <p className="text-sm text-gray-500 mb-6">{message}</p>
+          <div className="flex flex-col sm:flex-row sm:justify-center gap-3">
+            <button
+              onClick={onConfirm}
+              className="w-full sm:w-auto px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors duration-200"
+            >
+              Yes, Submit
+            </button>
+            <button
+              onClick={onCancel}
+              className="w-full sm:w-auto px-6 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors duration-200"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Add these helper functions at the top level
 const getLocalDate = () => {
   const now = new Date();
   return now.toLocaleDateString("en-CA"); // Returns YYYY-MM-DD in local timezone
+};
+
+const getPreviousDay = () => {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  return yesterday.toLocaleDateString("en-CA");
+};
+
+const isDateInPast = (dateToCheck: string) => {
+  const today = new Date();
+  const checkDate = new Date(dateToCheck);
+  // Compare dates without time
+  const todayStr = today.toLocaleDateString("en-CA");
+  const checkDateStr = checkDate.toLocaleDateString("en-CA");
+  return checkDateStr < todayStr;
+};
+
+const isValidSubmissionDate = (dateToCheck: string) => {
+  const today = new Date();
+  const checkDate = new Date(dateToCheck);
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+
+  // Compare dates without time
+  const todayStr = today.toLocaleDateString("en-CA");
+  const yesterdayStr = yesterday.toLocaleDateString("en-CA");
+  const checkDateStr = checkDate.toLocaleDateString("en-CA");
+
+  // Allow today and yesterday only
+  return checkDateStr === todayStr || checkDateStr === yesterdayStr;
 };
 
 const formatDateForDisplay = (dateString: string) => {
@@ -211,6 +292,11 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
     message: string;
     show: boolean;
   } | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmationData, setConfirmationData] = useState<{
+    message: string;
+    onConfirm: () => void;
+  } | null>(null);
 
   const showNotification = (type: "success" | "error", message: string) => {
     setNotification({ type, message, show: true });
@@ -231,7 +317,21 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
         console.log("Starting initial data fetch...");
         setLoading(true);
 
-        // Check if metrics were already submitted today
+        // Reset training session states when date changes
+        setAmSession({
+          training_type: "regenerative",
+          rpe: 0,
+          duration: 0,
+          submitted: false,
+        });
+        setPmSession({
+          training_type: "regenerative",
+          rpe: 0,
+          duration: 0,
+          submitted: false,
+        });
+
+        // Check if metrics were already submitted for selected date
         if (profile.manager_id) {
           const { data: responsesData } = await supabase
             .from("metric_responses")
@@ -242,7 +342,7 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
           setMetricsSubmitted(responsesData ? responsesData.length > 0 : false);
         }
 
-        // Fetch form status - updated to get the latest record
+        // Fetch form status
         if (profile.manager_id) {
           const { data: formStatusData, error: formStatusError } =
             await supabase
@@ -259,12 +359,9 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
             console.log("Form status data:", formStatusData);
             setFormStatus(formStatusData || null);
           }
-        } else {
-          // If no manager assigned yet, set form status to null
-          setFormStatus(null);
         }
 
-        // Fetch training sessions with proper type handling
+        // Fetch training sessions for the selected date
         const { data: sessionsResponse } = await supabase
           .from("training_sessions")
           .select("*")
@@ -274,7 +371,7 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
         const sessionsData = (sessionsResponse || []) as TrainingSession[];
         setTrainingSessions(sessionsData);
 
-        // Set AM/PM session forms if they exist
+        // Set AM/PM session forms if they exist for the selected date
         const amSessionData = sessionsData.find((s) => s.session === "AM");
         if (amSessionData) {
           setAmSession({
@@ -393,12 +490,18 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
 
   const submitForm = async (sessionType: "AM" | "PM") => {
     try {
-      setSubmitting(true);
       const session = sessionType === "AM" ? amSession : pmSession;
       const setSession = sessionType === "AM" ? setAmSession : setPmSession;
+      const submissionDate = selectedDate;
 
-      // Get current date in local timezone
-      const submissionDate = getLocalDate();
+      // Validate the date
+      if (!isValidSubmissionDate(submissionDate)) {
+        showNotification(
+          "error",
+          "You can only submit forms for today or yesterday"
+        );
+        return;
+      }
 
       // Validate the session data
       if (!session.rpe || !session.duration) {
@@ -409,6 +512,47 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
         return;
       }
 
+      // Check if this is a past date submission
+      const isPastDate = isDateInPast(submissionDate);
+      if (isPastDate) {
+        setConfirmationData({
+          message: `Are you sure you want to submit data for ${formatDateForDisplay(
+            submissionDate
+          )}?`,
+          onConfirm: async () => {
+            await handleFormSubmission(
+              sessionType,
+              session,
+              setSession,
+              submissionDate
+            );
+            setShowConfirmModal(false);
+          },
+        });
+        setShowConfirmModal(true);
+        return;
+      }
+
+      await handleFormSubmission(
+        sessionType,
+        session,
+        setSession,
+        submissionDate
+      );
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      showNotification("error", "Error submitting form. Please try again.");
+    }
+  };
+
+  const handleFormSubmission = async (
+    sessionType: "AM" | "PM",
+    session: TrainingSessionForm,
+    setSession: React.Dispatch<React.SetStateAction<TrainingSessionForm>>,
+    submissionDate: string
+  ) => {
+    setSubmitting(true);
+    try {
       // Delete existing session for this type if it exists
       const { error: deleteError } = await supabase
         .from("training_sessions")
@@ -417,12 +561,9 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
         .eq("date", submissionDate)
         .eq("session", sessionType);
 
-      if (deleteError) {
-        console.error("Error deleting existing session:", deleteError);
-        throw deleteError;
-      }
+      if (deleteError) throw deleteError;
 
-      // Insert new session with the correct date
+      // Insert new session
       const { error: insertError } = await supabase
         .from("training_sessions")
         .insert({
@@ -435,15 +576,9 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
           unit_load: calculateUnitLoad(session.rpe, session.duration),
         });
 
-      if (insertError) {
-        console.error("Error inserting session:", insertError);
-        throw insertError;
-      }
+      if (insertError) throw insertError;
 
-      // Update local state to mark session as submitted
       setSession((prev) => ({ ...prev, submitted: true }));
-
-      // Check if both sessions are now submitted
       const otherSession = sessionType === "AM" ? pmSession : amSession;
       if (otherSession.submitted) {
         setHasSubmittedAll(true);
@@ -451,11 +586,10 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
 
       showNotification(
         "success",
-        `${sessionType} session submitted successfully!`
+        `${sessionType} session submitted successfully for ${formatDateForDisplay(
+          submissionDate
+        )}!`
       );
-    } catch (error) {
-      console.error("Error submitting form:", error);
-      showNotification("error", "Error submitting form. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -463,8 +597,16 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
 
   const submitMetrics = async () => {
     try {
-      setSubmitting(true);
-      const submissionDate = getLocalDate();
+      const submissionDate = selectedDate;
+
+      // Validate the date
+      if (!isValidSubmissionDate(submissionDate)) {
+        showNotification(
+          "error",
+          "You can only submit forms for today or yesterday"
+        );
+        return;
+      }
 
       // Validate metrics
       if (!validateMetrics()) {
@@ -475,7 +617,32 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
         return;
       }
 
-      // Prepare responses for insertion
+      // Check if this is a past date submission
+      const isPastDate = isDateInPast(submissionDate);
+      if (isPastDate) {
+        setConfirmationData({
+          message: `Are you sure you want to submit metrics for ${formatDateForDisplay(
+            submissionDate
+          )}?`,
+          onConfirm: async () => {
+            await handleMetricsSubmission(submissionDate);
+            setShowConfirmModal(false);
+          },
+        });
+        setShowConfirmModal(true);
+        return;
+      }
+
+      await handleMetricsSubmission(submissionDate);
+    } catch (error) {
+      console.error("Error submitting metrics:", error);
+      showNotification("error", "Error submitting metrics. Please try again.");
+    }
+  };
+
+  const handleMetricsSubmission = async (submissionDate: string) => {
+    setSubmitting(true);
+    try {
       const responsesToInsert = metrics.map((metric) => ({
         athlete_id: profile.id,
         metric_id: metric.id,
@@ -488,24 +655,22 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
         date: submissionDate,
       }));
 
-      // Insert all responses
       const { error: metricsError } = await supabase
         .from("metric_responses")
         .upsert(responsesToInsert, {
           onConflict: "athlete_id,metric_id,date",
         });
 
-      if (metricsError) {
-        console.error("Error submitting metrics:", metricsError);
-        throw metricsError;
-      }
+      if (metricsError) throw metricsError;
 
       setMetricsSubmitted(true);
       setHasLocalChanges(false);
-      showNotification("success", "Metrics submitted successfully!");
-    } catch (error) {
-      console.error("Error submitting metrics:", error);
-      showNotification("error", "Error submitting metrics. Please try again.");
+      showNotification(
+        "success",
+        `Metrics submitted successfully for ${formatDateForDisplay(
+          submissionDate
+        )}!`
+      );
     } finally {
       setSubmitting(false);
     }
@@ -612,195 +777,6 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
     setTimeout(() => setHighlightTraining(false), 5000);
   };
 
-  const renderTrainingSessionForm = (
-    session: "AM" | "PM",
-    data: TrainingSessionForm,
-    setData: React.Dispatch<React.SetStateAction<TrainingSessionForm>>
-  ) => (
-    <div
-      className={clsx(
-        "p-6 rounded-xl bg-white shadow-sm",
-        highlightTraining && !data.submitted && "ring-2 ring-blue-400"
-      )}
-    >
-      <h3 className="text-lg font-semibold mb-4 flex items-center justify-between">
-        {session === "AM" ? "Morning Session (AM)" : "Afternoon Session (PM)"}
-        {data.submitted && (
-          <span className="text-sm font-medium text-green-600 bg-green-50 px-3 py-1 rounded-full">
-            Submitted
-          </span>
-        )}
-      </h3>
-
-      <div className="space-y-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Training Type
-          </label>
-          <select
-            value={data.training_type}
-            onChange={(e) =>
-              setData((prev) => ({
-                ...prev,
-                training_type: e.target.value as TrainingType,
-              }))
-            }
-            disabled={data.submitted}
-            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-          >
-            {TRAINING_TYPES.map((type) => (
-              <option key={type.value} value={type.value}>
-                {type.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            RPE (Rate of Perceived Exertion)
-          </label>
-          <RPEInput
-            value={data.rpe}
-            onChange={(value) => setData((prev) => ({ ...prev, rpe: value }))}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Duration (minutes)
-          </label>
-          <input
-            type="number"
-            value={data.duration || ""}
-            onChange={(e) =>
-              setData((prev) => ({
-                ...prev,
-                duration: parseInt(e.target.value) || 0,
-              }))
-            }
-            disabled={data.submitted}
-            min="0"
-            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-          />
-        </div>
-
-        <button
-          onClick={() => submitForm(session)}
-          disabled={submitting || data.submitted || !data.rpe || !data.duration}
-          className={clsx(
-            "w-full py-2 px-4 rounded-lg font-medium transition-colors duration-200",
-            data.submitted
-              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-              : !data.rpe || !data.duration
-              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-              : "bg-blue-600 text-white hover:bg-blue-700"
-          )}
-        >
-          {data.submitted
-            ? "Session Submitted"
-            : submitting
-            ? "Submitting..."
-            : `Submit ${session} Session`}
-        </button>
-      </div>
-    </div>
-  );
-
-  // Early return for no manager, but keep the navigation bar
-  if (!profile.manager_id) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex flex-col">
-        {/* Navigation Bar */}
-        <nav className="bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 border-b border-white/10 sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto px-4 py-2 sm:px-6 lg:px-8">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:h-16">
-              <div className="flex items-center justify-center sm:justify-start py-2 sm:py-0">
-                <h1 className="text-xl sm:text-2xl font-bold text-white">
-                  Athlete Dashboard
-                </h1>
-              </div>
-              <div className="flex items-center justify-between sm:justify-end border-t border-white/10 sm:border-t-0 pt-2 sm:pt-0 mt-2 sm:mt-0">
-                <div className="flex items-center gap-4">
-                  <div className="transform transition-transform duration-300 hover:scale-105 ring-2 ring-white/20 rounded-full">
-                    <ProfilePicture
-                      profile={profile}
-                      size="lg"
-                      editable={true}
-                      onUpdate={handleProfileUpdate}
-                    />
-                  </div>
-                  <div className="flex flex-col items-start">
-                    <span className="text-base sm:text-lg font-semibold text-white">
-                      {profile.full_name}
-                    </span>
-                    <span className="text-sm text-blue-100">Athlete</span>
-                  </div>
-                </div>
-                <button
-                  onClick={handleLogout}
-                  className="ml-4 sm:ml-8 inline-flex items-center text-blue-100 hover:text-white transition-all duration-200 hover:scale-105 bg-white/10 px-4 py-2 rounded-lg hover:bg-white/20"
-                >
-                  <LogOut className="h-5 w-5 mr-2" />
-                  <span className="text-sm font-medium">Sign out</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </nav>
-
-        {/* No Manager Content */}
-        <main className="flex-grow flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
-            <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-blue-100 mb-6">
-              <AlertCircle className="h-8 w-8 text-blue-600" />
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              Welcome to Your Dashboard
-            </h2>
-            <p className="text-gray-600 mb-6">
-              You currently don't have a manager assigned. To get started with
-              tracking your training and metrics, you'll need to be connected
-              with a manager.
-            </p>
-            <div className="bg-blue-50 rounded-lg p-4 text-left">
-              <h3 className="text-sm font-medium text-blue-800 mb-2">
-                Next Steps:
-              </h3>
-              <ul className="text-sm text-blue-700 space-y-2">
-                <li className="flex items-start gap-2">
-                  <span>1.</span>
-                  <span>Ask your manager to send you an invitation link</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span>2.</span>
-                  <span>Click the invitation link when you receive it</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span>3.</span>
-                  <span>
-                    Once connected, you'll be able to track your daily metrics
-                    and training sessions
-                  </span>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </main>
-
-        {/* Footer */}
-        <footer className="py-6 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-5xl mx-auto">
-            <p className="text-center text-sm text-gray-500">
-              Designed & Developed by Francisco Martins ©{" "}
-              {new Date().getFullYear()}
-            </p>
-          </div>
-        </footer>
-      </div>
-    );
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
@@ -861,7 +837,8 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
   const currentTime = new Date().toTimeString().split(" ")[0];
 
   // Update the form status check to always allow form submission when there's no manager
-  const isFormOpen = formStatus === null || formStatus.is_open;
+  const isFormOpen =
+    formStatus === null || formStatus.is_open || isDateInPast(selectedDate);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex flex-col">
@@ -963,10 +940,47 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
 
                       {/* Single Athlete Header */}
                       <div className="bg-white/50 backdrop-blur-sm rounded-xl p-4 mb-6">
-                        <div className="flex items-center gap-4 border-b border-gray-100 pb-4 mb-4">
-                          <p className="text-sm text-gray-500">
-                            {formatDateForDisplay(selectedDate)}
-                          </p>
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-gray-100 pb-4 mb-4">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-blue-50 rounded-lg">
+                              <Calendar className="h-5 w-5 text-blue-500" />
+                            </div>
+                            <div>
+                              <h3 className="text-lg font-medium text-gray-900">
+                                {formatDateForDisplay(selectedDate)}
+                              </h3>
+                              {isDateInPast(selectedDate) && (
+                                <p className="text-sm text-gray-500 mt-0.5">
+                                  Submitting data for previous day
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center bg-gray-50 rounded-lg p-1">
+                            <button
+                              onClick={() => setSelectedDate(getPreviousDay())}
+                              className={clsx(
+                                "px-4 py-2 rounded-md text-sm font-medium transition-all duration-200",
+                                selectedDate === getPreviousDay()
+                                  ? "bg-white text-blue-600 shadow-sm ring-1 ring-gray-200"
+                                  : "text-gray-600 hover:text-gray-900"
+                              )}
+                            >
+                              Previous Day
+                            </button>
+                            <button
+                              onClick={() => setSelectedDate(getLocalDate())}
+                              className={clsx(
+                                "px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ml-1",
+                                selectedDate === getLocalDate()
+                                  ? "bg-white text-blue-600 shadow-sm ring-1 ring-gray-200"
+                                  : "text-gray-600 hover:text-gray-900"
+                              )}
+                            >
+                              Current Day
+                            </button>
+                          </div>
                         </div>
 
                         {/* Metrics Grid */}
@@ -1058,15 +1072,58 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
                   )}
 
                   <div className="pt-6 sm:pt-8">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                      Training Sessions
-                    </h3>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        Training Sessions
+                      </h3>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setSelectedDate(getPreviousDay())}
+                          className={clsx(
+                            "px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                            selectedDate === getPreviousDay()
+                              ? "bg-blue-100 text-blue-700"
+                              : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+                          )}
+                        >
+                          Yesterday's Training
+                        </button>
+                        <button
+                          onClick={() => setSelectedDate(getLocalDate())}
+                          className={clsx(
+                            "px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                            selectedDate === getLocalDate()
+                              ? "bg-blue-100 text-blue-700"
+                              : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+                          )}
+                        >
+                          Today's Training
+                        </button>
+                      </div>
+                    </div>
+
                     <div className="grid grid-cols-1 gap-6 sm:gap-8">
-                      <div className="bg-gray-50 p-4 sm:p-6 rounded-xl space-y-4 sm:space-y-6">
+                      {/* Morning Session */}
+                      <div
+                        className={clsx(
+                          "bg-white p-4 sm:p-6 rounded-xl space-y-4 sm:space-y-6 transition-all duration-200",
+                          isDateInPast(selectedDate)
+                            ? "border border-yellow-200 bg-yellow-50/30"
+                            : "bg-gray-50"
+                        )}
+                      >
                         <div className="flex justify-between items-center">
-                          <h4 className="text-base font-medium text-gray-900">
-                            Morning Session (AM)
-                          </h4>
+                          <div>
+                            <h4 className="text-base font-medium text-gray-900">
+                              Morning Session (AM)
+                            </h4>
+                            {isDateInPast(selectedDate) && (
+                              <p className="text-sm text-yellow-600 mt-1">
+                                Submitting for{" "}
+                                {formatDateForDisplay(selectedDate)}
+                              </p>
+                            )}
+                          </div>
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1178,11 +1235,27 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
                         )}
                       </div>
 
-                      <div className="bg-gray-50 p-4 sm:p-6 rounded-xl space-y-4 sm:space-y-6">
+                      {/* Afternoon Session */}
+                      <div
+                        className={clsx(
+                          "bg-white p-4 sm:p-6 rounded-xl space-y-4 sm:space-y-6 transition-all duration-200",
+                          isDateInPast(selectedDate)
+                            ? "border border-yellow-200 bg-yellow-50/30"
+                            : "bg-gray-50"
+                        )}
+                      >
                         <div className="flex justify-between items-center">
-                          <h4 className="text-base font-medium text-gray-900">
-                            Afternoon Session (PM)
-                          </h4>
+                          <div>
+                            <h4 className="text-base font-medium text-gray-900">
+                              Afternoon Session (PM)
+                            </h4>
+                            {isDateInPast(selectedDate) && (
+                              <p className="text-sm text-yellow-600 mt-1">
+                                Submitting for{" "}
+                                {formatDateForDisplay(selectedDate)}
+                              </p>
+                            )}
+                          </div>
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1315,29 +1388,49 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
                         </div>
                       </div>
 
+                      {/* Submit All Section */}
                       {(amSession.rpe > 0 || pmSession.rpe > 0) && (
-                        <div className="bg-blue-50 rounded-xl p-6">
+                        <div
+                          className={clsx(
+                            "rounded-xl p-6",
+                            isDateInPast(selectedDate)
+                              ? "bg-yellow-50"
+                              : "bg-blue-50"
+                          )}
+                        >
                           <div className="flex flex-col gap-6">
                             <div className="flex items-start gap-3">
                               <div className="flex-shrink-0">
-                                <svg
-                                  className="h-6 w-6 text-blue-500"
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  viewBox="0 0 20 20"
-                                  fill="currentColor"
-                                >
-                                  <path
-                                    fillRule="evenodd"
-                                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                                    clipRule="evenodd"
-                                  />
-                                </svg>
+                                <AlertCircle
+                                  className={clsx(
+                                    "h-6 w-6",
+                                    isDateInPast(selectedDate)
+                                      ? "text-yellow-500"
+                                      : "text-blue-500"
+                                  )}
+                                />
                               </div>
                               <div>
-                                <h4 className="text-base font-medium text-blue-900">
-                                  Before submitting
+                                <h4
+                                  className={clsx(
+                                    "text-base font-medium",
+                                    isDateInPast(selectedDate)
+                                      ? "text-yellow-900"
+                                      : "text-blue-900"
+                                  )}
+                                >
+                                  {isDateInPast(selectedDate)
+                                    ? "Submitting Training for Yesterday"
+                                    : "Before submitting"}
                                 </h4>
-                                <ul className="mt-2 text-sm text-blue-800 space-y-1">
+                                <ul
+                                  className={clsx(
+                                    "mt-2 text-sm space-y-1",
+                                    isDateInPast(selectedDate)
+                                      ? "text-yellow-800"
+                                      : "text-blue-800"
+                                  )}
+                                >
                                   <li>• Fill out all daily metric ratings</li>
                                   <li>
                                     • Indicate if you had any training sessions
@@ -1354,23 +1447,15 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
                             <div className="flex justify-end">
                               <button
                                 onClick={handleSubmitAll}
-                                disabled={
-                                  submitting ||
-                                  !metrics.every((metric) => {
-                                    const response = localResponses[metric.id];
-                                    return metric.type === "rating"
-                                      ? response?.rating_value !== undefined &&
-                                          response.rating_value > 0
-                                      : response?.text_value !== undefined &&
-                                          response.text_value.trim() !== "";
-                                  })
-                                }
+                                disabled={submitting}
                                 className={clsx(
                                   "w-full sm:w-auto px-6 py-3 rounded-xl transition-all duration-200 font-medium",
                                   "flex items-center justify-center gap-2",
                                   submitting
                                     ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                    : "bg-blue-600 text-white hover:bg-blue-700 shadow-sm hover:shadow transform hover:scale-105"
+                                    : isDateInPast(selectedDate)
+                                    ? "bg-yellow-600 text-white hover:bg-yellow-700 shadow-sm hover:shadow"
+                                    : "bg-blue-600 text-white hover:bg-blue-700 shadow-sm hover:shadow"
                                 )}
                               >
                                 {submitting ? (
@@ -1381,7 +1466,11 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
                                 ) : (
                                   <>
                                     <Upload className="w-5 h-5" />
-                                    <span>Submit All Responses</span>
+                                    <span>
+                                      {isDateInPast(selectedDate)
+                                        ? "Submit Yesterday's Responses"
+                                        : "Submit All Responses"}
+                                    </span>
                                   </>
                                 )}
                               </button>
@@ -1423,6 +1512,13 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
         isOpen={showNoTrainingModal}
         onConfirm={() => {}}
         onCancel={handleModalCancel}
+      />
+
+      <ConfirmationModal
+        isOpen={showConfirmModal}
+        onConfirm={() => confirmationData?.onConfirm()}
+        onCancel={() => setShowConfirmModal(false)}
+        message={confirmationData?.message || ""}
       />
 
       {notification && (

@@ -51,9 +51,9 @@ Deno.serve(async (req: Request) => {
 
     const resend = new Resend(apiKey);
 
-    // Prepare email data
+    // Prepare email data with verified domain
     const emailData = {
-      from: payload.from || "TrackBack <onboarding@resend.dev>",
+      from: "TrackBack <noreply@thetrackback.com>",
       to: payload.to,
       cc: payload.cc,
       bcc: payload.bcc,

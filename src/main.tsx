@@ -9,9 +9,12 @@ import JoinTeam from "./pages/JoinTeam";
 import ResetPassword from "./pages/ResetPassword";
 import UpdatePassword from "./pages/UpdatePassword";
 import ProtectedRoute from "./components/ProtectedRoute";
+import { ThemeProvider } from "./components/ThemeProvider";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <App />
+    <ThemeProvider>
+      <App />
+    </ThemeProvider>
   </React.StrictMode>
 );

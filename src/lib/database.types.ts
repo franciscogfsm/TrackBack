@@ -203,47 +203,55 @@ export interface Profile {
   id: string;
   email: string;
   full_name: string;
-  avatar_url?: string;
-  role: "athlete" | "manager";
-  manager_id?: string;
+  avatar_url: string | null;
+  role: "manager" | "athlete";
+  manager_id: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CustomMetric {
-  id: number;
-  title: string;
-  description?: string;
-  type: "rating" | "text";
+  id: string;
   manager_id: string;
+  title: string;
+  description: string | null;
+  type: "rating" | "text";
   created_at: string;
-  is_active: boolean;
+  updated_at: string;
 }
 
-export interface MetricResponseType {
-  id: number;
+export interface MetricResponse {
+  id: string;
   athlete_id: string;
-  metric_id: number;
-  rating_value?: number;
-  text_value?: string;
+  metric_id: string;
+  rating_value: number | null;
+  text_value: string | null;
   date: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface DailyFormStatus {
-  id: number;
-  date: string;
+  id: string;
   manager_id: string;
   is_open: boolean;
-  open_time: string;
-  close_time: string;
-  manually_closed?: boolean;
+  global_reminder_time: string; // Format: "HH:MM" in 24-hour format
+  enable_reminders: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
-export interface Metric {
-  id: number;
-  name: string;
-  description?: string;
-  type: "rating" | "text";
-  manager_id: string;
+export interface TrainingSession {
+  id: string;
+  athlete_id: string;
+  date: string;
+  session: "AM" | "PM";
+  training_type: TrainingType;
+  rpe: number;
+  duration: number;
+  unit_load: number;
   created_at: string;
+  updated_at: string;
 }
 
 export type TrainingType =
@@ -258,16 +266,13 @@ export type TrainingType =
   | "other_activity"
   | "travel";
 
-export interface TrainingSession {
+export interface ManagerInvitation {
   id: string;
+  manager_id: string;
   athlete_id: string;
-  date: string;
-  session: "AM" | "PM";
-  training_type: TrainingType;
-  rpe: number;
-  duration: number;
-  unit_load: number;
+  status: "pending" | "accepted" | "rejected";
   created_at: string;
+  updated_at: string;
 }
 
 export type AthleteManagerConnection = {
