@@ -23,6 +23,26 @@ export default function InviteAthleteModal({
       setLoading(true);
       setError(null);
 
+      // Check for existing active invitations
+      const now = new Date().toISOString();
+      const { data: activeInvitations, error: checkError } = await supabase
+        .from("manager_invitations")
+        .select("*")
+        .eq("manager_id", managerId)
+        .gt("expires_at", now)
+        .eq("status", "pending");
+
+      if (checkError) {
+        throw checkError;
+      }
+
+      if (activeInvitations && activeInvitations.length > 0) {
+        setError(
+          "You already have an active invitation. Please wait for it to expire or delete it before creating a new one."
+        );
+        return;
+      }
+
       // First fetch the manager's name
       const { data: managerData, error: managerError } = await supabase
         .from("profiles")

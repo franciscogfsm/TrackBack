@@ -91,17 +91,51 @@ serve(async (req) => {
         // For each athlete, check if they've submitted training today
         for (const athlete of athletes || []) {
           try {
-            // Check if athlete has already submitted training today
+            // Check if athlete has already submitted all required metrics today
             const today = new Date().toISOString().split("T")[0];
+            // First get all required metrics for this athlete
+            const { data: requiredMetrics } = await supabaseClient
+              .from("custom_metrics")
+              .select("id")
+              .eq("manager_id", settings.manager_id);
+            if (!requiredMetrics?.length) {
+              console.log(
+                `No metrics required for manager ${settings.manager_id}`
+              );
+              continue; // Skip if no metrics are required
+            }
+            console.log(
+              `Found ${requiredMetrics.length} required metrics for manager ${settings.manager_id}`
+            );
+
+            // Then get all responses for today
             const { data: responses } = await supabaseClient
               .from("metric_responses")
-              .select("id")
+              .select("metric_id")
               .eq("athlete_id", athlete.id)
-              .eq("date", today)
-              .limit(1);
+              .eq("date", today);
+            console.log(
+              `Athlete ${athlete.id} has ${
+                responses?.length || 0
+              } responses for today`
+            );
 
-            // If no responses found for today, send reminder email
-            if (!responses?.length) {
+            // Check if all required metrics have been submitted
+            const submittedMetricIds = new Set(
+              responses?.map((r) => r.metric_id) || []
+            );
+            const hasSubmittedAllMetrics = requiredMetrics.every((metric) =>
+              submittedMetricIds.has(metric.id)
+            );
+            console.log(
+              `Athlete ${athlete.id} has submitted all metrics: ${hasSubmittedAllMetrics}`
+            );
+
+            // If not all metrics are submitted, send reminder
+            if (!hasSubmittedAllMetrics) {
+              console.log(
+                `Sending reminder to athlete ${athlete.id} (${athlete.email})`
+              );
               const { error: emailError } =
                 await supabaseClient.functions.invoke("send-reminder-email", {
                   body: {

@@ -1356,43 +1356,40 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
       {/* Header */}
       <nav
         className={clsx(
-          "sticky top-0 z-50 transition-all duration-200 backdrop-blur-xl border-b",
+          "sticky top-0 z-50 transition-all duration-200",
           theme === "dark"
-            ? "bg-slate-900/80 border-slate-700/50"
-            : "bg-white/80 border-gray-200/50"
+            ? "bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900/95 border-b border-slate-700/50"
+            : "bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600"
         )}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
+            {/* Logo and Brand */}
             <div className="flex items-center gap-3">
               <div
                 className={clsx(
-                  "w-10 h-10 rounded-xl flex items-center justify-center",
+                  "w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200",
                   theme === "dark"
-                    ? "bg-gradient-to-br from-blue-500 to-indigo-600"
-                    : "bg-gradient-to-br from-blue-600 to-indigo-700"
+                    ? "bg-white/10 backdrop-blur-md"
+                    : "bg-white/20 backdrop-blur-md"
                 )}
               >
-                <span className="text-xl font-bold text-white">T</span>
+                <span className="text-lg font-bold text-white">T</span>
               </div>
-              <h1
-                className={clsx(
-                  "text-2xl font-bold",
-                  theme === "dark" ? "text-white" : "text-gray-900"
-                )}
-              >
+              <h1 className="text-xl font-semibold tracking-tight text-white">
                 TrackBack
               </h1>
             </div>
 
-            <div className="flex items-center gap-4">
+            {/* Navigation and Actions */}
+            <div className="flex items-center gap-2">
               {/* Theme Switcher */}
               <div
                 className={clsx(
-                  "flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-200",
+                  "flex items-center gap-1 p-1 rounded-lg transition-all duration-200 mr-2",
                   theme === "dark"
-                    ? "bg-slate-800/50 ring-1 ring-slate-700"
-                    : "bg-gray-100"
+                    ? "bg-white/10 backdrop-blur-md"
+                    : "bg-white/20 backdrop-blur-md"
                 )}
               >
                 <button
@@ -1400,11 +1397,10 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
                   className={clsx(
                     "p-1.5 rounded-md transition-colors",
                     theme === "light"
-                      ? "bg-white text-blue-600 shadow-sm"
-                      : theme === "dark"
-                      ? "text-slate-400 hover:text-slate-200"
-                      : "text-gray-600 hover:text-gray-900"
+                      ? "bg-white/20 text-white"
+                      : "text-white/70 hover:text-white hover:bg-white/10"
                   )}
+                  title="Light mode"
                 >
                   <Sun className="w-4 h-4" />
                 </button>
@@ -1413,11 +1409,10 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
                   className={clsx(
                     "p-1.5 rounded-md transition-colors",
                     theme === "system"
-                      ? "bg-white text-blue-600 shadow-sm"
-                      : theme === "dark"
-                      ? "text-slate-400 hover:text-slate-200"
-                      : "text-gray-600 hover:text-gray-900"
+                      ? "bg-white/20 text-white"
+                      : "text-white/70 hover:text-white hover:bg-white/10"
                   )}
+                  title="System preference"
                 >
                   <Monitor className="w-4 h-4" />
                 </button>
@@ -1426,106 +1421,73 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
                   className={clsx(
                     "p-1.5 rounded-md transition-colors",
                     theme === "dark"
-                      ? "bg-slate-700 text-white"
-                      : "text-gray-600 hover:text-gray-900"
+                      ? "bg-white/20 text-white"
+                      : "text-white/70 hover:text-white hover:bg-white/10"
                   )}
+                  title="Dark mode"
                 >
                   <Moon className="w-4 h-4" />
                 </button>
               </div>
 
-              <Link
-                to="/statistics"
-                className={clsx(
-                  "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200",
-                  theme === "dark"
-                    ? "text-slate-300 hover:text-white hover:bg-slate-800"
-                    : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
-                )}
-              >
-                <BarChart2 className="h-4 w-4" />
-                <span>Statistics</span>
-              </Link>
+              {/* Navigation Links */}
+              <div className="hidden sm:flex items-center">
+                <Link
+                  to="/statistics"
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 text-white/80 hover:text-white hover:bg-white/10"
+                >
+                  <BarChart2 className="h-4 w-4" />
+                  <span>Statistics</span>
+                </Link>
 
-              <Link
-                to="#daily-responses"
-                onClick={(e) => {
-                  e.preventDefault();
-                  const responsesSection = document.querySelector(
-                    "#daily-responses-section"
-                  );
-                  if (responsesSection) {
-                    responsesSection.scrollIntoView({ behavior: "smooth" });
-                  }
-                }}
-                className={clsx(
-                  "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200",
-                  theme === "dark"
-                    ? "text-slate-300 hover:text-white hover:bg-slate-800"
-                    : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
-                )}
-              >
-                <CalendarIcon className="h-4 w-4" />
-                <span>Daily Responses</span>
-              </Link>
+                <Link
+                  to="#daily-responses"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const responsesSection = document.querySelector(
+                      "#daily-responses-section"
+                    );
+                    if (responsesSection) {
+                      responsesSection.scrollIntoView({ behavior: "smooth" });
+                    }
+                  }}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 text-white/80 hover:text-white hover:bg-white/10 ml-1"
+                >
+                  <CalendarIcon className="h-4 w-4" />
+                  <span>Daily Responses</span>
+                </Link>
 
-              <button
-                onClick={() => setShowMetricsModal(true)}
-                className={clsx(
-                  "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200",
-                  theme === "dark"
-                    ? "text-slate-300 hover:text-white hover:bg-slate-800"
-                    : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
-                )}
-              >
-                <Settings className="h-4 w-4" />
-                <span>Metrics</span>
-              </button>
+                <button
+                  onClick={() => setShowMetricsModal(true)}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 text-white/80 hover:text-white hover:bg-white/10 ml-1"
+                >
+                  <Settings className="h-4 w-4" />
+                  <span>Metrics</span>
+                </button>
+              </div>
 
-              <div className="h-6 w-px bg-gray-200 dark:bg-slate-700"></div>
+              <div className="h-5 w-px mx-2 bg-white/20"></div>
 
-              <div
-                className={clsx(
-                  "flex items-center rounded-full py-1 pl-1 pr-4 transition-all duration-200",
-                  theme === "dark"
-                    ? "bg-slate-800 ring-1 ring-slate-700"
-                    : "bg-gray-100"
-                )}
-              >
+              {/* User Menu */}
+              <div className="flex items-center rounded-full py-1 pl-1 pr-3 transition-all duration-200 bg-white/10 backdrop-blur-md hover:bg-white/20">
                 <ProfilePicture
                   profile={profile}
                   size="sm"
                   editable={true}
                   onUpdate={handleProfileUpdate}
                 />
-                <div className="ml-3">
-                  <p
-                    className={clsx(
-                      "text-sm font-medium",
-                      theme === "dark" ? "text-white" : "text-gray-900"
-                    )}
-                  >
+                <div className="ml-3 mr-2">
+                  <p className="text-sm font-medium line-clamp-1 text-white">
                     {profile.full_name}
                   </p>
-                  <p
-                    className={clsx(
-                      "text-xs",
-                      theme === "dark" ? "text-slate-400" : "text-gray-500"
-                    )}
-                  >
-                    Manager
-                  </p>
+                  <p className="text-xs text-white/70">Manager</p>
                 </div>
               </div>
 
               <button
                 onClick={handleLogout}
-                className={clsx(
-                  "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200",
-                  theme === "dark"
-                    ? "text-slate-300 hover:text-white hover:bg-slate-800"
-                    : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
-                )}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 text-white/80 hover:text-white hover:bg-white/10 ml-1"
+                title="Sign out"
               >
                 <LogOut className="h-4 w-4" />
                 <span className="hidden sm:inline">Sign out</span>
@@ -1644,27 +1606,28 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
         {/* Notification Settings */}
         <div
           className={clsx(
-            "rounded-2xl shadow-sm p-8 mb-8 transition-all duration-200",
+            "rounded-2xl shadow-sm p-6 mb-8 transition-all duration-200",
             theme === "dark"
               ? "bg-slate-800/50 ring-1 ring-slate-700/50 backdrop-blur-xl"
               : "bg-white/90 shadow-xl shadow-blue-900/5 backdrop-blur-xl"
           )}
         >
-          <div className="flex items-center gap-4 mb-8">
+          {/* Header */}
+          <div className="flex items-center gap-3 mb-6">
             <div
               className={clsx(
-                "p-4 rounded-2xl",
+                "p-3 rounded-xl",
                 theme === "dark"
                   ? "bg-blue-500/10 text-blue-400"
-                  : "bg-gradient-to-br from-blue-500 to-indigo-600 text-white"
+                  : "bg-blue-100 text-blue-600"
               )}
             >
-              <Bell className="w-6 h-6" />
+              <Bell className="w-5 h-5" />
             </div>
             <div>
               <h2
                 className={clsx(
-                  "text-2xl font-bold",
+                  "text-lg font-semibold",
                   theme === "dark" ? "text-white" : "text-gray-900"
                 )}
               >
@@ -1672,33 +1635,45 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
               </h2>
               <p
                 className={clsx(
-                  "text-sm mt-1",
+                  "text-sm",
                   theme === "dark" ? "text-slate-400" : "text-gray-500"
                 )}
               >
-                Configure when athletes receive training form reminders
+                Configure daily reminder settings
               </p>
             </div>
           </div>
 
-          <div className="flex flex-col space-y-6">
-            <div className="grid grid-cols-2 gap-8 items-center">
-              <div>
-                <label
-                  className={clsx(
-                    "block text-sm font-medium mb-2",
-                    theme === "dark" ? "text-slate-300" : "text-gray-700"
-                  )}
-                >
-                  Daily Reminder Time
-                </label>
+          {/* Settings Content */}
+          <div className="space-y-6">
+            {/* Daily Reminder Time */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <label
+                    className={clsx(
+                      "block text-sm font-medium",
+                      theme === "dark" ? "text-slate-300" : "text-gray-700"
+                    )}
+                  >
+                    Daily Reminder Time
+                  </label>
+                  <p
+                    className={clsx(
+                      "text-xs mt-1",
+                      theme === "dark" ? "text-slate-400" : "text-gray-500"
+                    )}
+                  >
+                    Set the time when daily reminders will be sent to athletes
+                  </p>
+                </div>
                 <div className="flex items-center gap-2">
                   <input
                     type="time"
                     value={globalReminderTime}
                     onChange={(e) => setGlobalReminderTime(e.target.value)}
                     className={clsx(
-                      "w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500/50 transition-all duration-200",
+                      "px-3 py-1.5 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500/50 transition-all duration-200",
                       theme === "dark"
                         ? "bg-slate-900/50 border-slate-700 text-white focus:border-blue-500/50"
                         : "bg-white border-gray-300 text-gray-900"
@@ -1710,7 +1685,7 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
                     }
                     disabled={isUpdatingGlobalReminder}
                     className={clsx(
-                      "px-6 py-3 rounded-xl font-medium transition-all duration-200",
+                      "px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200",
                       isUpdatingGlobalReminder
                         ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                         : theme === "dark"
@@ -1721,60 +1696,54 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
                     Update
                   </button>
                 </div>
-                <p
-                  className={clsx(
-                    "text-xs mt-2",
-                    theme === "dark" ? "text-slate-400" : "text-gray-500"
-                  )}
-                >
-                  Set the time when daily reminders will be sent to athletes
-                </p>
               </div>
+            </div>
 
-              <div className="flex flex-col justify-center">
-                <div className="flex items-center justify-between mb-2">
+            {/* Enable Reminders */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div>
                   <label
                     className={clsx(
-                      "text-sm font-medium",
+                      "block text-sm font-medium",
                       theme === "dark" ? "text-slate-300" : "text-gray-700"
                     )}
                   >
                     Enable Reminders
                   </label>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formStatus?.enable_reminders ?? true}
-                      onChange={(e) => handleToggleReminders(e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div
-                      className={clsx(
-                        "relative w-11 h-6 rounded-full peer",
-                        theme === "dark"
-                          ? "bg-slate-700 peer-checked:bg-blue-600"
-                          : "bg-gray-200 peer-checked:bg-blue-600",
-                        "peer-focus:outline-none peer-focus:ring-4",
-                        theme === "dark"
-                          ? "peer-focus:ring-blue-800"
-                          : "peer-focus:ring-blue-300",
-                        "after:content-[''] after:absolute after:top-[2px] after:left-[2px]",
-                        "after:bg-white after:rounded-full after:h-5 after:w-5",
-                        "after:transition-all peer-checked:after:translate-x-full"
-                      )}
-                    />
-                  </label>
+                  <p
+                    className={clsx(
+                      "text-xs mt-1",
+                      theme === "dark" ? "text-slate-400" : "text-gray-500"
+                    )}
+                  >
+                    Athletes will receive email reminders to submit their
+                    training
+                  </p>
                 </div>
-                <p
-                  className={clsx(
-                    "text-xs",
-                    theme === "dark" ? "text-slate-400" : "text-gray-500"
-                  )}
-                >
-                  {formStatus?.enable_reminders
-                    ? "Athletes will receive email reminders to submit their training"
-                    : "No reminders will be sent to athletes"}
-                </p>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formStatus?.enable_reminders ?? true}
+                    onChange={(e) => handleToggleReminders(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div
+                    className={clsx(
+                      "relative w-11 h-6 rounded-full peer",
+                      theme === "dark"
+                        ? "bg-slate-700 peer-checked:bg-blue-600"
+                        : "bg-gray-200 peer-checked:bg-blue-600",
+                      "peer-focus:outline-none peer-focus:ring-4",
+                      theme === "dark"
+                        ? "peer-focus:ring-blue-800"
+                        : "peer-focus:ring-blue-300",
+                      "after:content-[''] after:absolute after:top-[2px] after:left-[2px]",
+                      "after:bg-white after:rounded-full after:h-5 after:w-5",
+                      "after:transition-all peer-checked:after:translate-x-full"
+                    )}
+                  />
+                </label>
               </div>
             </div>
           </div>
@@ -1984,6 +1953,288 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
           </div>
         </div>
 
+        {/* Active Invitations Section */}
+        <div
+          className={clsx(
+            "mt-8 rounded-2xl transition-all duration-200",
+            theme === "dark"
+              ? "bg-slate-800/50 border border-slate-700/50"
+              : "bg-white border border-gray-200/50"
+          )}
+        >
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div
+                  className={clsx(
+                    "w-10 h-10 rounded-xl flex items-center justify-center",
+                    theme === "dark" ? "bg-indigo-500/10" : "bg-indigo-50"
+                  )}
+                >
+                  <UserPlus
+                    className={clsx(
+                      "h-5 w-5",
+                      theme === "dark" ? "text-indigo-400" : "text-indigo-600"
+                    )}
+                  />
+                </div>
+                <div>
+                  <h2
+                    className={clsx(
+                      "text-lg font-semibold",
+                      theme === "dark" ? "text-white" : "text-gray-900"
+                    )}
+                  >
+                    Active Invitations
+                  </h2>
+                  <p
+                    className={clsx(
+                      "text-sm",
+                      theme === "dark" ? "text-slate-400" : "text-gray-500"
+                    )}
+                  >
+                    Manage your pending athlete invitations
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowInviteModal(true)}
+                className={clsx(
+                  "px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-all duration-200",
+                  theme === "dark"
+                    ? "bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20"
+                    : "bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+                )}
+              >
+                <UserPlus className="h-4 w-4" />
+                Invite Athlete
+              </button>
+            </div>
+
+            {visibleInvitations.length > 0 ? (
+              <div
+                className={clsx(
+                  "rounded-xl overflow-hidden",
+                  theme === "dark" ? "bg-slate-900/50" : "bg-gray-50"
+                )}
+              >
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead
+                      className={clsx(
+                        theme === "dark" ? "bg-slate-800/50" : "bg-gray-50"
+                      )}
+                    >
+                      <tr>
+                        <th
+                          scope="col"
+                          className={clsx(
+                            "px-6 py-3 text-left text-xs font-medium uppercase tracking-wider",
+                            theme === "dark"
+                              ? "text-slate-400"
+                              : "text-gray-500"
+                          )}
+                        >
+                          Invitation Code
+                        </th>
+                        <th
+                          scope="col"
+                          className={clsx(
+                            "px-6 py-3 text-left text-xs font-medium uppercase tracking-wider",
+                            theme === "dark"
+                              ? "text-slate-400"
+                              : "text-gray-500"
+                          )}
+                        >
+                          Status
+                        </th>
+                        <th
+                          scope="col"
+                          className={clsx(
+                            "px-6 py-3 text-left text-xs font-medium uppercase tracking-wider",
+                            theme === "dark"
+                              ? "text-slate-400"
+                              : "text-gray-500"
+                          )}
+                        >
+                          Expires
+                        </th>
+                        <th
+                          scope="col"
+                          className={clsx(
+                            "px-6 py-3 text-left text-xs font-medium uppercase tracking-wider",
+                            theme === "dark"
+                              ? "text-slate-400"
+                              : "text-gray-500"
+                          )}
+                        >
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody
+                      className={clsx(
+                        "divide-y",
+                        theme === "dark"
+                          ? "divide-slate-700/50"
+                          : "divide-gray-200"
+                      )}
+                    >
+                      {visibleInvitations.map((invitation) => (
+                        <tr
+                          key={invitation.id}
+                          className={clsx(
+                            theme === "dark"
+                              ? "hover:bg-slate-800/50"
+                              : "hover:bg-gray-50"
+                          )}
+                        >
+                          <td
+                            className={clsx(
+                              "px-6 py-4 whitespace-nowrap text-sm",
+                              theme === "dark"
+                                ? "text-slate-300"
+                                : "text-gray-900"
+                            )}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span>{invitation.invitation_code}</span>
+                              <button
+                                onClick={() =>
+                                  handleCopyLink(invitation.invitation_code)
+                                }
+                                className={clsx(
+                                  "p-1 rounded hover:bg-opacity-80 transition-colors",
+                                  theme === "dark"
+                                    ? "hover:bg-slate-700"
+                                    : "hover:bg-gray-100"
+                                )}
+                                title="Copy invitation link"
+                              >
+                                <Copy
+                                  className={clsx(
+                                    "h-4 w-4",
+                                    theme === "dark"
+                                      ? "text-slate-400"
+                                      : "text-gray-500"
+                                  )}
+                                />
+                              </button>
+                              {showCopyNotification ===
+                                invitation.invitation_code && (
+                                <span
+                                  className={clsx(
+                                    "text-xs",
+                                    theme === "dark"
+                                      ? "text-slate-400"
+                                      : "text-gray-500"
+                                  )}
+                                >
+                                  Copied!
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td
+                            className={clsx(
+                              "px-6 py-4 whitespace-nowrap text-sm",
+                              theme === "dark"
+                                ? "text-slate-300"
+                                : "text-gray-900"
+                            )}
+                          >
+                            <span
+                              className={clsx(
+                                "px-2 py-1 rounded-full text-xs font-medium",
+                                new Date(invitation.expires_at) > new Date()
+                                  ? theme === "dark"
+                                    ? "bg-emerald-500/10 text-emerald-400"
+                                    : "bg-emerald-100 text-emerald-800"
+                                  : theme === "dark"
+                                  ? "bg-red-500/10 text-red-400"
+                                  : "bg-red-100 text-red-800"
+                              )}
+                            >
+                              {new Date(invitation.expires_at) > new Date()
+                                ? "Active"
+                                : "Expired"}
+                            </span>
+                          </td>
+                          <td
+                            className={clsx(
+                              "px-6 py-4 whitespace-nowrap text-sm",
+                              theme === "dark"
+                                ? "text-slate-300"
+                                : "text-gray-900"
+                            )}
+                          >
+                            {new Date(invitation.expires_at).toLocaleString(
+                              undefined,
+                              {
+                                year: "numeric",
+                                month: "numeric",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              }
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            <button
+                              onClick={() =>
+                                handleDeleteInvitation(invitation.id)
+                              }
+                              className={clsx(
+                                "p-1.5 rounded-lg transition-colors",
+                                theme === "dark"
+                                  ? "text-red-400 hover:bg-red-500/10"
+                                  : "text-red-600 hover:bg-red-50"
+                              )}
+                              title="Delete invitation"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <div
+                className={clsx(
+                  "text-center py-12 rounded-xl",
+                  theme === "dark" ? "bg-slate-900/50" : "bg-gray-50"
+                )}
+              >
+                <UserPlus
+                  className={clsx(
+                    "mx-auto h-12 w-12",
+                    theme === "dark" ? "text-slate-600" : "text-gray-400"
+                  )}
+                />
+                <h3
+                  className={clsx(
+                    "mt-2 text-sm font-medium",
+                    theme === "dark" ? "text-slate-300" : "text-gray-900"
+                  )}
+                >
+                  No active invitations
+                </h3>
+                <p
+                  className={clsx(
+                    "mt-1 text-sm",
+                    theme === "dark" ? "text-slate-400" : "text-gray-500"
+                  )}
+                >
+                  Get started by inviting your first athlete
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Daily Responses */}
         <div
           id="daily-responses-section"
@@ -2019,6 +2270,60 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
               >
                 Daily Responses
               </h2>
+            </div>
+
+            {/* Add the filters section here */}
+            <div className="mt-6 flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
+                <label
+                  className={clsx(
+                    "block text-sm font-medium mb-2",
+                    theme === "dark" ? "text-slate-300" : "text-gray-700"
+                  )}
+                >
+                  Date
+                </label>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className={clsx(
+                    "w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-blue-500/50 transition-all duration-200",
+                    theme === "dark"
+                      ? "bg-slate-900/50 border-slate-700 text-white"
+                      : "bg-white border-gray-300 text-gray-900"
+                  )}
+                />
+              </div>
+              <div className="flex-1">
+                <label
+                  className={clsx(
+                    "block text-sm font-medium mb-2",
+                    theme === "dark" ? "text-slate-300" : "text-gray-700"
+                  )}
+                >
+                  Athlete
+                </label>
+                <select
+                  value={selectedAthlete}
+                  onChange={(e) => setSelectedAthlete(e.target.value)}
+                  className={clsx(
+                    "w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-blue-500/50 transition-all duration-200 appearance-none bg-no-repeat bg-right",
+                    theme === "dark"
+                      ? "bg-slate-900/50 border-slate-700 text-white"
+                      : "bg-white border-gray-300 text-gray-900",
+                    "bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNNyA3TDEwIDEwTDEzIDciIHN0cm9rZT0iY3VycmVudENvbG9yIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+PC9zdmc+')]"
+                  )}
+                  style={{ backgroundPosition: "right 1rem center" }}
+                >
+                  <option value="all">All Athletes</option>
+                  {athletes.map((athlete) => (
+                    <option key={athlete.id} value={athlete.id}>
+                      {athlete.full_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 
