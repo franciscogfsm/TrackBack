@@ -1368,17 +1368,24 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
             <div className="flex items-center gap-3">
               <div
                 className={clsx(
-                  "w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200",
+                  "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200",
                   theme === "dark"
-                    ? "bg-white/10 backdrop-blur-md"
-                    : "bg-white/20 backdrop-blur-md"
+                    ? "bg-gradient-to-br from-purple-500 via-violet-500 to-purple-600 shadow-lg shadow-purple-500/20"
+                    : "bg-gradient-to-br from-purple-600 via-violet-600 to-purple-700 shadow-lg shadow-purple-600/20"
                 )}
               >
-                <span className="text-lg font-bold text-white">T</span>
+                <span className="text-lg font-bold text-white tracking-wide">
+                  T
+                </span>
               </div>
-              <h1 className="text-xl font-semibold tracking-tight text-white">
-                TrackBack
-              </h1>
+              <div className="flex flex-col">
+                <h1 className="text-xl font-semibold tracking-tight text-white">
+                  TrackBack
+                </h1>
+                <span className="text-xs text-white/70">
+                  Athlete Feedback System
+                </span>
+              </div>
             </div>
 
             {/* Navigation and Actions */}
