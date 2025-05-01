@@ -1771,7 +1771,9 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
                     theme === "dark" ? "text-slate-400" : "text-gray-500"
                   )}
                 >
-                  Athletes will receive email reminders to submit their training
+                  {formStatus?.enable_reminders
+                    ? "Athletes will receive email reminders to submit their training"
+                    : "No reminders will be sent to athletes"}
                 </p>
               </div>
             </div>
