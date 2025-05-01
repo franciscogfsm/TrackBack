@@ -1370,11 +1370,11 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
                 className={clsx(
                   "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200",
                   theme === "dark"
-                    ? "bg-gradient-to-br from-purple-500 via-violet-500 to-purple-600 shadow-lg shadow-purple-500/20"
-                    : "bg-gradient-to-br from-purple-600 via-violet-600 to-purple-700 shadow-lg shadow-purple-600/20"
+                    ? "bg-gradient-to-br from-blue-500 via-indigo-500 to-blue-600 shadow-lg shadow-blue-500/20"
+                    : "bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-700 shadow-lg shadow-blue-600/20"
                 )}
               >
-                <span className="text-lg font-bold text-white tracking-wide">
+                <span className="text-xl font-bold text-white tracking-wide transform -translate-y-px">
                   T
                 </span>
               </div>
@@ -2683,13 +2683,15 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
               <div className="flex items-center gap-3 mb-6">
                 <div
                   className={clsx(
-                    "w-10 h-10 rounded-xl flex items-center justify-center",
+                    "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200",
                     theme === "dark"
-                      ? "bg-gradient-to-br from-blue-500 to-indigo-600"
-                      : "bg-gradient-to-br from-blue-600 to-indigo-700"
+                      ? "bg-gradient-to-br from-violet-500 via-purple-500 to-violet-600 shadow-lg shadow-violet-500/20"
+                      : "bg-gradient-to-br from-violet-600 via-purple-600 to-violet-700 shadow-lg shadow-violet-600/20"
                   )}
                 >
-                  <span className="text-xl font-bold text-white">T</span>
+                  <span className="text-xl font-bold text-white tracking-wide transform -translate-y-px">
+                    T
+                  </span>
                 </div>
                 <h3
                   className={clsx(
