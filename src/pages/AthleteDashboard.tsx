@@ -1518,58 +1518,47 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
         {/* Personal Records Section */}
         <section className="w-full mx-auto mt-0 mb-8">
           <div className="bg-white/90 rounded-2xl shadow-xl border border-gray-100/50 p-4 md:p-8">
-            <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-xl shadow-lg">
-                  <svg
-                    className="h-6 w-6 text-white"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M13 16h-1v-4h-1m1-4h.01M12 20.5c4.142 0 7.5-3.358 7.5-7.5S16.142 5.5 12 5.5 4.5 8.858 4.5 13s3.358 7.5 7.5 7.5z"
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <h2 className="text-lg md:text-2xl font-bold text-yellow-700">
-                    Personal Records (1RM)
-                  </h2>
-                  <p className="text-sm text-gray-500">
-                    Register and track your personal bests for 1RM lifts.
-                  </p>
-                </div>
+            <div className="flex items-center gap-3 mb-8">
+              <div className="p-3 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-xl shadow-lg">
+                <svg
+                  className="h-6 w-6 text-white"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 16h-1v-4h-1m1-4h.01M12 20.5c4.142 0 7.5-3.358 7.5-7.5S16.142 5.5 12 5.5 4.5 8.858 4.5 13s3.358 7.5 7.5 7.5z"
+                  />
+                </svg>
               </div>
-              <button
-                onClick={() => {
-                  setPRForm({
-                    exercise: "",
-                    weight: 0,
-                    record_date: "",
-                    video_url: "",
-                    notes: "",
-                  });
-                  setEditingPRId(null);
-                  setShowPRModal(true);
-                }}
-                className="w-full md:w-auto mt-3 md:mt-0 px-5 py-2 rounded-lg font-medium text-sm bg-yellow-400 text-white hover:bg-yellow-500 transition"
-              >
-                + Add Record
-              </button>
+              <div>
+                <h2 className="text-lg md:text-2xl font-bold text-yellow-700">
+                  Personal Records (1RM)
+                </h2>
+                <p className="text-sm text-gray-500">
+                  Register and track your personal bests for 1RM lifts.
+                </p>
+              </div>
             </div>
             <div className="mt-8">
               <PersonalRecordsTable
                 athleteId={profile.id}
-                showModal={showPRModal}
-                setShowModal={setShowPRModal}
-                form={prForm}
-                setForm={(newForm) => setPRForm(newForm)}
-                editingId={editingPRId}
-                setEditingId={(id) => setEditingPRId(id)}
+                showModal={false}
+                setShowModal={() => {}}
+                form={{
+                  exercise: "",
+                  weight: 0,
+                  record_date: "",
+                  video_url: "",
+                  notes: "",
+                }}
+                setForm={() => {}}
+                editingId={null}
+                setEditingId={() => {}}
+                canEdit={false}
               />
             </div>
           </div>

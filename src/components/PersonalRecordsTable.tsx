@@ -48,6 +48,8 @@ interface PersonalRecordsTableProps {
   ) => void;
   editingId: string | null;
   setEditingId: (id: string | null) => void;
+  canEdit?: boolean;
+  refreshKey?: number;
 }
 
 const initialForm = {
@@ -74,6 +76,8 @@ export default function PersonalRecordsTable({
   setForm,
   editingId,
   setEditingId,
+  canEdit = false,
+  refreshKey,
 }: PersonalRecordsTableProps) {
   const { theme } = useTheme();
   const [records, setRecords] = useState<PersonalRecord[]>([]);
@@ -104,7 +108,7 @@ export default function PersonalRecordsTable({
     if (!athleteId || athleteId === "" || athleteId === "all") return;
     fetchRecords();
     // eslint-disable-next-line
-  }, [athleteId]);
+  }, [athleteId, refreshKey]);
 
   // Listen for external add PR button event
   useEffect(() => {
@@ -281,105 +285,90 @@ export default function PersonalRecordsTable({
 
   return (
     <div className="mt-8">
-      {/* Desktop Table */}
-      <div
-        className={clsx(
-          "rounded-2xl overflow-x-auto w-full max-w-full shadow-sm p-0 sm:p-0 md:p-0 lg:p-0 hidden sm:block",
-          theme === "dark"
-            ? "bg-slate-800/50 ring-1 ring-slate-700/50"
-            : "bg-white border border-gray-100"
-        )}
-        style={{ WebkitOverflowScrolling: "touch" }}
-      >
-        <table className="min-w-full divide-y divide-gray-200 text-sm sm:text-base">
-          <thead>
-            <tr
-              className={theme === "dark" ? "bg-slate-800/50" : "bg-gray-50/50"}
-            >
-              <th className="px-2 py-2 sm:px-6 sm:py-4 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">
-                Exercise
-              </th>
-              <th className="px-2 py-2 sm:px-6 sm:py-4 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">
-                Load (kg)
-              </th>
-              <th className="px-2 py-2 sm:px-6 sm:py-4 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap">
-                Record Date
-              </th>
-              <th className="px-2 py-2 sm:px-6 sm:py-4 text-center text-xs font-medium uppercase tracking-wider whitespace-nowrap">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody
-            className={
-              theme === "dark"
-                ? "divide-y divide-slate-700/50"
-                : "divide-y divide-gray-200"
-            }
-          >
-            {records.length === 0 ? (
+      {/* Desktop Table (only show on sm+ screens) */}
+      <div className={clsx(canEdit ? "hidden sm:block" : "hidden sm:block")}>
+        <div
+          className={clsx(
+            "rounded-2xl overflow-x-auto w-full max-w-full shadow-sm p-0 sm:p-0 md:p-0 lg:p-0",
+            theme === "dark"
+              ? "bg-slate-800/50 ring-1 ring-slate-700/50"
+              : "bg-white border border-gray-100"
+          )}
+          style={{ WebkitOverflowScrolling: "touch" }}
+        >
+          <table className="min-w-full divide-y divide-gray-200 text-sm sm:text-base">
+            <thead>
               <tr>
-                <td
-                  colSpan={4}
-                  className="px-2 py-8 sm:px-6 text-center text-gray-400 text-sm"
-                >
-                  No personal records found.
-                </td>
+                <th className="px-3 py-3 text-left font-semibold text-gray-700 whitespace-nowrap">
+                  EXERCISE
+                </th>
+                <th className="px-3 py-3 text-left font-semibold text-gray-700 whitespace-nowrap">
+                  LOAD (KG)
+                </th>
+                <th className="px-3 py-3 text-left font-semibold text-gray-700 whitespace-nowrap">
+                  RECORD DATE
+                </th>
+                {canEdit && (
+                  <th className="px-3 py-3 text-left font-semibold text-gray-700 whitespace-nowrap">
+                    ACTIONS
+                  </th>
+                )}
               </tr>
-            ) : (
-              records.map((rec) => (
-                <tr
-                  key={rec.id}
-                  className={
-                    theme === "dark"
-                      ? "hover:bg-slate-700/50"
-                      : "hover:bg-gray-50"
-                  }
-                >
-                  <td className="px-2 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm">
-                    {rec.exercise}
-                  </td>
-                  <td className="px-2 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm">
-                    {rec.weight}
-                  </td>
-                  <td className="px-2 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm">
-                    {new Date(rec.record_date).toLocaleDateString()}
-                  </td>
-                  <td className="px-2 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-center text-xs sm:text-sm">
-                    {rec.video_url && (
-                      <a
-                        href={rec.video_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={clsx(
-                          "mr-2 px-2 py-1 rounded text-xs font-medium bg-blue-500 text-white hover:bg-blue-600 transition"
-                        )}
-                      >
-                        View Video
-                      </a>
-                    )}
-                    <button
-                      onClick={() => handleDeleteClick(rec.id)}
-                      disabled={deletingId === rec.id}
-                      className={clsx(
-                        "px-2 py-1 rounded text-xs font-medium mt-1 sm:mt-0",
-                        theme === "dark"
-                          ? "bg-red-500/10 text-red-400 hover:bg-red-500/20"
-                          : "bg-red-100 text-red-700 hover:bg-red-200",
-                        deletingId === rec.id && "opacity-50 cursor-not-allowed"
-                      )}
-                    >
-                      {deletingId === rec.id ? "Deleting..." : "Delete"}
-                    </button>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-100">
+              {records.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={canEdit ? 4 : 3}
+                    className="py-8 text-center text-gray-400 text-sm bg-white rounded-2xl shadow-sm border border-gray-100"
+                  >
+                    No personal records found.
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                records.map((rec) => (
+                  <tr
+                    key={rec.id}
+                    className="hover:bg-yellow-50/40 transition-colors"
+                  >
+                    <td className="px-3 py-3 font-medium text-gray-900 whitespace-nowrap">
+                      {rec.exercise}
+                    </td>
+                    <td className="px-3 py-3 text-gray-700 whitespace-nowrap">
+                      {rec.weight}
+                    </td>
+                    <td className="px-3 py-3 text-gray-700 whitespace-nowrap">
+                      {new Date(rec.record_date).toLocaleDateString()}
+                    </td>
+                    <td className="px-3 py-3 whitespace-nowrap text-center">
+                      {rec.video_url && (
+                        <a
+                          href={rec.video_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-block mr-2 px-2 py-1 rounded text-xs font-medium bg-blue-500 text-white hover:bg-blue-600 transition"
+                        >
+                          View Video
+                        </a>
+                      )}
+                      {canEdit && (
+                        <button
+                          onClick={() => handleDelete(rec.id)}
+                          className="text-red-500 hover:text-red-700 font-medium text-xs sm:text-sm px-2 py-1 rounded-lg transition"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
-      {/* Mobile Card List */}
-      <div className="block sm:hidden">
+      {/* Mobile Card List (always show on mobile, only show on sm- screens for athletes/managers) */}
+      <div className={clsx("block sm:hidden")}>
         {records.length === 0 ? (
           <div className="py-8 text-center text-gray-400 text-sm bg-white rounded-2xl shadow-sm border border-gray-100">
             No personal records found.
@@ -390,40 +379,33 @@ export default function PersonalRecordsTable({
               <div
                 key={rec.id}
                 className={clsx(
-                  "rounded-xl bg-white border border-gray-100 shadow-sm p-4 flex flex-col gap-2",
-                  theme === "dark"
-                    ? "bg-slate-800/50 ring-1 ring-slate-700/50 border-none"
-                    : ""
+                  "rounded-xl bg-white border border-gray-100 shadow-sm p-4 flex flex-col gap-2"
                 )}
               >
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-gray-900 text-base">
-                    {rec.exercise}
-                  </span>
+                <div className="font-semibold text-gray-900 text-base mb-1">
+                  {rec.exercise}
                 </div>
-                <div className="flex flex-wrap gap-4 text-sm text-gray-700">
-                  <div>
-                    <span className="font-medium">Load:</span> {rec.weight} kg
+                <div className="flex items-center justify-between gap-2 text-sm text-gray-700 mb-2">
+                  <div className="flex gap-4">
+                    <span>
+                      <span className="font-medium">Load:</span> {rec.weight} kg
+                    </span>
+                    <span>
+                      <span className="font-medium">Date:</span>{" "}
+                      {new Date(rec.record_date).toLocaleDateString()}
+                    </span>
                   </div>
-                  <div>
-                    <span className="font-medium">Date:</span>{" "}
-                    {new Date(rec.record_date).toLocaleDateString()}
-                  </div>
-                </div>
-                <div className="flex justify-end mt-2">
-                  <button
-                    onClick={() => handleDeleteClick(rec.id)}
-                    disabled={deletingId === rec.id}
-                    className={clsx(
-                      "px-3 py-1 rounded text-xs font-medium",
-                      theme === "dark"
-                        ? "bg-red-500/10 text-red-400 hover:bg-red-500/20"
-                        : "bg-red-100 text-red-700 hover:bg-red-200",
-                      deletingId === rec.id && "opacity-50 cursor-not-allowed"
-                    )}
-                  >
-                    {deletingId === rec.id ? "Deleting..." : "Delete"}
-                  </button>
+                  {rec.video_url && (
+                    <a
+                      href={rec.video_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-500 text-white hover:bg-blue-600 transition ml-2 shadow-sm active:scale-95 max-w-[120px] text-center"
+                      style={{ fontSize: "0.92rem" }}
+                    >
+                      View Video
+                    </a>
+                  )}
                 </div>
               </div>
             ))}
@@ -431,7 +413,7 @@ export default function PersonalRecordsTable({
         )}
       </div>
       {/* Modal for Add/Edit */}
-      {showModal && (
+      {canEdit && showModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-2 sm:px-0">
           <div
             className={clsx(
@@ -707,7 +689,7 @@ export default function PersonalRecordsTable({
         </div>
       )}
       {/* Modal for Delete Confirmation */}
-      {showDeleteModal && (
+      {canEdit && showDeleteModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-2 sm:px-0">
           <div
             className={clsx(

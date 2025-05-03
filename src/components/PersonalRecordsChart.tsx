@@ -33,8 +33,10 @@ interface PersonalRecord {
 
 export default function PersonalRecordsChart({
   athleteId,
+  refreshKey,
 }: {
   athleteId: string;
+  refreshKey?: number;
 }) {
   const { theme } = useTheme();
   const [records, setRecords] = useState<PersonalRecord[]>([]);
@@ -60,7 +62,7 @@ export default function PersonalRecordsChart({
     };
     fetchRecords();
     // eslint-disable-next-line
-  }, [athleteId]);
+  }, [athleteId, refreshKey]);
 
   const exercises = Array.from(new Set(records.map((r) => r.exercise)));
   const filtered = records.filter((r) => r.exercise === selectedExercise);

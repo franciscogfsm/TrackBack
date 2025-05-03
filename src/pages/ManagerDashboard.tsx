@@ -592,6 +592,18 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
   const [showCopyNotification, setShowCopyNotification] = useState<
     string | null
   >(null);
+  // State for PR modal and form (for manager add record)
+  const [showPRModal, setShowPRModal] = useState(false);
+  const [prForm, setPRForm] = useState({
+    exercise: "",
+    weight: 0,
+    record_date: "",
+    video_url: "",
+    notes: "",
+  });
+  const [editingPRId, setEditingPRId] = useState<string | null>(null);
+  // Add a refreshKey to force refresh after adding a record
+  const [prRefreshKey, setPRRefreshKey] = useState(0);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -2444,44 +2456,68 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
             ))}
           </select>
         </div>
-        {selectedAthlete && selectedAthlete !== "" && (
-          <div
-            className={clsx(
-              "rounded-2xl shadow-lg bg-white/90 border border-gray-100 p-2 sm:p-8 mt-8 mb-12 w-full max-w-full mx-auto flex flex-col items-center",
-              theme === "dark" ? "bg-slate-800/70 ring-1 ring-slate-700/50" : ""
-            )}
-          >
-            <h3
+        {selectedAthlete &&
+          selectedAthlete !== "" &&
+          selectedAthlete !== "all" && (
+            <div
               className={clsx(
-                "text-xl font-bold mb-6 w-full text-center",
-                theme === "dark" ? "text-white" : "text-gray-900"
+                "rounded-2xl shadow-lg bg-white/90 border border-gray-100 p-2 sm:p-8 mt-8 mb-12 w-full max-w-full mx-auto flex flex-col items-center",
+                theme === "dark"
+                  ? "bg-slate-800/70 ring-1 ring-slate-700/50"
+                  : ""
               )}
             >
-              Personal Records Overview
-            </h3>
-            <div className="w-full">
-              <PersonalRecordsTable
-                athleteId={selectedAthlete}
-                showModal={false}
-                setShowModal={() => {}}
-                form={{
-                  exercise: "",
-                  weight: 0,
-                  record_date: "",
-                  video_url: "",
-                  notes: "",
-                }}
-                setForm={() => {}}
-                editingId={null}
-                setEditingId={() => {}}
-              />
+              <h3
+                className={clsx(
+                  "text-xl font-bold mb-6 w-full text-center",
+                  theme === "dark" ? "text-white" : "text-gray-900"
+                )}
+              >
+                Personal Records Overview
+              </h3>
+              <div className="w-full flex justify-end mb-4">
+                <button
+                  onClick={() => {
+                    setPRForm({
+                      exercise: "",
+                      weight: 0,
+                      record_date: "",
+                      video_url: "",
+                      notes: "",
+                    });
+                    setEditingPRId(null);
+                    setShowPRModal(true);
+                  }}
+                  className="px-5 py-2 rounded-lg font-medium text-sm bg-yellow-400 text-white hover:bg-yellow-500 transition shadow"
+                >
+                  + Add Record
+                </button>
+              </div>
+              <div className="w-full">
+                <PersonalRecordsTable
+                  athleteId={selectedAthlete}
+                  showModal={showPRModal}
+                  setShowModal={(show) => {
+                    setShowPRModal(show);
+                    if (!show) setPRRefreshKey((k) => k + 1); // refresh after closing modal
+                  }}
+                  form={prForm}
+                  setForm={setPRForm}
+                  editingId={editingPRId}
+                  setEditingId={setEditingPRId}
+                  canEdit={true}
+                  refreshKey={prRefreshKey}
+                />
+              </div>
+              <div className="my-6 border-t border-gray-200 w-full" />
+              <div className="w-full">
+                <PersonalRecordsChart
+                  athleteId={selectedAthlete}
+                  refreshKey={prRefreshKey}
+                />
+              </div>
             </div>
-            <div className="my-6 border-t border-gray-200 w-full" />
-            <div className="w-full">
-              <PersonalRecordsChart athleteId={selectedAthlete} />
-            </div>
-          </div>
-        )}
+          )}
       </section>
 
       {showMetricsModal && !showDeleteConfirmation && (
