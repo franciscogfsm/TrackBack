@@ -36,6 +36,7 @@ import {
   Shield,
   FileText,
   Bell,
+  Trophy,
 } from "lucide-react";
 import clsx from "clsx";
 import ProfilePicture from "../components/ProfilePicture";
@@ -44,6 +45,8 @@ import type { Tables } from "../lib/database.types";
 import AthletesInsights from "../components/AthletesInsights";
 import type { PerformanceData } from "../services/aiInsights";
 import { useTheme } from "../components/ThemeProvider";
+import PersonalRecordsTable from "../components/PersonalRecordsTable";
+import PersonalRecordsChart from "../components/PersonalRecordsChart";
 
 type ManagerInvitation = Tables<"manager_invitations">;
 
@@ -1439,6 +1442,23 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
 
               {/* Navigation Links */}
               <div className="hidden sm:flex items-center">
+                {/* Records link moved to the left and uses Trophy icon */}
+                <Link
+                  to="#athlete-records"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const recordsSection = document.querySelector(
+                      "#athlete-records-section"
+                    );
+                    if (recordsSection) {
+                      recordsSection.scrollIntoView({ behavior: "smooth" });
+                    }
+                  }}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 text-white/80 hover:text-white hover:bg-white/10 ml-1"
+                >
+                  <Trophy className="h-4 w-4" />
+                  <span>Records</span>
+                </Link>
                 <Link
                   to="/statistics"
                   className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 text-white/80 hover:text-white hover:bg-white/10"
@@ -1963,7 +1983,7 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
         {/* Active Invitations Section */}
         <div
           className={clsx(
-            "mt-8 rounded-2xl transition-all duration-200",
+            "mt-8 mb-10 rounded-2xl transition-all duration-200",
             theme === "dark"
               ? "bg-slate-800/50 border border-slate-700/50"
               : "bg-white border border-gray-200/50"
@@ -2280,8 +2300,8 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
             </div>
 
             {/* Add the filters section here */}
-            <div className="mt-6 flex flex-col sm:flex-row gap-4">
-              <div className="flex-1">
+            <div className="mt-6 flex flex-row items-end justify-between gap-8">
+              <div className="sm:w-1/2">
                 <label
                   className={clsx(
                     "block text-sm font-medium mb-2",
@@ -2302,7 +2322,7 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
                   )}
                 />
               </div>
-              <div className="flex-1">
+              <div className="sm:w-1/3 sm:text-right">
                 <label
                   className={clsx(
                     "block text-sm font-medium mb-2",
@@ -2369,6 +2389,100 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
           )}
         </div>
       </main>
+
+      {/* Athlete Personal Records Section */}
+      <section
+        id="athlete-records-section"
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 scroll-mt-24"
+      >
+        <div className="mb-8 flex items-center gap-3">
+          <div className="p-3 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-xl shadow-lg">
+            <svg
+              className="h-6 w-6 text-white"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 16h-1v-4h-1m1-4h.01M12 20.5c4.142 0 7.5-3.358 7.5-7.5S16.142 5.5 12 5.5 4.5 8.858 4.5 13s3.358 7.5 7.5 7.5z"
+              />
+            </svg>
+          </div>
+          <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-yellow-600 to-yellow-400 bg-clip-text text-transparent">
+            Athlete Personal Records
+          </h2>
+        </div>
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-4">
+          <label
+            className={clsx(
+              "font-medium",
+              theme === "dark" ? "text-white" : "text-gray-900"
+            )}
+          >
+            Select Athlete:
+          </label>
+          <select
+            value={selectedAthlete}
+            onChange={(e) => setSelectedAthlete(e.target.value)}
+            className={clsx(
+              "px-4 py-2 rounded-lg border text-sm pr-12 min-w-[200px] shadow-sm transition-all duration-200 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 bg-white hover:bg-yellow-50",
+              "bg-[url('data:image/svg+xml;utf8,<svg fill='none' stroke='%23333' stroke-width='2' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'><path stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'></path></svg>')] bg-no-repeat bg-[right_1rem_center]",
+              theme === "dark"
+                ? "bg-slate-900/50 border-slate-700 text-white hover:bg-slate-800"
+                : "bg-white border-gray-300 text-gray-900 hover:bg-yellow-50"
+            )}
+            style={{ appearance: "none" }}
+          >
+            <option value="">-- Select --</option>
+            {athletes.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.full_name}
+              </option>
+            ))}
+          </select>
+        </div>
+        {selectedAthlete && selectedAthlete !== "" && (
+          <div
+            className={clsx(
+              "rounded-2xl shadow-lg bg-white/90 border border-gray-100 p-2 sm:p-8 mt-8 mb-12 w-full max-w-full mx-auto flex flex-col items-center",
+              theme === "dark" ? "bg-slate-800/70 ring-1 ring-slate-700/50" : ""
+            )}
+          >
+            <h3
+              className={clsx(
+                "text-xl font-bold mb-6 w-full text-center",
+                theme === "dark" ? "text-white" : "text-gray-900"
+              )}
+            >
+              Personal Records Overview
+            </h3>
+            <div className="w-full">
+              <PersonalRecordsTable
+                athleteId={selectedAthlete}
+                showModal={false}
+                setShowModal={() => {}}
+                form={{
+                  exercise: "",
+                  weight: 0,
+                  record_date: "",
+                  video_url: "",
+                  notes: "",
+                }}
+                setForm={() => {}}
+                editingId={null}
+                setEditingId={() => {}}
+              />
+            </div>
+            <div className="my-6 border-t border-gray-200 w-full" />
+            <div className="w-full">
+              <PersonalRecordsChart athleteId={selectedAthlete} />
+            </div>
+          </div>
+        )}
+      </section>
 
       {showMetricsModal && !showDeleteConfirmation && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
