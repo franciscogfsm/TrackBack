@@ -91,6 +91,7 @@ export default function PersonalRecordsTable({
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [selectedFileName, setSelectedFileName] = useState<string>("");
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const fetchRecords = async () => {
     setLoading(true);
@@ -211,6 +212,10 @@ export default function PersonalRecordsTable({
       setError("Please fill in all required fields.");
       return;
     }
+    if (!form.video_url) {
+      setError("Please upload a video before adding the record.");
+      return;
+    }
     if (editingId) {
       // Update
       const { error } = await supabase
@@ -271,6 +276,10 @@ export default function PersonalRecordsTable({
           video_url: publicUrlData.publicUrl,
         })
       );
+      // Show success message (keep until modal closes or record is added)
+      setSuccessMessage(
+        "Video uploaded successfully! You can now add the record."
+      );
     } catch (err: any) {
       setUploadError(err.message || "Upload failed");
     } finally {
@@ -279,12 +288,18 @@ export default function PersonalRecordsTable({
     }
   };
 
+  // When modal closes or record is added, clear the success message
+  useEffect(() => {
+    if (!showModal) setSuccessMessage(null);
+  }, [showModal]);
+
   if (loading) {
     return <div className="py-8 text-center text-gray-500"></div>;
   }
 
   return (
     <div className="mt-8">
+      {/* Success Message (removed from here, only in modal now) */}
       {/* Desktop Table (only show on sm+ screens) */}
       <div className={clsx(canEdit ? "hidden sm:block" : "hidden sm:block")}>
         <div
@@ -618,6 +633,25 @@ export default function PersonalRecordsTable({
                     {selectedFileName || "No file selected"}
                   </span>
                 </div>
+                {/* Success message for video upload */}
+                {successMessage && (
+                  <div className="mt-2 p-2 rounded bg-green-50 border border-green-200 text-green-700 flex items-center gap-2 text-xs">
+                    <svg
+                      className="w-4 h-4 text-green-500"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    <span>{successMessage}</span>
+                  </div>
+                )}
               </div>
               <div>
                 <label
