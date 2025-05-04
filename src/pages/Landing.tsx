@@ -473,11 +473,12 @@ export default function Landing() {
     <div className="min-h-screen bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600">
       {/* Background Effects */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute inset-0 opacity-10">
+        {/* Only render heavy background effects on desktop for LCP optimization */}
+        <div className="absolute inset-0 opacity-10 hidden sm:block">
           <div className="absolute top-0 left-0 w-full h-full bg-repeat pattern-grid transform rotate-45"></div>
         </div>
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-white/20 rounded-full filter blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-300/20 rounded-full filter blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-white/20 rounded-full filter blur-3xl animate-pulse hidden sm:block"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-300/20 rounded-full filter blur-3xl animate-pulse delay-1000 hidden sm:block"></div>
       </div>
 
       {/* Navigation */}
@@ -597,11 +598,21 @@ export default function Landing() {
           className="relative min-h-[calc(100vh-4rem)] flex items-center justify-center overflow-hidden py-16 sm:py-0"
         >
           <div className="absolute inset-0 z-0">
-            <img
-              src="/screenshots/hero.png"
-              alt="Hero Background"
-              className="absolute inset-0 w-full h-full object-cover"
-            />
+            <picture>
+              <source srcSet="/screenshots/hero.avif" type="image/avif" />
+              <source srcSet="/screenshots/hero.webp" type="image/webp" />
+              <img
+                src="/screenshots/hero.png"
+                alt="Hero Background"
+                className="absolute inset-0 w-full h-full object-cover"
+                width="1920"
+                height="1080"
+                srcSet="/screenshots/hero-800.avif 800w, /screenshots/hero-1600.avif 1600w, /screenshots/hero.avif 1920w"
+                sizes="(max-width: 800px) 800px, (max-width: 1600px) 1600px, 1920px"
+                loading="eager"
+                fetchpriority="high"
+              />
+            </picture>
             <div className="absolute inset-0 bg-gradient-to-r from-blue-900/95 via-blue-800/90 to-blue-900/95 sm:to-blue-900/30" />
             <div className="absolute inset-0 bg-[url('/patterns/grid.svg')] opacity-20 pattern-grid" />
           </div>
@@ -648,11 +659,20 @@ export default function Landing() {
                 )}
               >
                 <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-2xl">
-                  <img
-                    src="/screenshots/1.png"
-                    alt="TrackBack Dashboard"
-                    className="w-full h-full object-cover"
-                  />
+                  <picture>
+                    <source srcSet="/screenshots/1.avif" type="image/avif" />
+                    <source srcSet="/screenshots/1.webp" type="image/webp" />
+                    <img
+                      src="/screenshots/1.png"
+                      alt="TrackBack Dashboard"
+                      className="w-full h-full object-cover"
+                      width="1200"
+                      height="675"
+                      srcSet="/screenshots/1-600.avif 600w, /screenshots/1-900.avif 900w, /screenshots/1.avif 1200w"
+                      sizes="(max-width: 600px) 600px, (max-width: 900px) 900px, 1200px"
+                      loading="lazy"
+                    />
+                  </picture>
                   <div className="absolute inset-0 bg-gradient-to-tr from-blue-600/20 to-transparent" />
                 </div>
                 <div className="absolute -bottom-6 -right-6 transform rotate-6">
