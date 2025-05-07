@@ -222,7 +222,7 @@ export default function TeamPersonalBests({
                   el.scrollIntoView({ behavior: "smooth", block: "start" });
                 }
               }}
-              className="flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-400 text-white font-bold shadow-lg hover:bg-yellow-500 transition-all text-sm animate-bounce"
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-400 text-white font-bold shadow-lg hover:bg-yellow-500 transition-all text-sm "
               style={{ zIndex: 10 }}
             >
               <span className="text-lg">🏆</span> See Overall Points
