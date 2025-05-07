@@ -893,8 +893,14 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
                   const leaderboardSection = document.getElementById(
                     "team-leaderboard-section"
                   );
-                  if (leaderboardSection)
-                    leaderboardSection.scrollIntoView({ behavior: "smooth" });
+                  if (leaderboardSection) {
+                    const yOffset = -185; // Offset for sticky nav (adjust as needed)
+                    const y =
+                      leaderboardSection.getBoundingClientRect().top +
+                      window.pageYOffset +
+                      yOffset;
+                    window.scrollTo({ top: y, behavior: "smooth" });
+                  }
                 }}
                 className="ml-2 sm:ml-6 flex items-center justify-center px-2 sm:px-4 py-2 rounded-lg bg-white/90 text-yellow-700 font-semibold shadow hover:bg-yellow-100 border border-yellow-200 transition-all text-sm"
                 title="Jump to Team Leaderboard"
