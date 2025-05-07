@@ -337,7 +337,7 @@ export default function PersonalRecordsTable({
                     colSpan={canEdit ? 4 : 3}
                     className="py-8 text-center text-gray-400 text-sm bg-white rounded-2xl shadow-sm border border-gray-100"
                   >
-                    No personal records found.
+                    No personal best found.
                   </td>
                 </tr>
               ) : (
@@ -386,7 +386,7 @@ export default function PersonalRecordsTable({
       <div className={clsx("block sm:hidden")}>
         {records.length === 0 ? (
           <div className="py-8 text-center text-gray-400 text-sm bg-white rounded-2xl shadow-sm border border-gray-100">
-            No personal records found.
+            No personal best found.
           </div>
         ) : (
           <div className="space-y-4">

@@ -2424,7 +2424,7 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
             </svg>
           </div>
           <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-yellow-600 to-yellow-400 bg-clip-text text-transparent">
-            Athlete Personal Records
+            Athlete Personal Best
           </h2>
         </div>
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-4">
@@ -2473,7 +2473,7 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
                   theme === "dark" ? "text-white" : "text-gray-900"
                 )}
               >
-                Personal Records Overview
+                Personal Best Overview
               </h3>
               <div className="w-full flex justify-end mb-4">
                 <button

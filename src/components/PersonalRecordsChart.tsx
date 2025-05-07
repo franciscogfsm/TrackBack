@@ -140,7 +140,7 @@ export default function PersonalRecordsChart({
   if (records.length === 0) {
     return (
       <div className="py-8 text-center text-gray-400">
-        No records found for this exercise.
+        No personal best found for this exercise.
       </div>
     );
   }

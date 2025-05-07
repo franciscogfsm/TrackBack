@@ -9,7 +9,14 @@ import type {
   TrainingSession,
 } from "../lib/database.types";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Calendar, Upload, AlertCircle, Check } from "lucide-react";
+import {
+  LogOut,
+  Calendar,
+  Upload,
+  AlertCircle,
+  Check,
+  Trophy,
+} from "lucide-react";
 import clsx from "clsx";
 import ProfilePicture from "../components/ProfilePicture";
 import styles from "./AthleteDashboard.module.css";
@@ -20,6 +27,7 @@ import {
 } from "../lib/reminderService";
 import PersonalRecordsTable from "../components/PersonalRecordsTable";
 import PersonalRecordsChart from "../components/PersonalRecordsChart";
+import TeamPersonalBests from "../components/TeamPersonalBests";
 
 const TRAINING_TYPES: { value: TrainingType; label: string }[] = [
   { value: "regenerative", label: "Regenerative" },
@@ -308,6 +316,7 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
     notes: "",
   });
   const [editingPRId, setEditingPRId] = useState<string | null>(null);
+  const [personalBestsTab, setPersonalBestsTab] = useState("team");
 
   const showNotification = (type: "success" | "error", message: string) => {
     setNotification({ type, message, show: true });
@@ -878,6 +887,22 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
                   <span className="text-sm text-blue-100">Athlete</span>
                 </div>
               </div>
+              {/* Team Leaderboard Button */}
+              <button
+                onClick={() => {
+                  const leaderboardSection = document.getElementById(
+                    "team-leaderboard-section"
+                  );
+                  if (leaderboardSection)
+                    leaderboardSection.scrollIntoView({ behavior: "smooth" });
+                }}
+                className="ml-2 sm:ml-6 flex items-center justify-center px-2 sm:px-4 py-2 rounded-lg bg-white/90 text-yellow-700 font-semibold shadow hover:bg-yellow-100 border border-yellow-200 transition-all text-sm"
+                title="Jump to Team Leaderboard"
+                aria-label="Go to Team Leaderboard"
+              >
+                <Trophy className="w-5 h-5 text-yellow-500" />
+                <span className="hidden sm:inline">Team Leaderboard</span>
+              </button>
               <button
                 onClick={handleLogout}
                 className="ml-4 sm:ml-8 inline-flex items-center text-blue-100 hover:text-white transition-all duration-200 hover:scale-105 bg-white/10 px-4 py-2 rounded-lg hover:bg-white/20"
@@ -1512,11 +1537,14 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
         {/* Divider before Personal Records */}
         <hr className="my-12 border-t border-gray-200" />
         <h3 className="text-lg font-semibold text-gray-700 mb-4">
-          Personal Records
+          Personal Best
         </h3>
 
-        {/* Personal Records Section */}
-        <section className="w-full mx-auto mt-0 mb-8">
+        {/* Personal Bests Section with Tabs */}
+        <section
+          id="team-leaderboard-section"
+          className="w-full mx-auto mt-0 mb-8"
+        >
           <div className="bg-white/90 rounded-2xl shadow-xl border border-gray-100/50 p-4 md:p-8">
             <div className="flex items-center gap-3 mb-8">
               <div className="p-3 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-xl shadow-lg">
@@ -1536,31 +1564,63 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
               </div>
               <div>
                 <h2 className="text-lg md:text-2xl font-bold text-yellow-700">
-                  Personal Records (1RM)
+                  Personal Best (1RM)
                 </h2>
                 <p className="text-sm text-gray-500">
                   Register and track your personal bests for 1RM lifts.
                 </p>
               </div>
             </div>
-            <div className="mt-8">
-              <PersonalRecordsTable
-                athleteId={profile.id}
-                showModal={false}
-                setShowModal={() => {}}
-                form={{
-                  exercise: "",
-                  weight: 0,
-                  record_date: "",
-                  video_url: "",
-                  notes: "",
-                }}
-                setForm={() => {}}
-                editingId={null}
-                setEditingId={() => {}}
-                canEdit={false}
-              />
+            {/* Tabs */}
+            <div className="flex gap-2 mb-6">
+              <button
+                className={clsx(
+                  "px-4 py-2 rounded-lg font-medium text-sm transition",
+                  personalBestsTab === "mine"
+                    ? "bg-yellow-400 text-white shadow"
+                    : "bg-gray-100 text-gray-700 hover:bg-yellow-50"
+                )}
+                onClick={() => setPersonalBestsTab("mine")}
+              >
+                My Personal Bests
+              </button>
+              <button
+                className={clsx(
+                  "px-4 py-2 rounded-lg font-medium text-sm transition",
+                  personalBestsTab === "team"
+                    ? "bg-yellow-400 text-white shadow"
+                    : "bg-gray-100 text-gray-700 hover:bg-yellow-50"
+                )}
+                onClick={() => setPersonalBestsTab("team")}
+              >
+                Team Leaderboard
+              </button>
             </div>
+            {personalBestsTab === "mine" ? (
+              <div className="mt-8">
+                <PersonalRecordsTable
+                  athleteId={profile.id}
+                  showModal={false}
+                  setShowModal={() => {}}
+                  form={{
+                    exercise: "",
+                    weight: 0,
+                    record_date: "",
+                    video_url: "",
+                    notes: "",
+                  }}
+                  setForm={() => {}}
+                  editingId={null}
+                  setEditingId={() => {}}
+                  canEdit={false}
+                />
+              </div>
+            ) : (
+              <TeamPersonalBests
+                currentAthlete={profile}
+                managerId={profile.manager_id || ""}
+              />
+            )}
           </div>
         </section>
       </main>
