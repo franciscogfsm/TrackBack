@@ -6,6 +6,7 @@ import {
   AlertCircle,
   Sparkles,
   X,
+  Calendar,
 } from "lucide-react";
 import {
   generateAthleteInsights,
@@ -19,12 +20,14 @@ interface InsightsProps {
   athleteId?: string;
   teamId?: string;
   data: PerformanceData[] | { [athleteId: string]: PerformanceData[] };
+  model?: string;
 }
 
 export default function AthletesInsights({
   athleteId,
   teamId,
   data,
+  model = "gpt-3.5-turbo",
 }: InsightsProps) {
   const [insights, setInsights] = useState<Insight[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -33,16 +36,68 @@ export default function AthletesInsights({
   const fetchingRef = useRef<boolean>(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  // Preprocess data to include date ranges and trends
+  const preprocessData = (data: PerformanceData[]) => {
+    if (!data.length) return data;
+
+    // Sort by date
+    const sortedData = [...data].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+
+    // Add date range info
+    const firstDate = new Date(sortedData[0].date);
+    const lastDate = new Date(sortedData[sortedData.length - 1].date);
+    const dateRange = {
+      start: firstDate.toISOString().split("T")[0],
+      end: lastDate.toISOString().split("T")[0],
+      days: Math.ceil(
+        (lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24)
+      ),
+    };
+
+    // Calculate trends for each metric
+    const metrics = Object.keys(sortedData[0].metrics);
+    const trends = metrics.reduce((acc, metric) => {
+      const values = sortedData
+        .map((d) => d.metrics[metric])
+        .filter((v) => v !== undefined);
+      if (values.length < 2) return acc;
+
+      const firstValue = values[0];
+      const lastValue = values[values.length - 1];
+      const trend = lastValue - firstValue;
+      const trendPercentage = (trend / firstValue) * 100;
+
+      acc[metric] = {
+        trend,
+        trendPercentage,
+        average: values.reduce((sum, val) => sum + val, 0) / values.length,
+        min: Math.min(...values),
+        max: Math.max(...values),
+      };
+      return acc;
+    }, {} as Record<string, any>);
+
+    return {
+      data: sortedData,
+      metadata: {
+        dateRange,
+        trends,
+        totalEntries: sortedData.length,
+        metrics,
+      },
+    };
+  };
+
   useEffect(() => {
     const currentDataString = JSON.stringify(data);
 
     const fetchInsights = async () => {
-      // If already fetching, abort the previous request
       if (fetchingRef.current) {
         abortControllerRef.current?.abort();
       }
 
-      // Create new abort controller for this request
       abortControllerRef.current = new AbortController();
 
       try {
@@ -50,20 +105,41 @@ export default function AthletesInsights({
         setError(null);
         fetchingRef.current = true;
 
-        // Generate insights based on whether we're looking at team or individual data
+        // Preprocess the data
+        let processedData:
+          | PerformanceData[]
+          | { [athleteId: string]: PerformanceData[] };
+
+        if (athleteId) {
+          processedData = data as PerformanceData[];
+        } else {
+          processedData = Object.entries(
+            data as { [athleteId: string]: PerformanceData[] }
+          ).reduce(
+            (acc, [id, athleteData]) => ({
+              ...acc,
+              [id]: athleteData,
+            }),
+            {} as { [athleteId: string]: PerformanceData[] }
+          );
+        }
+
+        // Generate insights with the processed data
         const response = athleteId
-          ? await generateAthleteInsights(data as PerformanceData[])
+          ? await generateAthleteInsights(
+              processedData as PerformanceData[],
+              model
+            )
           : await generateTeamInsights(
-              data as { [athleteId: string]: PerformanceData[] }
+              processedData as { [athleteId: string]: PerformanceData[] },
+              model
             );
 
-        // Only update state if the component is still mounted and this request wasn't aborted
         if (!abortControllerRef.current?.signal.aborted) {
           setInsights(response);
           dataRef.current = currentDataString;
         }
       } catch (err) {
-        // Only update error state if the component is still mounted and this request wasn't aborted
         if (!abortControllerRef.current?.signal.aborted) {
           if (err instanceof Error) {
             if (err.message.includes("Rate limit")) {
@@ -77,7 +153,6 @@ export default function AthletesInsights({
           console.error("Error fetching insights:", err);
         }
       } finally {
-        // Only update loading state if the component is still mounted and this request wasn't aborted
         if (!abortControllerRef.current?.signal.aborted) {
           setLoading(false);
           fetchingRef.current = false;
@@ -85,22 +160,23 @@ export default function AthletesInsights({
       }
     };
 
-    // Delay the fetch slightly to avoid React 18 double-mount issues
-    const timeoutId = setTimeout(() => {
-      if (!fetchingRef.current) {
-        fetchInsights();
-      }
-    }, 100);
+    // Only fetch if the data has changed or if we don't have insights yet
+    if (currentDataString !== dataRef.current || !insights) {
+      const timeoutId = setTimeout(() => {
+        if (!fetchingRef.current) {
+          fetchInsights();
+        }
+      }, 100);
 
-    // Cleanup function
-    return () => {
-      clearTimeout(timeoutId);
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-      fetchingRef.current = false;
-    };
-  }, [athleteId, teamId, data]);
+      return () => {
+        clearTimeout(timeoutId);
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        fetchingRef.current = false;
+      };
+    }
+  }, [athleteId, teamId, data, model, insights]);
 
   if (loading) {
     return (

@@ -37,6 +37,7 @@ import {
   FileText,
   Bell,
   Trophy,
+  Menu,
 } from "lucide-react";
 import clsx from "clsx";
 import ProfilePicture from "../components/ProfilePicture";
@@ -605,6 +606,14 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
   const [editingPRId, setEditingPRId] = useState<string | null>(null);
   // Add a refreshKey to force refresh after adding a record
   const [prRefreshKey, setPRRefreshKey] = useState(0);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // Add state for tab selection
+  const [athleteTab, setAthleteTab] = useState<"athletes" | "invite">(
+    "athletes"
+  );
+  const [insightsMetricResponses, setInsightsMetricResponses] = useState<
+    MetricResponseWithDetails[]
+  >([]);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -1351,6 +1360,79 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
     }
   };
 
+  // Fetch all metric responses for an athlete (for AI insights)
+  const fetchAllMetricResponsesForAthlete = async (athleteId: string) => {
+    try {
+      // Get all responses for this athlete
+      const { data: responses, error } = await supabase
+        .from("metric_responses")
+        .select("*")
+        .eq("athlete_id", athleteId);
+      if (error) {
+        console.error("Error fetching all responses for insights:", error);
+        return [];
+      }
+      // Get unique metric IDs
+      const metricIds = [...new Set(responses.map((r) => r.metric_id))];
+      // Fetch metrics
+      const { data: metricsData, error: metricsError } = await supabase
+        .from("custom_metrics")
+        .select("id, title, type, description")
+        .in("id", metricIds);
+      if (metricsError) {
+        console.error("Error fetching metrics for insights:", metricsError);
+        return [];
+      }
+      // Fetch athlete profile
+      const { data: athleteProfile, error: athleteError } = await supabase
+        .from("profiles")
+        .select(
+          "id, full_name, email, role, avatar_url, manager_id, created_at"
+        )
+        .eq("id", athleteId)
+        .single();
+      if (athleteError) {
+        console.error(
+          "Error fetching athlete profile for insights:",
+          athleteError
+        );
+        return [];
+      }
+      // Create lookup maps
+      const metricsMap = new Map(metricsData.map((m) => [m.id, m]));
+      // Combine the data
+      const formattedResponses = responses.map((response) => ({
+        id: response.id,
+        created_at: response.created_at,
+        athlete_id: response.athlete_id,
+        metric_id: response.metric_id,
+        rating_value: response.rating_value,
+        text_value: response.text_value,
+        athlete: athleteProfile,
+        metric: {
+          title: metricsMap.get(response.metric_id)?.title || "Unknown Metric",
+          type: metricsMap.get(response.metric_id)?.type || "rating",
+          description: metricsMap.get(response.metric_id)?.description || "",
+        },
+      }));
+      return formattedResponses;
+    } catch (error) {
+      console.error(
+        "Unexpected error in fetchAllMetricResponsesForAthlete:",
+        error
+      );
+      return [];
+    }
+  };
+
+  // When opening the insights modal, fetch all responses for the athlete
+  const handleShowInsights = async (athlete: Profile) => {
+    setSelectedAthleteForInsights(athlete);
+    setShowInsightsModal(true);
+    const allResponses = await fetchAllMetricResponsesForAthlete(athlete.id);
+    setInsightsMetricResponses(allResponses);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -1403,9 +1485,16 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
                 </span>
               </div>
             </div>
-
-            {/* Navigation and Actions */}
-            <div className="flex items-center gap-2">
+            {/* Hamburger menu for mobile */}
+            <button
+              className="sm:hidden p-2 rounded-md text-white hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white ml-auto"
+              onClick={() => setMobileMenuOpen((open) => !open)}
+              aria-label="Open menu"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+            {/* Desktop Navigation and Actions */}
+            <div className="hidden sm:flex items-center gap-2">
               {/* Theme Switcher */}
               <div
                 className={clsx(
@@ -1452,7 +1541,6 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
                   <Moon className="w-4 h-4" />
                 </button>
               </div>
-
               {/* Navigation Links */}
               <div className="hidden sm:flex items-center">
                 {/* Records link moved to the left and uses Trophy icon */}
@@ -1479,7 +1567,6 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
                   <BarChart2 className="h-4 w-4" />
                   <span>Statistics</span>
                 </Link>
-
                 <Link
                   to="#daily-responses"
                   onClick={(e) => {
@@ -1496,7 +1583,6 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
                   <CalendarIcon className="h-4 w-4" />
                   <span>Daily Responses</span>
                 </Link>
-
                 <button
                   onClick={() => setShowMetricsModal(true)}
                   className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 text-white/80 hover:text-white hover:bg-white/10 ml-1"
@@ -1505,9 +1591,7 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
                   <span>Metrics</span>
                 </button>
               </div>
-
               <div className="h-5 w-px mx-2 bg-white/20"></div>
-
               {/* User Menu */}
               <div className="flex items-center rounded-full py-1 pl-1 pr-3 transition-all duration-200 bg-white/10 backdrop-blur-md hover:bg-white/20">
                 <ProfilePicture
@@ -1523,7 +1607,6 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
                   <p className="text-xs text-white/70">Manager</p>
                 </div>
               </div>
-
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 text-white/80 hover:text-white hover:bg-white/10 ml-1"
@@ -1535,6 +1618,149 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
             </div>
           </div>
         </div>
+        {/* Mobile Menu Drawer */}
+        {mobileMenuOpen && (
+          <div className="fixed inset-0 z-50 bg-black/60 flex sm:hidden">
+            <div
+              className={clsx(
+                "w-4/5 max-w-xs bg-white dark:bg-slate-900 h-full shadow-xl flex flex-col p-6 gap-6 animate-slide-in-left",
+                theme === "dark" ? "text-white" : "text-gray-900"
+              )}
+            >
+              <button
+                className="self-end mb-4 p-2 rounded-md hover:bg-slate-800/20 dark:hover:bg-white/10"
+                onClick={() => setMobileMenuOpen(false)}
+                aria-label="Close menu"
+              >
+                <X className="w-6 h-6" />
+              </button>
+              {/* Navigation Links - fix contrast */}
+              <Link
+                to="#athlete-records"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setMobileMenuOpen(false);
+                  const recordsSection = document.querySelector(
+                    "#athlete-records-section"
+                  );
+                  if (recordsSection) {
+                    recordsSection.scrollIntoView({ behavior: "smooth" });
+                  }
+                }}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-base font-medium hover:bg-blue-100 dark:hover:bg-slate-800/40 text-gray-900 dark:text-blue-200"
+              >
+                <Trophy className="h-5 w-5 text-blue-600 dark:text-blue-300" />
+                Records
+              </Link>
+              <Link
+                to="/statistics"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-base font-medium hover:bg-blue-100 dark:hover:bg-slate-800/40 text-gray-900 dark:text-blue-200"
+              >
+                <BarChart2 className="h-5 w-5 text-blue-600 dark:text-blue-300" />
+                Statistics
+              </Link>
+              <Link
+                to="#daily-responses"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setMobileMenuOpen(false);
+                  const responsesSection = document.querySelector(
+                    "#daily-responses-section"
+                  );
+                  if (responsesSection) {
+                    responsesSection.scrollIntoView({ behavior: "smooth" });
+                  }
+                }}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-base font-medium hover:bg-blue-100 dark:hover:bg-slate-800/40 text-gray-900 dark:text-blue-200"
+              >
+                <CalendarIcon className="h-5 w-5 text-blue-600 dark:text-blue-300" />
+                Daily Responses
+              </Link>
+              <button
+                onClick={() => {
+                  setShowMetricsModal(true);
+                  setMobileMenuOpen(false);
+                }}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-base font-medium hover:bg-blue-100 dark:hover:bg-slate-800/40 text-gray-900 dark:text-blue-200"
+              >
+                <Settings className="h-5 w-5 text-blue-600 dark:text-blue-300" />
+                Metrics
+              </button>
+              <div className="border-t border-gray-200 dark:border-slate-700 my-4" />
+              {/* Theme Switcher */}
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={() => setTheme("light")}
+                  className={clsx(
+                    "p-2 rounded-md",
+                    theme === "light"
+                      ? "bg-blue-100 text-blue-600 dark:bg-slate-700 dark:text-white"
+                      : "text-gray-700 dark:text-white hover:bg-blue-100 dark:hover:bg-slate-800/40"
+                  )}
+                  title="Light mode"
+                >
+                  <Sun className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => setTheme("system")}
+                  className={clsx(
+                    "p-2 rounded-md",
+                    theme === "system"
+                      ? "bg-blue-100 text-blue-600 dark:bg-slate-700 dark:text-white"
+                      : "text-gray-700 dark:text-white hover:bg-blue-100 dark:hover:bg-slate-800/40"
+                  )}
+                  title="System preference"
+                >
+                  <Monitor className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => setTheme("dark")}
+                  className={clsx(
+                    "p-2 rounded-md",
+                    theme === "dark"
+                      ? "bg-blue-100 text-blue-600 dark:bg-slate-700 dark:text-white"
+                      : "text-gray-700 dark:text-white hover:bg-blue-100 dark:hover:bg-slate-800/40"
+                  )}
+                  title="Dark mode"
+                >
+                  <Moon className="w-5 h-5" />
+                </button>
+              </div>
+              {/* User Info and Logout */}
+              <div className="flex items-center gap-3 mb-4">
+                <ProfilePicture
+                  profile={profile}
+                  size="sm"
+                  editable={true}
+                  onUpdate={handleProfileUpdate}
+                />
+                <div>
+                  <p className="text-base font-medium line-clamp-1">
+                    {profile.full_name}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-slate-400">
+                    Manager
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-base font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10"
+                title="Sign out"
+              >
+                <LogOut className="h-5 w-5" />
+                Sign out
+              </button>
+            </div>
+            {/* Click outside to close */}
+            <div
+              className="flex-1"
+              onClick={() => setMobileMenuOpen(false)}
+              aria-label="Close menu overlay"
+            />
+          </div>
+        )}
       </nav>
 
       {/* Main Content */}
@@ -1798,199 +2024,140 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
               : "bg-white border border-gray-100"
           )}
         >
-          <div
-            className={clsx(
-              "px-6 py-4 border-b",
-              theme === "dark" ? "border-slate-700/50" : "border-gray-100"
-            )}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div
-                  className={clsx(
-                    "p-2.5 rounded-xl",
-                    theme === "dark"
-                      ? "bg-blue-500/10 text-blue-400"
-                      : "bg-gradient-to-br from-blue-500 to-blue-600"
-                  )}
-                >
-                  <Users
-                    className={clsx(
-                      "h-4 w-4",
-                      theme === "dark" ? "text-blue-400" : "text-white"
-                    )}
-                  />
-                </div>
-                <h2
-                  className={clsx(
-                    "text-base font-semibold",
-                    theme === "dark" ? "text-slate-100" : "text-gray-900"
-                  )}
-                >
-                  Athletes
-                </h2>
-              </div>
+          {/* Responsive horizontal pill tab bar */}
+          <div className="flex justify-center mt-4 mb-2">
+            <div className="flex flex-row gap-2 max-w-xl w-full rounded-lg shadow bg-white border border-gray-200 p-1">
               <button
-                onClick={() => setShowInviteModal(true)}
                 className={clsx(
-                  "inline-flex items-center px-6 py-3 text-sm font-medium rounded-xl transition-all duration-200",
-                  theme === "dark"
-                    ? "bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 ring-1 ring-blue-400/30"
-                    : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700"
+                  "flex-1 px-6 py-1.5 text-base font-medium rounded-lg transition-all duration-200 whitespace-nowrap focus:outline-none",
+                  athleteTab === "athletes"
+                    ? "bg-blue-600 text-white shadow"
+                    : "bg-blue-50 text-blue-700"
                 )}
+                data-active={athleteTab === "athletes"}
+                onClick={() => setAthleteTab("athletes")}
               >
-                <UserPlus className="h-4 w-4 mr-2" />
-                Invite Athlete
+                <Users className="h-4 w-4 inline-block mr-1" /> Athletes
+              </button>
+              <button
+                className={clsx(
+                  "flex-1 px-6 py-1.5 text-base font-medium rounded-lg transition-all duration-200 whitespace-nowrap focus:outline-none",
+                  athleteTab === "invite"
+                    ? "bg-blue-600 text-white shadow"
+                    : "bg-blue-50 text-blue-700"
+                )}
+                data-active={athleteTab === "invite"}
+                onClick={() => setAthleteTab("invite")}
+              >
+                <UserPlus className="h-4 w-4 inline-block mr-1" /> Invite
+                Athlete
               </button>
             </div>
           </div>
-
-          <div className="overflow-x-auto">
-            <table
-              className={clsx(
-                "min-w-full divide-y",
-                theme === "dark" ? "divide-slate-700/50" : "divide-gray-200"
-              )}
-            >
-              <thead>
-                <tr
-                  className={clsx(
-                    theme === "dark" ? "bg-slate-800/50" : "bg-gray-50/50"
-                  )}
-                >
-                  <th
-                    className={clsx(
-                      "px-8 py-4 text-left text-xs font-medium uppercase tracking-wider",
-                      theme === "dark" ? "text-slate-400" : "text-gray-500"
-                    )}
-                  >
-                    Name
-                  </th>
-                  <th
-                    className={clsx(
-                      "px-8 py-4 text-left text-xs font-medium uppercase tracking-wider",
-                      theme === "dark" ? "text-slate-400" : "text-gray-500"
-                    )}
-                  >
-                    Email
-                  </th>
-                  <th
-                    className={clsx(
-                      "px-8 py-4 text-right text-xs font-medium uppercase tracking-wider",
-                      theme === "dark" ? "text-slate-400" : "text-gray-500"
-                    )}
-                  >
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody
+          {athleteTab === "athletes" && (
+            <div className="mt-4 overflow-x-auto w-full">
+              <table
                 className={clsx(
-                  "divide-y",
+                  "min-w-full rounded-xl shadow bg-white border border-gray-200 text-sm",
                   theme === "dark" ? "divide-slate-700/50" : "divide-gray-200"
                 )}
               >
-                {athletes.map((athlete) => (
-                  <tr
-                    key={athlete.id}
-                    className={clsx(
-                      "transition-all duration-200",
-                      theme === "dark"
-                        ? "hover:bg-slate-700/50"
-                        : "hover:bg-gray-50"
-                    )}
-                  >
-                    <td className="px-8 py-5 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-12 w-12">
-                          <ProfilePicture profile={athlete} size="md" />
-                        </div>
-                        <div className="ml-4">
-                          <div
-                            className={clsx(
-                              "text-sm font-medium",
-                              theme === "dark" ? "text-white" : "text-gray-900"
-                            )}
-                          >
-                            {athlete.full_name}
+                <thead>
+                  <tr className="bg-gray-50">
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                      Name
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                      Email
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody
+                  className={clsx(
+                    "divide-y",
+                    theme === "dark" ? "divide-slate-700/50" : "divide-gray-200"
+                  )}
+                >
+                  {athletes.map((athlete) => (
+                    <tr
+                      key={athlete.id}
+                      className="transition hover:bg-blue-50"
+                    >
+                      <td className="px-6 py-2 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0 h-8 w-8">
+                            <ProfilePicture profile={athlete} size="sm" />
+                          </div>
+                          <div className="ml-3">
+                            <div
+                              className={clsx(
+                                "text-sm font-medium",
+                                theme === "dark"
+                                  ? "text-white"
+                                  : "text-gray-900"
+                              )}
+                            >
+                              {athlete.full_name}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-8 py-5 whitespace-nowrap">
-                      <div
-                        className={clsx(
-                          "text-sm",
-                          theme === "dark" ? "text-slate-400" : "text-gray-500"
-                        )}
-                      >
-                        {athlete.email}
-                      </div>
-                    </td>
-                    <td className="px-8 py-5 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center justify-end space-x-4">
-                        <div className="relative group">
+                      </td>
+                      <td className="px-6 py-2 whitespace-nowrap">
+                        <div
+                          className={clsx(
+                            "text-sm",
+                            theme === "dark"
+                              ? "text-slate-400"
+                              : "text-gray-500"
+                          )}
+                        >
+                          {athlete.email}
+                        </div>
+                      </td>
+                      <td className="px-6 py-2 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex items-center justify-end space-x-2">
                           <button
-                            onClick={() => {
-                              setSelectedAthleteForInsights(athlete);
-                              setShowInsightsModal(true);
-                            }}
+                            onClick={() => handleShowInsights(athlete)}
                             className={clsx(
-                              "group relative inline-flex items-center px-4 py-2 rounded-xl font-medium shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl active:scale-95",
+                              "inline-flex items-center px-3 py-1.5 rounded-xl font-medium shadow transition-all duration-200 text-xs",
                               theme === "dark"
                                 ? "bg-gradient-to-r from-blue-500/20 to-indigo-500/20 text-blue-400 ring-1 ring-blue-500/30"
                                 : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
                             )}
                           >
-                            <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-indigo-400/20 rounded-xl blur-lg transition-opacity duration-300 opacity-0 group-hover:opacity-100" />
-                            <Brain className="h-4 w-4 mr-1.5 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12" />
+                            <Brain className="h-4 w-4 mr-1" />
                             <span className="relative">AI Insights</span>
-                            <div className="absolute -top-1 -right-1">
-                              <div className="animate-ping">
-                                <div className="h-2 w-2 rounded-full bg-blue-400" />
-                              </div>
-                              <div className="absolute inset-0">
-                                <div className="h-2 w-2 rounded-full bg-blue-400" />
-                              </div>
-                            </div>
                           </button>
-
-                          {/* Floating tooltip */}
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-                            <div className="bg-gray-900 text-white text-xs rounded-lg p-2 text-center">
-                              <div className="flex items-center justify-center gap-1 mb-1">
-                                <Sparkles className="h-3 w-3 text-blue-400" />
-                                <span className="font-medium">
-                                  AI-Powered Analysis
-                                </span>
-                              </div>
-                              <p className="text-gray-300 text-[10px]">
-                                Get personalized insights and recommendations
-                              </p>
-                            </div>
-                            <div className="w-2 h-2 bg-gray-900 rotate-45 absolute left-1/2 -translate-x-1/2 -bottom-1"></div>
-                          </div>
+                          <button
+                            onClick={(e) => handleRemoveAthlete(athlete.id, e)}
+                            className={clsx(
+                              "inline-flex items-center px-2 py-1.5 rounded-lg text-xs font-medium transition-colors duration-200",
+                              theme === "dark"
+                                ? "text-red-400 hover:bg-red-500/10"
+                                : "text-red-600 hover:bg-red-50"
+                            )}
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" /> Remove
+                          </button>
                         </div>
-
-                        <button
-                          onClick={(e) => handleRemoveAthlete(athlete.id, e)}
-                          className={clsx(
-                            "inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium transition-colors duration-200",
-                            theme === "dark"
-                              ? "text-red-400 hover:bg-red-500/10"
-                              : "text-red-600 hover:bg-red-50"
-                          )}
-                        >
-                          <Trash2 className="h-4 w-4 mr-1.5" />
-                          Remove
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {athleteTab === "invite" && (
+            <InviteAthleteModal
+              isOpen={true}
+              onClose={() => setAthleteTab("athletes")}
+              onInviteSuccess={() => setAthleteTab("athletes")}
+              managerId={profile.id}
+            />
+          )}
         </div>
 
         {/* Active Invitations Section */}
@@ -2348,13 +2515,19 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
                   value={selectedAthlete}
                   onChange={(e) => setSelectedAthlete(e.target.value)}
                   className={clsx(
-                    "w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-blue-500/50 transition-all duration-200 appearance-none bg-no-repeat bg-right",
+                    "w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-blue-500/50 transition-all duration-200 appearance-none flex items-center bg-no-repeat",
                     theme === "dark"
                       ? "bg-slate-900/50 border-slate-700 text-white"
                       : "bg-white border-gray-300 text-gray-900",
-                    "bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNNyA3TDEwIDEwTDEzIDciIHN0cm9rZT0iY3VycmVudENvbG9yIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+PC9zdmc+')]"
+                    "pr-10" // add right padding for arrow
                   )}
-                  style={{ backgroundPosition: "right 1rem center" }}
+                  style={{
+                    backgroundImage:
+                      "url('data:image/svg+xml;utf8,<svg fill='none' stroke='%23333' stroke-width='2' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'><path stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'></path></svg>')",
+                    backgroundPosition: "right 0.75rem center",
+                    backgroundRepeat: "no-repeat",
+                    backgroundSize: "1.25em 1.25em",
+                  }}
                 >
                   <option value="all">All Athletes</option>
                   {athletes.map((athlete) => (
@@ -3014,9 +3187,10 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
             <AthletesInsights
               athleteId={selectedAthleteForInsights.id}
               data={transformMetricResponses(
-                metricResponses,
+                insightsMetricResponses,
                 selectedAthleteForInsights.id
               )}
+              model="gpt-3.5-turbo"
             />
           </div>
         </div>

@@ -371,7 +371,7 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
               .eq("manager_id", profile.manager_id)
               .order("created_at", { ascending: false })
               .limit(1)
-              .single();
+              .maybeSingle();
 
           if (formStatusError && formStatusError.code !== "PGRST116") {
             console.error("Error fetching form status:", formStatusError);

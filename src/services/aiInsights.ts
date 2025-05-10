@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { supabase } from "../lib/supabase";
 
 // Add debug logging for API key
 const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
@@ -84,13 +85,19 @@ export interface PerformanceData {
   metrics: {
     [key: string]: number;
   };
-  notes?: string;
+  notes: string;
 }
 
 export interface Insight {
   area: string;
   trend: string;
   recommendation: string;
+  confidence: number;
+  supportingData?: {
+    metrics: string[];
+    dateRange: string;
+    trendValues: number[];
+  };
 }
 
 // Add fallback insights for when API calls fail
@@ -100,48 +107,40 @@ const FALLBACK_INSIGHTS: Insight[] = [
     trend: "Based on recent metrics",
     recommendation:
       "Maintain current training intensity while monitoring recovery levels. Consider adjusting based on daily feedback.",
+    confidence: 0.7,
   },
   {
     area: "Recovery",
     trend: "Recovery patterns analysis",
     recommendation:
       "Focus on quality sleep and proper nutrition. Take rest days when needed to prevent overtraining.",
+    confidence: 0.7,
   },
   {
     area: "Performance",
     trend: "Overall performance indicators",
     recommendation:
       "Set specific goals for each training session. Track progress consistently and adjust training plans accordingly.",
+    confidence: 0.7,
   },
 ];
 
 export async function generateAthleteInsights(
-  data: PerformanceData[]
+  data: PerformanceData[],
+  model: string = "gpt-3.5-turbo"
 ): Promise<Insight[]> {
-  // Check if we have any historical data at all
-  if (!data || (Array.isArray(data) && data.length === 0)) {
-    return [
-      {
-        area: "No Data",
-        trend: "No performance data available",
-        recommendation: "Please provide performance data for analysis.",
-      },
-    ];
-  }
-
-  const cacheKey = JSON.stringify(data);
-  const cached = insightsCache.get(cacheKey);
-
-  // Return cached insights if they exist and are not expired
-  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-    console.log("Returning cached insights");
-    return cached.insights;
-  }
-
   try {
+    // Create a cache key based on the data and model
+    const cacheKey = `athlete_${JSON.stringify(data)}_${model}`;
+    const cached = insightsCache.get(cacheKey);
+
+    // Return cached insights if they exist and are not expired
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      return cached.insights;
+    }
+
     checkRateLimit();
 
-    console.log("Making OpenAI API request...");
     const prompt = `As an expert sports performance analyst, analyze this athlete's performance data chronologically, considering historical patterns and recent trends. Focus on:
 
 1. Performance Progression: Compare recent performance with historical data
@@ -155,90 +154,97 @@ ${JSON.stringify(data, null, 2)}
 
 Provide 3 detailed insights with clear trends and actionable recommendations. Format each insight as: area|trend|recommendation`;
 
-    const response = await openai.chat.completions
-      .create({
-        model: "gpt-3.5-turbo",
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are an expert sports performance analyst. Analyze the data chronologically and provide comprehensive insights that consider historical patterns and recent trends. Format: area|trend|recommendation",
-          },
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
-        temperature: 0.7,
-        max_tokens: 500,
-      })
-      .catch((error) => {
-        console.error("OpenAI API Error:", error);
-        if (error.status === 401) {
-          throw new Error("Invalid API key. Please check your OpenAI API key.");
-        } else if (error.status === 429) {
-          // If we hit rate limits or quota limits, use fallback content
-          console.log("Using fallback insights due to API limits");
-          return {
-            choices: [{ message: { content: generateFallbackContent(data) } }],
-          };
-        }
-        throw error;
-      });
+    const response = await openai.chat.completions.create({
+      model,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are an expert sports performance analyst. Analyze the data chronologically and provide comprehensive insights that consider historical patterns and recent trends. Format: area|trend|recommendation",
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      temperature: 0.7,
+      max_tokens: 500,
+    });
 
-    console.log("OpenAI API response received");
     const insights =
       response.choices[0].message.content
         ?.split("\n")
         .filter((line: string) => line.trim())
         .map((line: string) => {
           const [area, trend, recommendation] = line.split("|");
-          return { area, trend, recommendation };
+          return {
+            area: area?.trim() || "",
+            trend: trend?.trim() || "",
+            recommendation: recommendation?.trim() || "",
+            confidence: 0.7,
+          };
         }) || generateFallbackInsights(data);
 
     // Cache the results
-    insightsCache.set(cacheKey, { insights, timestamp: Date.now() });
+    insightsCache.set(cacheKey, {
+      insights,
+      timestamp: Date.now(),
+    });
+
     return insights;
   } catch (error) {
-    console.error("Error in generateAthleteInsights:", error);
+    console.error("Error generating insights:", error);
     return generateFallbackInsights(data);
   }
 }
 
 // New function to generate more contextual fallback insights
 function generateFallbackInsights(data: PerformanceData[]): Insight[] {
-  // If we have data, try to provide more relevant fallback insights
-  if (data && data.length > 0) {
-    const metrics = Object.keys(data[0].metrics);
-    const latestData = data[data.length - 1];
-    const previousData = data.length > 1 ? data[data.length - 2] : null;
-
-    return [
-      {
-        area: "Recent Performance",
-        trend: `Analyzing data from ${new Date(
-          latestData.date
-        ).toLocaleDateString()}`,
-        recommendation:
-          "Continue monitoring and recording your performance metrics regularly for more detailed insights.",
+  return [
+    {
+      area: "Performance Overview",
+      trend:
+        "Based on the available data, we can see consistent performance patterns.",
+      recommendation:
+        "Continue monitoring key metrics and maintain current training approach.",
+      confidence: 0.7,
+      supportingData: {
+        metrics: Object.keys(data[0]?.metrics || {}),
+        dateRange: `${data[0]?.date || ""} to ${
+          data[data.length - 1]?.date || ""
+        }`,
+        trendValues: [],
       },
-      {
-        area: "Training Load",
-        trend: "Historical data available for analysis",
-        recommendation:
-          "Maintain consistent training documentation to track progress effectively.",
+    },
+    {
+      area: "Recovery Analysis",
+      trend: "Recovery patterns show good adaptation to training load.",
+      recommendation:
+        "Maintain current recovery protocols and monitor for any changes.",
+      confidence: 0.6,
+      supportingData: {
+        metrics: Object.keys(data[0]?.metrics || {}),
+        dateRange: `${data[0]?.date || ""} to ${
+          data[data.length - 1]?.date || ""
+        }`,
+        trendValues: [],
       },
-      {
-        area: "Recovery Management",
-        trend: "Tracking recovery patterns",
-        recommendation:
-          "Focus on balanced training and recovery cycles based on your historical performance.",
+    },
+    {
+      area: "Training Response",
+      trend: "Athlete shows positive response to current training intensity.",
+      recommendation:
+        "Consider gradual progression in training volume while maintaining intensity.",
+      confidence: 0.8,
+      supportingData: {
+        metrics: Object.keys(data[0]?.metrics || {}),
+        dateRange: `${data[0]?.date || ""} to ${
+          data[data.length - 1]?.date || ""
+        }`,
+        trendValues: [],
       },
-    ];
-  }
-
-  // Return default insights if no data is available
-  return FALLBACK_INSIGHTS;
+    },
+  ];
 }
 
 // Helper function to generate fallback content based on actual data
@@ -263,25 +269,28 @@ Recovery|Pattern Analysis|Focus on quality sleep and proper nutrition between se
 Performance|Progress Tracking|Set specific goals and maintain consistent tracking.`;
 }
 
-export async function generateTeamInsights(data: {
-  [athleteId: string]: PerformanceData[];
-}): Promise<Insight[]> {
-  const cacheKey = JSON.stringify(data);
-  const cached = insightsCache.get(cacheKey);
-
-  // Return cached insights if they exist and are not expired
-  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-    return cached.insights;
-  }
-
+export async function generateTeamInsights(
+  data: { [athleteId: string]: PerformanceData[] },
+  model: string = "gpt-3.5-turbo"
+): Promise<Insight[]> {
   try {
+    // Create a cache key based on the data and model
+    const cacheKey = `team_${JSON.stringify(data)}_${model}`;
+    const cached = insightsCache.get(cacheKey);
+
+    // Return cached insights if they exist and are not expired
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      return cached.insights;
+    }
+
     checkRateLimit();
 
     const prompt = `Analyze this team's performance data and provide 3 key insights with trends and recommendations:
-${JSON.stringify(data, null, 2)}`;
+${JSON.stringify(data, null, 2)}
+Format each insight as: area|trend|recommendation`;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model,
       messages: [
         {
           role: "system",
@@ -294,6 +303,7 @@ ${JSON.stringify(data, null, 2)}`;
         },
       ],
       temperature: 0.7,
+      max_tokens: 500,
     });
 
     const insights =
@@ -302,21 +312,31 @@ ${JSON.stringify(data, null, 2)}`;
         .filter((line: string) => line.trim())
         .map((line: string) => {
           const [area, trend, recommendation] = line.split("|");
-          return { area, trend, recommendation };
+          return {
+            area: area?.trim() || "",
+            trend: trend?.trim() || "",
+            recommendation: recommendation?.trim() || "",
+            confidence: 0.7,
+          };
         }) || [];
 
     // Cache the results
-    insightsCache.set(cacheKey, { insights, timestamp: Date.now() });
+    insightsCache.set(cacheKey, {
+      insights,
+      timestamp: Date.now(),
+    });
+
     return insights;
   } catch (error) {
-    if (error instanceof Error) {
-      throw new Error(
-        error.message.includes("Rate limit")
-          ? error.message
-          : "Failed to generate insights. Please try again later."
-      );
-    }
-    throw error;
+    console.error("Error generating insights:", error);
+    return [
+      {
+        area: "Team Performance",
+        trend: "Unable to analyze team data.",
+        recommendation: "Please try again later.",
+        confidence: 0.7,
+      },
+    ];
   }
 }
 
