@@ -128,32 +128,30 @@ export default function TrainingProgramAthlete({ athleteId, theme }: Props) {
         (r) => r.exercise_name === exercise && r.selected_plan === selectedPlan
       );
 
-      const seriesData = {
-        weight: serie.weight === "" ? 0 : Number(serie.weight),
-        reps: serie.reps === "" ? 0 : Number(serie.reps),
-        id: serie.id || crypto.randomUUID(),
-      };
+      // Prepare the full series_data array (all series for this exercise)
+      const fullSeriesData = input.series.map((s, idx) => ({
+        weight: s.weight === "" ? 0 : Math.abs(Number(s.weight)),
+        reps: s.reps === "" ? 0 : Math.abs(Number(s.reps)),
+        id: s.id || crypto.randomUUID(),
+      }));
 
       if (existingRecord) {
-        // Update existing record
-        const updatedSeriesData = [...(existingRecord.series_data || [])];
-        updatedSeriesData[serieIndex] = seriesData;
-
+        // Update existing record with all series
         const { error } = await supabase
           .from("exercise_records")
-          .update({ series_data: updatedSeriesData })
+          .update({ series_data: fullSeriesData })
           .eq("id", existingRecord.id);
 
         if (error) throw error;
       } else {
-        // Create new record
+        // Create new record with all series
         const newRecord = {
           id: crypto.randomUUID(),
           athlete_id: athleteId,
           program_id: program.id,
           selected_plan: selectedPlan,
           exercise_name: exercise,
-          series_data: [seriesData],
+          series_data: fullSeriesData,
           date: selectedDate,
           created_at: new Date().toISOString(),
         };
@@ -170,16 +168,21 @@ export default function TrainingProgramAthlete({ athleteId, theme }: Props) {
         ...prev,
         [exercise]: {
           ...prev[exercise],
-          series: prev[exercise].series.map((s, i) =>
-            i === serieIndex ? { ...s, saved: true, id: seriesData.id } : s
-          ),
+          series: prev[exercise].series.map((s, i) => ({
+            ...s,
+            saved: true,
+            id: fullSeriesData[i].id,
+          })),
         },
       }));
 
-      setSavedSeries((prev) => ({
-        ...prev,
-        [`${exercise}-${serieIndex}`]: true,
-      }));
+      setSavedSeries((prev) => {
+        const updated = { ...prev };
+        for (let i = 0; i < fullSeriesData.length; i++) {
+          updated[`${exercise}-${i}`] = true;
+        }
+        return updated;
+      });
 
       // Refresh records
       fetchRecords();
@@ -206,13 +209,67 @@ export default function TrainingProgramAthlete({ athleteId, theme }: Props) {
       const input = exerciseInputs[exercise];
       if (!input) continue;
 
-      for (let i = 0; i < input.series.length; i++) {
-        if (!input.series[i].saved) {
-          await saveSeries(exercise, i);
-        }
+      // Prepare the full series_data array (all series for this exercise)
+      const fullSeriesData = input.series.map((s, idx) => ({
+        weight: s.weight === "" ? 0 : Math.abs(Number(s.weight)),
+        reps: s.reps === "" ? 0 : Math.abs(Number(s.reps)),
+        id: s.id || crypto.randomUUID(),
+      }));
+
+      // Check if we already have a record for this exercise
+      const existingRecord = records.find(
+        (r) => r.exercise_name === exercise && r.selected_plan === selectedPlan
+      );
+
+      if (existingRecord) {
+        // Update existing record with all series
+        const { error } = await supabase
+          .from("exercise_records")
+          .update({ series_data: fullSeriesData })
+          .eq("id", existingRecord.id);
+        if (error) throw error;
+      } else {
+        // Create new record with all series
+        const newRecord = {
+          id: crypto.randomUUID(),
+          athlete_id: athleteId,
+          program_id: program.id,
+          selected_plan: selectedPlan,
+          exercise_name: exercise,
+          series_data: fullSeriesData,
+          date: selectedDate,
+          created_at: new Date().toISOString(),
+        };
+        const { error } = await supabase
+          .from("exercise_records")
+          .insert(newRecord);
+        if (error) throw error;
       }
+
+      // Update local state
+      setExerciseInputs((prev) => ({
+        ...prev,
+        [exercise]: {
+          ...prev[exercise],
+          series: prev[exercise].series.map((s, i) => ({
+            ...s,
+            saved: true,
+            id: fullSeriesData[i].id,
+          })),
+        },
+      }));
+
+      setSavedSeries((prev) => {
+        const updated = { ...prev };
+        for (let i = 0; i < fullSeriesData.length; i++) {
+          updated[`${exercise}-${i}`] = true;
+        }
+        return updated;
+      });
     }
 
+    // Refresh records after all saves
+    fetchRecords();
     setIsRecording(false);
   };
 

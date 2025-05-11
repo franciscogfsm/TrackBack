@@ -7,6 +7,7 @@ import type {
   MetricResponse,
   TrainingType,
   TrainingSession,
+  TrainingProgram,
 } from "../lib/database.types";
 import { Bar, Line } from "react-chartjs-2";
 import {
@@ -29,7 +30,10 @@ import {
   TrendingUp,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
+import PersonalRecordsChart from "../components/PersonalRecordsChart";
 
 // Register ChartJS components
 ChartJS.register(
@@ -443,6 +447,204 @@ const formatDate = (date: Date) => {
   return date.toISOString().split("T")[0];
 };
 
+// Move ExerciseHistoryChart above the main component
+function ExerciseHistoryChart({
+  history,
+  exercise,
+}: {
+  history: any[];
+  exercise: string;
+}) {
+  if (!history || history.length === 0) {
+    return (
+      <div className="text-gray-400 text-center">
+        No data for this exercise.
+      </div>
+    );
+  }
+
+  // Flatten all series_data for each record into points with date, weight, reps
+  const points: { date: string; weight: number; reps: number }[] = [];
+  history.forEach((rec) => {
+    if (
+      rec.series_data &&
+      Array.isArray(rec.series_data) &&
+      rec.series_data.length > 0
+    ) {
+      rec.series_data.forEach((serie: any, idx: number) => {
+        points.push({
+          date: rec.date,
+          weight: serie.weight,
+          reps: serie.reps,
+        });
+      });
+    } else if (rec.weight != null && rec.reps != null) {
+      points.push({ date: rec.date, weight: rec.weight, reps: rec.reps });
+    }
+  });
+
+  if (points.length === 0) {
+    return (
+      <div className="text-gray-400 text-center">
+        No data for this exercise.
+      </div>
+    );
+  }
+
+  // Group by date, and for each date, average the weights and reps (or just plot all points)
+  // We'll plot all points for now
+  const labels = points.map((p) => new Date(p.date).toLocaleDateString());
+
+  const chartData = {
+    labels,
+    datasets: [
+      {
+        label: "Weight (kg)",
+        data: points.map((p) => p.weight),
+        borderColor: "#6366f1",
+        backgroundColor: "#c7d2fe",
+        tension: 0.3,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        fill: false,
+        yAxisID: "y",
+      },
+      {
+        label: "Reps",
+        data: points.map((p) => p.reps),
+        borderColor: "#f59e42",
+        backgroundColor: "#fde68a",
+        tension: 0.3,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        fill: false,
+        yAxisID: "y1",
+      },
+    ],
+  };
+  const chartOptions = {
+    responsive: true,
+    plugins: {
+      legend: { display: true },
+      tooltip: {
+        callbacks: {
+          label: function (context: any) {
+            const idx = context.dataIndex;
+            const p = points[idx];
+            return `${context.dataset.label}: ${context.parsed.y} (${
+              p
+                ? `Date: ${new Date(p.date).toLocaleDateString()}, Weight: ${
+                    p.weight
+                  }, Reps: ${p.reps}`
+                : ""
+            })`;
+          },
+        },
+      },
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        title: { display: true, text: "Weight (kg)" },
+        position: "left" as const,
+      },
+      y1: {
+        beginAtZero: true,
+        title: { display: true, text: "Reps" },
+        position: "right" as const,
+        grid: { drawOnChartArea: false },
+      },
+    },
+  };
+  return <Line data={chartData} options={chartOptions} height={220} />;
+}
+
+// Helper to get ISO week number
+function getISOWeek(dateString: string) {
+  const date = new Date(dateString);
+  const target = new Date(date.valueOf());
+  const dayNr = (date.getDay() + 6) % 7;
+  target.setDate(target.getDate() - dayNr + 3);
+  const firstThursday = target.valueOf();
+  target.setMonth(0, 1);
+  if (target.getDay() !== 4) {
+    target.setMonth(0, 1 + ((4 - target.getDay() + 7) % 7));
+  }
+  return 1 + Math.ceil((firstThursday - target.valueOf()) / 604800000);
+}
+
+// Weekly Load Chart Component
+function WeeklyLoadChart({ records }: { records: any[] }) {
+  // Group records by ISO week number
+  const weeklyLoad: Record<string, number> = {};
+  records.forEach((rec) => {
+    const week = getISOWeek(rec.date);
+    let total = 0;
+    if (rec.series_data && Array.isArray(rec.series_data)) {
+      rec.series_data.forEach((serie: any) => {
+        const weight = Number(serie.weight);
+        const reps = Number(serie.reps);
+        if (!isNaN(weight) && !isNaN(reps)) {
+          total += weight * reps;
+        }
+      });
+    } else if (rec.weight != null && rec.reps != null) {
+      const weight = Number(rec.weight);
+      const reps = Number(rec.reps);
+      if (!isNaN(weight) && !isNaN(reps)) {
+        total += weight * reps;
+      }
+    }
+    weeklyLoad[week] = (weeklyLoad[week] || 0) + total;
+  });
+  // Prepare chart data
+  const weeks = Object.keys(weeklyLoad).sort((a, b) => Number(a) - Number(b));
+  const values = weeks.map((w) => weeklyLoad[w]);
+  let yMax = 100; // default value
+  if (values.length > 0) {
+    yMax = Math.max(...values, 1);
+    if (weeks.length === 1) {
+      yMax = Math.max(100, yMax * 1.2);
+    } else {
+      yMax = yMax * 1.2;
+    }
+  }
+  const data = {
+    labels: weeks.map((w) => `Week ${w}`),
+    datasets: [
+      {
+        label: "Weekly Load (kg)",
+        data: values,
+        backgroundColor: "#6366f1",
+        maxBarThickness: 40,
+      },
+    ],
+  };
+  const options = {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      title: { display: true, text: "WEEKLY LOAD (Kg)", font: { size: 18 } },
+      tooltip: {
+        callbacks: {
+          label: function (context: any) {
+            return `Weekly Load: ${context.parsed.y} kg`;
+          },
+        },
+      },
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        title: { display: true, text: "Load (kg)" },
+        max: yMax,
+      },
+      x: { title: { display: true, text: "Week" } },
+    },
+  };
+  return <Bar data={data} options={options} height={140} />;
+}
+
 export default function Statistics({ profile }: StatsProps) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -464,6 +666,19 @@ export default function Statistics({ profile }: StatsProps) {
     start: Date;
     end: Date;
   } | null>(null);
+  const [program, setProgram] = useState<TrainingProgram | null>(null);
+  const [planAExercises, setPlanAExercises] = useState<string[]>([]);
+  const [planBExercises, setPlanBExercises] = useState<string[]>([]);
+  const [openChartKeys, setOpenChartKeys] = useState<Record<string, boolean>>(
+    {}
+  );
+  const [exerciseHistories, setExerciseHistories] = useState<
+    Record<string, any[]>
+  >({});
+  const [exerciseLoading, setExerciseLoading] = useState<
+    Record<string, boolean>
+  >({});
+  const [allExerciseRecords, setAllExerciseRecords] = useState<any[]>([]);
 
   // Add a new function to find the most recent week with data
   const findMostRecentWeekWithData = async (athleteId: string) => {
@@ -887,6 +1102,68 @@ export default function Statistics({ profile }: StatsProps) {
     };
   };
 
+  // Fetch program when selectedAthlete changes
+  useEffect(() => {
+    const fetchProgram = async () => {
+      if (!selectedAthlete) return;
+      const { data, error } = await supabase
+        .from("training_programs")
+        .select("*")
+        .eq("is_active", true)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+      if (error) {
+        setProgram(null);
+        setPlanAExercises([]);
+        setPlanBExercises([]);
+        return;
+      }
+      setProgram(data);
+      setPlanAExercises(data.plan_a_exercises || []);
+      setPlanBExercises(data.plan_b_exercises || []);
+    };
+    fetchProgram();
+  }, [selectedAthlete]);
+
+  // Helper to fetch exercise history
+  const fetchExerciseHistory = async (athleteId: string, exercise: string) => {
+    const { data, error } = await supabase
+      .from("exercise_records")
+      .select("id, athlete_id, exercise_name, weight, reps, date, series_data")
+      .eq("athlete_id", athleteId)
+      .eq("exercise_name", exercise)
+      .order("date", { ascending: true });
+    if (error) return [];
+    return data || [];
+  };
+
+  // Handler to open/close chart and fetch data if needed
+  const handleToggleChart = async (exercise: string) => {
+    setOpenChartKeys((prev) => ({ ...prev, [exercise]: !prev[exercise] }));
+    if (!exerciseHistories[exercise] && selectedAthlete) {
+      setExerciseLoading((prev) => ({ ...prev, [exercise]: true }));
+      const history = await fetchExerciseHistory(selectedAthlete, exercise);
+      setExerciseHistories((prev) => ({ ...prev, [exercise]: history }));
+      setExerciseLoading((prev) => ({ ...prev, [exercise]: false }));
+    }
+  };
+
+  // Fetch all exercise records for the selected athlete when athlete changes
+  useEffect(() => {
+    const fetchAllRecords = async () => {
+      if (!selectedAthlete) return;
+      const { data, error } = await supabase
+        .from("exercise_records")
+        .select(
+          "id, athlete_id, exercise_name, weight, reps, date, series_data"
+        )
+        .eq("athlete_id", selectedAthlete);
+      setAllExerciseRecords(data || []);
+    };
+    fetchAllRecords();
+  }, [selectedAthlete]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -995,6 +1272,13 @@ export default function Statistics({ profile }: StatsProps) {
             </div>
           </div>
         </div>
+
+        {/* Weekly Load Chart Section */}
+        {selectedAthlete && allExerciseRecords.length > 0 && (
+          <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+            <WeeklyLoadChart records={allExerciseRecords} />
+          </div>
+        )}
 
         {/* Chart section */}
         <div className="space-y-8">

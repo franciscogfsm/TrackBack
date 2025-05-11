@@ -15,12 +15,33 @@ import {
   ChevronUp,
 } from "lucide-react";
 import clsx from "clsx";
+import { Line } from "react-chartjs-2";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+} from "chart.js";
 
 interface Props {
   managerId: string;
   athletes: Profile[];
   theme: "light" | "dark" | "system";
 }
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 export default function TrainingProgramManager({
   managerId,
@@ -44,6 +65,12 @@ export default function TrainingProgramManager({
   const [openSeriesKey, setOpenSeriesKey] = useState<string | null>(null);
   const [openRecordKey, setOpenRecordKey] = useState<string | null>(null);
   const [openAthleteKey, setOpenAthleteKey] = useState<string | null>(null);
+  const [openChartKeys, setOpenChartKeys] = useState<Record<string, boolean>>(
+    {}
+  );
+  const [exerciseHistories, setExerciseHistories] = useState<
+    Record<string, any[]>
+  >({});
 
   useEffect(() => {
     fetchPrograms();
@@ -180,6 +207,21 @@ export default function TrainingProgramManager({
     acc[rec.athlete_id].push(rec);
     return acc;
   }, {} as Record<string, ExerciseRecord[]>);
+
+  // Helper to fetch historical records for a given athlete and exercise
+  const fetchExerciseHistory = async (athleteId: string, exercise: string) => {
+    const { data, error } = await supabase
+      .from("exercise_records")
+      .select("id, athlete_id, exercise_name, weight, date")
+      .eq("athlete_id", athleteId)
+      .eq("exercise_name", exercise)
+      .order("date", { ascending: true });
+    if (error) {
+      console.error("Error fetching exercise history:", error);
+      return [];
+    }
+    return data || [];
+  };
 
   return (
     <div
@@ -586,9 +628,11 @@ export default function TrainingProgramManager({
                                   )}
                                   {athleteRecords.map((rec, idx) => (
                                     <div key={rec.id} className="mb-6">
-                                      <div className="mb-2 text-base font-semibold">
-                                        Exercise:{" "}
-                                        <span>{rec.exercise_name}</span>
+                                      <div className="mb-2 text-base font-semibold flex items-center gap-2">
+                                        <span>
+                                          Exercise:{" "}
+                                          <span>{rec.exercise_name}</span>
+                                        </span>
                                       </div>
                                       <table className="min-w-[220px] text-sm mb-2">
                                         <thead>
