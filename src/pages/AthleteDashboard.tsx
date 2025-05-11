@@ -3,7 +3,7 @@ import { supabase } from "../lib/supabase";
 import type {
   Profile,
   CustomMetric,
-  MetricResponseType as MetricResponse,
+  MetricResponse,
   DailyFormStatus,
   TrainingType,
   TrainingSession,
@@ -28,6 +28,7 @@ import {
 import PersonalRecordsTable from "../components/PersonalRecordsTable";
 import PersonalRecordsChart from "../components/PersonalRecordsChart";
 import TeamPersonalBests from "../components/TeamPersonalBests";
+import TrainingProgramAthlete from "../components/TrainingProgramAthlete";
 
 const TRAINING_TYPES: { value: TrainingType; label: string }[] = [
   { value: "regenerative", label: "Regenerative" },
@@ -263,6 +264,7 @@ const formatDateForDisplay = (dateString: string) => {
 export default function AthleteDashboard({ profile: initialProfile }: Props) {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile>(initialProfile);
+  const [theme, setTheme] = useState<"light" | "dark">("light");
   const [loading, setLoading] = useState(true);
   const [metrics, setMetrics] = useState<CustomMetric[]>([]);
   const [responses, setResponses] = useState<Record<string, MetricResponse>>(
@@ -921,7 +923,13 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
         </div>
       </nav>
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 flex-grow">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Training Program Section */}
+        {profile && (
+          <TrainingProgramAthlete athleteId={profile.id} theme={theme} />
+        )}
+
+        {/* Daily Wellness Check-in Section */}
         <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl border border-gray-100/50 overflow-hidden transform transition-all duration-300 hover:shadow-2xl">
           <div className="p-4 sm:p-8">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-8 mb-6 sm:mb-8">

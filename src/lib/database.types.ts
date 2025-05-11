@@ -283,3 +283,26 @@ export type AthleteManagerConnection = {
   created_at: string;
   status: "active" | "inactive";
 };
+
+export type TrainingProgram = {
+  id: string;
+  manager_id: string;
+  plan_a_exercises: string[];
+  plan_b_exercises: string[];
+  created_at: string;
+  updated_at: string;
+  is_active: boolean;
+};
+
+export type ExerciseRecord = {
+  id: string;
+  athlete_id: string;
+  program_id: string;
+  selected_plan: "A" | "B" | "none";
+  exercise_name: string;
+  weight: number | null;
+  reps: number | null;
+  date: string;
+  created_at: string;
+  series_data?: { weight: number; reps: number }[];
+};

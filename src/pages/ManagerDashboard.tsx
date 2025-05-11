@@ -38,6 +38,7 @@ import {
   Bell,
   Trophy,
   Menu,
+  Dumbbell,
 } from "lucide-react";
 import clsx from "clsx";
 import ProfilePicture from "../components/ProfilePicture";
@@ -49,6 +50,7 @@ import { useTheme } from "../components/ThemeProvider";
 import PersonalRecordsTable from "../components/PersonalRecordsTable";
 import PersonalRecordsChart from "../components/PersonalRecordsChart";
 import TeamPersonalBests from "../components/TeamPersonalBests";
+import TrainingProgramManager from "../components/TrainingProgramManager";
 
 type ManagerInvitation = Tables<"manager_invitations">;
 
@@ -2013,6 +2015,35 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Training Programs Section */}
+        <div className="mb-8">
+          <div className="flex items-center gap-4 mb-6">
+            <div
+              className={clsx(
+                "p-4 rounded-2xl",
+                theme === "dark"
+                  ? "bg-blue-500/10 text-blue-400"
+                  : "bg-gradient-to-br from-blue-500 to-indigo-600 text-white"
+              )}
+            >
+              <Dumbbell className="w-6 h-6" />
+            </div>
+            <h2
+              className={clsx(
+                "text-2xl font-bold",
+                theme === "dark" ? "text-white" : "text-gray-900"
+              )}
+            >
+              Training Programs
+            </h2>
+          </div>
+          <TrainingProgramManager
+            managerId={profile.id}
+            athletes={athletes}
+            theme={theme}
+          />
         </div>
 
         {/* Athletes List */}
