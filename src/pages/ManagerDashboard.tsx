@@ -51,6 +51,7 @@ import PersonalRecordsTable from "../components/PersonalRecordsTable";
 import PersonalRecordsChart from "../components/PersonalRecordsChart";
 import TeamPersonalBests from "../components/TeamPersonalBests";
 import TrainingProgramManager from "../components/TrainingProgramManager";
+import WeightReport from "../components/WeightReport";
 
 type ManagerInvitation = Tables<"manager_invitations">;
 
@@ -616,6 +617,9 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
   const [insightsMetricResponses, setInsightsMetricResponses] = useState<
     MetricResponseWithDetails[]
   >([]);
+  // 1. Add new state for performanceReportAthlete
+  const [performanceReportAthlete, setPerformanceReportAthlete] =
+    useState<string>("");
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -2046,6 +2050,70 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
           />
         </div>
 
+        {/* Performance Report Section */}
+        <div
+          className={clsx(
+            "rounded-2xl shadow-lg bg-white/90 border border-gray-100 p-6 mb-12 w-full max-w-full mx-auto",
+            theme === "dark" ? "bg-slate-800/70 ring-1 ring-slate-700/50" : ""
+          )}
+        >
+          <div className="flex items-center gap-4 mb-6">
+            <div
+              className={clsx(
+                "p-4 rounded-2xl",
+                theme === "dark"
+                  ? "bg-blue-500/10 text-blue-400"
+                  : "bg-gradient-to-br from-blue-500 to-indigo-600 text-white"
+              )}
+            >
+              <BarChart2 className="w-6 h-6" />
+            </div>
+            <h2
+              className={clsx(
+                "text-2xl font-bold",
+                theme === "dark" ? "text-white" : "text-gray-900"
+              )}
+            >
+              Performance Report
+            </h2>
+          </div>
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-4">
+            <label
+              className={clsx(
+                "font-medium",
+                theme === "dark" ? "text-white" : "text-gray-900"
+              )}
+            >
+              Select Athlete:
+            </label>
+            <select
+              value={performanceReportAthlete}
+              onChange={(e) => setPerformanceReportAthlete(e.target.value)}
+              className={clsx(
+                "px-4 py-2 rounded-lg border text-sm pr-12 min-w-[200px] shadow-sm transition-all duration-200 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 bg-white hover:bg-blue-50",
+                theme === "dark"
+                  ? "bg-slate-900/50 border-slate-700 text-white hover:bg-slate-800"
+                  : "bg-white border-gray-300 text-gray-900 hover:bg-blue-50"
+              )}
+              style={{ appearance: "none" }}
+            >
+              <option value="">-- Select --</option>
+              {athletes.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.full_name}
+                </option>
+              ))}
+            </select>
+          </div>
+          {performanceReportAthlete ? (
+            <WeightReport athleteId={performanceReportAthlete} theme={theme} />
+          ) : (
+            <div className="text-center text-gray-500 py-8">
+              Select an athlete to view their performance report.
+            </div>
+          )}
+        </div>
+
         {/* Athletes List */}
         <div
           className={clsx(
@@ -2715,48 +2783,59 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
                     theme === "dark" ? "text-white" : "text-gray-900"
                   )}
                 >
-                  Personal Best Overview
+                  Performance Report
                 </h3>
-                <div className="w-full flex justify-end mb-4">
-                  <button
-                    onClick={() => {
-                      setPRForm({
-                        exercise: "",
-                        weight: 0,
-                        record_date: "",
-                        video_url: "",
-                        notes: "",
-                      });
-                      setEditingPRId(null);
-                      setShowPRModal(true);
-                    }}
-                    className="px-5 py-2 rounded-lg font-medium text-sm bg-yellow-400 text-white hover:bg-yellow-500 transition shadow"
+
+                <div className="w-full">
+                  <h4
+                    className={clsx(
+                      "text-lg font-semibold mb-4",
+                      theme === "dark" ? "text-white" : "text-gray-900"
+                    )}
                   >
-                    + Add Record
-                  </button>
-                </div>
-                <div className="w-full">
-                  <PersonalRecordsTable
-                    athleteId={selectedAthlete}
-                    showModal={showPRModal}
-                    setShowModal={(show) => {
-                      setShowPRModal(show);
-                      if (!show) setPRRefreshKey((k) => k + 1); // refresh after closing modal
-                    }}
-                    form={prForm}
-                    setForm={setPRForm}
-                    editingId={editingPRId}
-                    setEditingId={setEditingPRId}
-                    canEdit={true}
-                    refreshKey={prRefreshKey}
-                  />
-                </div>
-                <div className="my-6 border-t border-gray-200 w-full" />
-                <div className="w-full">
-                  <PersonalRecordsChart
-                    athleteId={selectedAthlete}
-                    refreshKey={prRefreshKey}
-                  />
+                    Personal Best Overview
+                  </h4>
+                  <div className="w-full flex justify-end mb-4">
+                    <button
+                      onClick={() => {
+                        setPRForm({
+                          exercise: "",
+                          weight: 0,
+                          record_date: "",
+                          video_url: "",
+                          notes: "",
+                        });
+                        setEditingPRId(null);
+                        setShowPRModal(true);
+                      }}
+                      className="px-5 py-2 rounded-lg font-medium text-sm bg-yellow-400 text-white hover:bg-yellow-500 transition shadow"
+                    >
+                      + Add Record
+                    </button>
+                  </div>
+                  <div className="w-full">
+                    <PersonalRecordsTable
+                      athleteId={selectedAthlete}
+                      showModal={showPRModal}
+                      setShowModal={(show) => {
+                        setShowPRModal(show);
+                        if (!show) setPRRefreshKey((k) => k + 1); // refresh after closing modal
+                      }}
+                      form={prForm}
+                      setForm={setPRForm}
+                      editingId={editingPRId}
+                      setEditingId={setEditingPRId}
+                      canEdit={true}
+                      refreshKey={prRefreshKey}
+                    />
+                  </div>
+                  <div className="my-6 border-t border-gray-200 w-full" />
+                  <div className="w-full">
+                    <PersonalRecordsChart
+                      athleteId={selectedAthlete}
+                      refreshKey={prRefreshKey}
+                    />
+                  </div>
                 </div>
               </div>
             )}

@@ -16,6 +16,7 @@ import {
   AlertCircle,
   Check,
   Trophy,
+  Scale,
 } from "lucide-react";
 import clsx from "clsx";
 import ProfilePicture from "../components/ProfilePicture";
@@ -28,6 +29,7 @@ import {
 import PersonalRecordsTable from "../components/PersonalRecordsTable";
 import PersonalRecordsChart from "../components/PersonalRecordsChart";
 import TeamPersonalBests from "../components/TeamPersonalBests";
+import WeightInput from "../components/WeightInput";
 import TrainingProgramAthlete from "../components/TrainingProgramAthlete";
 
 const TRAINING_TYPES: { value: TrainingType; label: string }[] = [
@@ -319,6 +321,7 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
   });
   const [editingPRId, setEditingPRId] = useState<string | null>(null);
   const [personalBestsTab, setPersonalBestsTab] = useState("team");
+  const [showInput, setShowInput] = useState(false);
 
   const showNotification = (type: "success" | "error", message: string) => {
     setNotification({ type, message, show: true });
@@ -1545,6 +1548,13 @@ export default function AthleteDashboard({ profile: initialProfile }: Props) {
                 </p>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Weight Entry Section - moved below Daily Check-in */}
+        <div className="w-full flex flex-col items-center justify-center mt-8 mb-10">
+          <div className="w-full max-w-md">
+            <WeightInput athleteId={profile.id} theme={theme} />
           </div>
         </div>
 

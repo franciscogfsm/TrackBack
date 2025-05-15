@@ -180,6 +180,29 @@ export interface Database {
           status?: "active" | "inactive";
         };
       };
+      weight_records: {
+        Row: {
+          id: string;
+          athlete_id: string;
+          weight: number;
+          date: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          athlete_id: string;
+          weight: number;
+          date: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          athlete_id?: string;
+          weight?: number;
+          date?: string;
+          created_at?: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;
@@ -305,4 +328,12 @@ export type ExerciseRecord = {
   date: string;
   created_at: string;
   series_data?: { weight: number; reps: number }[];
+};
+
+export type WeightRecord = {
+  id: string;
+  athlete_id: string;
+  weight: number;
+  date: string;
+  created_at: string;
 };
