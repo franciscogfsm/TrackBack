@@ -9,6 +9,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Legend,
 } from "recharts";
 import { Scale, ChevronLeft, ChevronRight } from "lucide-react";
 import clsx from "clsx";
@@ -32,9 +33,155 @@ export default function WeightReport({ athleteId, theme = "light" }: Props) {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
+  // Load-Velocity/Power state
+  const [lvDate, setLvDate] = useState(
+    () => new Date().toISOString().split("T")[0]
+  );
+  const [lvInputs, setLvInputs] = useState<
+    { load: string; velocity: string; power: string }[]
+  >([
+    { load: "", velocity: "", power: "" },
+    { load: "", velocity: "", power: "" },
+    { load: "", velocity: "", power: "" },
+    { load: "", velocity: "", power: "" },
+  ]);
+  const [lvLoading, setLvLoading] = useState(false);
+  const [lvError, setLvError] = useState<string | null>(null);
+
   useEffect(() => {
     fetchWeightRecords();
   }, [athleteId]);
+
+  // Reset inputs when date changes
+  const handleDateChange = (newDate: string) => {
+    setLvDate(newDate);
+    // Reset inputs immediately when date changes
+    setLvInputs([
+      { load: "", velocity: "", power: "" },
+      { load: "", velocity: "", power: "" },
+      { load: "", velocity: "", power: "" },
+      { load: "", velocity: "", power: "" },
+    ]);
+  };
+
+  // Fetch from Supabase on mount or date change
+  useEffect(() => {
+    const fetchLV = async () => {
+      setLvLoading(true);
+      setLvError(null);
+      try {
+        const { data, error } = await supabase
+          .from("load_velocity_power")
+          .select("entries")
+          .eq("athlete_id", athleteId)
+          .single();
+        if (error) {
+          if (error.code === "PGRST116" || error.code === "406") {
+            // No data for this athlete or 406 Not Acceptable: treat as empty
+            setLvInputs([
+              { load: "", velocity: "", power: "" },
+              { load: "", velocity: "", power: "" },
+              { load: "", velocity: "", power: "" },
+              { load: "", velocity: "", power: "" },
+            ]);
+            return;
+          }
+          throw error;
+        }
+        if (data && data.entries) {
+          // Find entry for this date
+          const entry = (data.entries as any[]).find((e) => e.date === lvDate);
+          if (entry) {
+            const loads = entry.loads || [];
+            const velocities = entry.velocities || [];
+            const powers = entry.powers || [];
+            const arr = [0, 1, 2, 3].map((i) => ({
+              load: loads[i] !== undefined ? String(loads[i]) : "",
+              velocity:
+                velocities[i] !== undefined ? String(velocities[i]) : "",
+              power: powers[i] !== undefined ? String(powers[i]) : "",
+            }));
+            setLvInputs(arr);
+          } else {
+            setLvInputs([
+              { load: "", velocity: "", power: "" },
+              { load: "", velocity: "", power: "" },
+              { load: "", velocity: "", power: "" },
+              { load: "", velocity: "", power: "" },
+            ]);
+          }
+        } else {
+          setLvInputs([
+            { load: "", velocity: "", power: "" },
+            { load: "", velocity: "", power: "" },
+            { load: "", velocity: "", power: "" },
+            { load: "", velocity: "", power: "" },
+          ]);
+        }
+      } catch (err) {
+        setLvError("Failed to load Load-Velocity/Power data");
+      } finally {
+        setLvLoading(false);
+      }
+    };
+    if (athleteId && lvDate) fetchLV();
+  }, [athleteId, lvDate]);
+
+  // Save to Supabase on input change
+  useEffect(() => {
+    const saveLV = async () => {
+      if (!athleteId || !lvDate) return;
+      // Only save if at least one value is present
+      const hasAny = lvInputs.some(
+        (row) => row.load || row.velocity || row.power
+      );
+      if (!hasAny) return;
+      setLvLoading(true);
+      setLvError(null);
+      try {
+        // Fetch current entries
+        const { data, error } = await supabase
+          .from("load_velocity_power")
+          .select("entries")
+          .eq("athlete_id", athleteId)
+          .single();
+        let entries = data && data.entries ? [...data.entries] : [];
+        // Remove any entry for this date
+        entries = entries.filter((e: any) => e.date !== lvDate);
+        // Add new/updated entry
+        const loads = lvInputs.map((r) => (r.load ? parseFloat(r.load) : null));
+        const velocities = lvInputs.map((r) =>
+          r.velocity ? parseFloat(r.velocity) : null
+        );
+        const powers = lvInputs.map((r) =>
+          r.power ? parseFloat(r.power) : null
+        );
+        entries.push({ date: lvDate, loads, velocities, powers });
+        // Upsert the row
+        const { error: upsertError } = await supabase
+          .from("load_velocity_power")
+          .upsert([{ athlete_id: athleteId, entries }]);
+        if (upsertError) throw upsertError;
+      } catch (err) {
+        setLvError("Failed to save Load-Velocity/Power data");
+      } finally {
+        setLvLoading(false);
+      }
+    };
+    saveLV();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lvInputs, athleteId, lvDate]);
+
+  // Prepare data for charts
+  const lvData = lvInputs
+    .map((row) => ({
+      load: parseFloat(row.load),
+      velocity: parseFloat(row.velocity),
+      power: parseFloat(row.power),
+    }))
+    .filter(
+      (row) => !isNaN(row.load) && (!isNaN(row.velocity) || !isNaN(row.power))
+    );
 
   const fetchWeightRecords = async () => {
     try {
@@ -88,6 +235,191 @@ export default function WeightReport({ athleteId, theme = "light" }: Props) {
           : "bg-white border border-gray-200"
       )}
     >
+      {/* Load-Velocity/Power Section */}
+      <div className="mb-10">
+        <h2
+          className={clsx(
+            "text-lg font-bold mb-2",
+            theme === "dark" ? "text-white" : "text-gray-900"
+          )}
+        >
+          Load-Velocity & Power Curves
+        </h2>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
+          <label className="font-medium text-sm">Select Date:</label>
+          <input
+            type="date"
+            value={lvDate}
+            onChange={(e) => handleDateChange(e.target.value)}
+            className="px-2 py-1 rounded border text-sm"
+          />
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full mb-4 border rounded-lg">
+            <thead
+              className={theme === "dark" ? "bg-slate-800/50" : "bg-gray-50"}
+            >
+              <tr>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider">
+                  Load (kg)
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider">
+                  Velocity (m/s)
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider">
+                  Power (W)
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {lvInputs.map((row, idx) => (
+                <tr key={idx}>
+                  <td className="px-3 py-2">
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={row.load}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setLvInputs((prev) =>
+                          prev.map((r, i) =>
+                            i === idx ? { ...r, load: v } : r
+                          )
+                        );
+                      }}
+                      className="w-24 px-2 py-1 rounded border text-sm"
+                    />
+                  </td>
+                  <td className="px-3 py-2">
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={row.velocity}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setLvInputs((prev) =>
+                          prev.map((r, i) =>
+                            i === idx ? { ...r, velocity: v } : r
+                          )
+                        );
+                      }}
+                      className="w-24 px-2 py-1 rounded border text-sm"
+                    />
+                  </td>
+                  <td className="px-3 py-2">
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={row.power}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setLvInputs((prev) =>
+                          prev.map((r, i) =>
+                            i === idx ? { ...r, power: v } : r
+                          )
+                        );
+                      }}
+                      className="w-24 px-2 py-1 rounded border text-sm"
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Load-Velocity Chart */}
+          <div className="bg-white rounded-xl shadow p-4 border border-gray-100">
+            <h3 className="font-semibold mb-2 text-blue-700">
+              Load-Velocity Curve
+            </h3>
+            <ResponsiveContainer width="100%" height={260}>
+              <LineChart
+                data={lvData.filter((d) => !isNaN(d.velocity))}
+                margin={{ top: 20, right: 30, left: 10, bottom: 20 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="load"
+                  type="number"
+                  domain={["auto", "auto"]}
+                  tick={{ fontSize: 12 }}
+                  label={{
+                    value: "Load (kg)",
+                    position: "insideBottom",
+                    offset: -5,
+                  }}
+                />
+                <YAxis
+                  type="number"
+                  domain={["auto", "auto"]}
+                  tick={{ fontSize: 12 }}
+                  label={{
+                    value: "Velocity (m/s)",
+                    angle: -90,
+                    position: "insideLeft",
+                  }}
+                />
+                <Tooltip />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="velocity"
+                  stroke="#2563eb"
+                  strokeWidth={2}
+                  dot={{ r: 5 }}
+                  name="Velocity (m/s)"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+          {/* Load-Power Chart */}
+          <div className="bg-white rounded-xl shadow p-4 border border-gray-100">
+            <h3 className="font-semibold mb-2 text-purple-700">
+              Load-Power Curve
+            </h3>
+            <ResponsiveContainer width="100%" height={260}>
+              <LineChart
+                data={lvData.filter((d) => !isNaN(d.power))}
+                margin={{ top: 20, right: 30, left: 10, bottom: 20 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="load"
+                  type="number"
+                  domain={["auto", "auto"]}
+                  tick={{ fontSize: 12 }}
+                  label={{
+                    value: "Load (kg)",
+                    position: "insideBottom",
+                    offset: -5,
+                  }}
+                />
+                <YAxis
+                  type="number"
+                  domain={["auto", "auto"]}
+                  tick={{ fontSize: 12 }}
+                  label={{
+                    value: "Power (W)",
+                    angle: -90,
+                    position: "insideLeft",
+                  }}
+                />
+                <Tooltip />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="power"
+                  stroke="#a21caf"
+                  strokeWidth={2}
+                  dot={{ r: 5 }}
+                  name="Power (W)"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
       <div className="flex items-center gap-4 mb-6">
         <div
           className={clsx(
