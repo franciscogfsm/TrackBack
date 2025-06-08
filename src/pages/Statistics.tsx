@@ -680,6 +680,11 @@ export default function Statistics({ profile }: StatsProps) {
   >({});
   const [allExerciseRecords, setAllExerciseRecords] = useState<any[]>([]);
 
+  // Add a new constant for the current week's end date string
+  const currentWeekEndDateString = currentWeek?.end
+    ? formatDate(currentWeek.end)
+    : "";
+
   // Add a new function to find the most recent week with data
   const findMostRecentWeekWithData = async (athleteId: string) => {
     const today = new Date();
@@ -800,12 +805,7 @@ export default function Statistics({ profile }: StatsProps) {
 
         // Initial stats fetch
         if (athletesData && metricsData && athletesData.length > 0) {
-          await fetchStats(
-            athletesData,
-            metricsData,
-            athletesData[0].id,
-            dateRange
-          );
+          await fetchStats(athletesData, metricsData, athletesData[0].id);
         }
       } catch (error) {
         console.error("Error fetching initial data:", error);
@@ -823,7 +823,7 @@ export default function Statistics({ profile }: StatsProps) {
 
       setLoading(true);
       try {
-        await fetchStats(athletes, metrics, selectedAthlete, dateRange);
+        await fetchStats(athletes, metrics, selectedAthlete);
       } catch (error) {
         console.error("Error fetching stats:", error);
       } finally {
@@ -834,19 +834,17 @@ export default function Statistics({ profile }: StatsProps) {
     fetchData();
   }, [
     selectedAthlete,
-    dateRange.start,
-    dateRange.end,
     profile?.id,
     athletes.length,
     metrics.length,
+    currentWeek,
   ]);
 
   // Update the fetchStats function
   const fetchStats = async (
     athletesList: Profile[],
     metricsList: CustomMetric[],
-    selectedAthleteId: string,
-    range: { start: string; end: string }
+    selectedAthleteId: string
   ) => {
     try {
       setLoading(true);
@@ -854,8 +852,11 @@ export default function Statistics({ profile }: StatsProps) {
       setTrainingLoads([]);
       setTrainingSessions([]);
 
+      // Ensure currentWeek is available before proceeding
+      if (!currentWeek) return;
+
       // Get date 5 weeks before the start date for ACWR calculation
-      const startDate = new Date(range.start);
+      const startDate = new Date(currentWeek.start);
       const fiveWeeksBeforeStart = new Date(startDate);
       fiveWeeksBeforeStart.setDate(fiveWeeksBeforeStart.getDate() - 7 * 5);
       const fiveWeeksBeforeStartStr = fiveWeeksBeforeStart
@@ -868,14 +869,16 @@ export default function Statistics({ profile }: StatsProps) {
         .select("*")
         .eq("athlete_id", selectedAthleteId)
         .gte("date", fiveWeeksBeforeStartStr)
-        .lte("date", range.end)
+        .lte("date", currentWeek.end.toISOString().split("T")[0])
         .order("date");
 
       if (sessionsError) throw sessionsError;
 
       // Filter sessions to only include those within the selected date range for the table
       const displaySessions = (sessions || []).filter(
-        (session) => session.date >= range.start && session.date <= range.end
+        (session) =>
+          session.date >= currentWeek.start.toISOString().split("T")[0] &&
+          session.date <= currentWeek.end.toISOString().split("T")[0]
       );
       setTrainingSessions(displaySessions);
 
@@ -887,81 +890,96 @@ export default function Statistics({ profile }: StatsProps) {
       );
 
       // Only calculate and display training loads if there are sessions in the selected date range
-      if (selectedAthlete && displaySessions.length > 0) {
-        // Calculate loads using all sessions (including historical)
+      if (selectedAthlete && allSessions.length > 0) {
         const loads: AthleteTrainingLoad[] = [];
+        const athleteLoadData: TrainingLoadData[] = [];
 
-        // Calculate weekly loads for the selected date
-        const endDate = new Date(range.end);
-        const weekEndDate = new Date(endDate);
-        const weekStartDate = new Date(weekEndDate);
-        weekStartDate.setDate(weekStartDate.getDate() - 6);
+        // Iterate for the last 5 weeks (or as many as available up to range.start)
+        for (let i = 0; i < 5; i++) {
+          const weekEndDate = new Date(currentWeek.end);
+          weekEndDate.setDate(weekEndDate.getDate() - i * 7);
+          const weekStartDate = new Date(weekEndDate);
+          weekStartDate.setDate(weekStartDate.getDate() - 6);
 
-        const currentWeeklyLoad = getWeeklyLoad(
-          allSessions,
-          weekStartDate,
-          weekEndDate
-        );
+          // Ensure we don't go before the fetched data's earliest date
+          // For simplicity, we'll just calculate based on available sessions.
+          // A more robust solution might fetch more historical data if needed.
 
-        // Calculate previous 4 weeks' loads for chronic load
-        const previousWeeksLoads: number[] = [];
-        for (let i = 1; i <= 4; i++) {
-          const prevWeekEnd = new Date(weekStartDate);
-          prevWeekEnd.setDate(prevWeekEnd.getDate() - 1);
-          const prevWeekStart = new Date(prevWeekEnd);
-          prevWeekStart.setDate(prevWeekStart.getDate() - 6);
-
-          const weekLoad = getWeeklyLoad(
+          const currentWeeklyLoad = getWeeklyLoad(
             allSessions,
-            prevWeekStart,
-            prevWeekEnd
+            weekStartDate,
+            weekEndDate
           );
-          previousWeeksLoads.push(weekLoad);
+
+          // Calculate previous 4 weeks' loads for chronic load relative to this week
+          const previousFourWeeksLoads: number[] = [];
+          for (let j = 1; j <= 4; j++) {
+            const prevWeekEnd = new Date(weekStartDate);
+            prevWeekEnd.setDate(prevWeekEnd.getDate() - 1);
+            const prevWeekStart = new Date(prevWeekEnd);
+            prevWeekStart.setDate(prevWeekStart.getDate() - 6);
+
+            const weekLoad = getWeeklyLoad(
+              allSessions,
+              prevWeekStart,
+              prevWeekEnd
+            );
+            previousFourWeeksLoads.push(weekLoad);
+          }
+
+          const chronicLoad =
+            previousFourWeeksLoads.length > 0
+              ? previousFourWeeksLoads.reduce((sum, load) => sum + load, 0) /
+                previousFourWeeksLoads.length
+              : 0;
+
+          const acwr = chronicLoad > 0 ? currentWeeklyLoad / chronicLoad : 0;
+
+          const dailyLoad = allSessions
+            .filter(
+              (session) =>
+                session.date === weekEndDate.toISOString().split("T")[0]
+            )
+            .reduce((sum, session) => sum + (session.unit_load || 0), 0);
+
+          // Calculate compliance for this specific week's end date (last 28 days from this end date)
+          const complianceEndDate = weekEndDate;
+          const complianceStartDate = new Date(complianceEndDate);
+          complianceStartDate.setDate(complianceStartDate.getDate() - 27);
+
+          const uniqueDates = new Set(
+            allSessions
+              .filter((session) => {
+                const sessionDate = new Date(session.date);
+                return (
+                  sessionDate >= complianceStartDate &&
+                  sessionDate <= complianceEndDate
+                );
+              })
+              .map((session) => session.date)
+          );
+
+          const compliance = (uniqueDates.size / 28) * 100;
+
+          athleteLoadData.push({
+            date: weekEndDate.toISOString().split("T")[0],
+            dailyLoad,
+            weeklyLoad: currentWeeklyLoad,
+            chronicLoad,
+            acwr,
+            compliance,
+          });
         }
 
-        // Calculate chronic load (average of previous 4 weeks)
-        const chronicLoad =
-          previousWeeksLoads.length > 0
-            ? previousWeeksLoads.reduce((sum, load) => sum + load, 0) /
-              previousWeeksLoads.length
-            : 0;
-
-        // Calculate ACWR
-        const acwr = chronicLoad > 0 ? currentWeeklyLoad / chronicLoad : 0;
-
-        // Get daily load (from the end date)
-        const dailyLoad = displaySessions
-          .filter((session) => session.date === range.end)
-          .reduce((sum, session) => sum + (session.unit_load || 0), 0);
-
-        // Calculate compliance (number of days with sessions in the last 28 days)
-        const uniqueDates = new Set(
-          allSessions
-            .filter((session) => {
-              const sessionDate = new Date(session.date);
-              const fourWeeksAgo = new Date(endDate);
-              fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 27);
-              return sessionDate >= fourWeeksAgo && sessionDate <= endDate;
-            })
-            .map((session) => session.date)
+        // Sort the data by date in ascending order for the chart
+        athleteLoadData.sort(
+          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
         );
 
-        const compliance = (uniqueDates.size / 28) * 100;
-
-        // Create the load data entry
         loads.push({
           athleteId: selectedAthlete.id,
           name: selectedAthlete.full_name,
-          data: [
-            {
-              date: range.end,
-              dailyLoad,
-              weeklyLoad: currentWeeklyLoad,
-              chronicLoad,
-              acwr,
-              compliance,
-            },
-          ],
+          data: athleteLoadData,
         });
 
         setTrainingLoads(loads);
@@ -972,8 +990,8 @@ export default function Statistics({ profile }: StatsProps) {
         .from("metric_responses")
         .select("*")
         .eq("athlete_id", selectedAthleteId)
-        .gte("date", range.start)
-        .lte("date", range.end)
+        .gte("date", currentWeek.start.toISOString().split("T")[0])
+        .lte("date", currentWeek.end.toISOString().split("T")[0])
         .order("date");
 
       if (responsesError) throw responsesError;
@@ -1336,127 +1354,154 @@ export default function Statistics({ profile }: StatsProps) {
             </h2>
 
             {trainingLoads.length > 0 ? (
-              trainingLoads.map((athleteLoad) => (
-                <div key={athleteLoad.athleteId} className="mb-8 last:mb-0">
-                  <h3 className="text-md font-medium text-gray-900 mb-4">
-                    {athleteLoad.name}
-                  </h3>
+              trainingLoads.map((athleteLoad) => {
+                // Debugging logs
+                console.log(
+                  "currentWeekEndDateString:",
+                  currentWeekEndDateString
+                );
+                console.log(
+                  "athleteLoad.data dates:",
+                  athleteLoad.data.map((d) => d.date)
+                );
+                const currentWeekData = athleteLoad.data.find(
+                  (d) => d.date === currentWeekEndDateString
+                );
+                console.log("Found currentWeekData:", currentWeekData);
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <h4 className="text-sm font-medium text-gray-500">
-                        Daily Load
-                      </h4>
-                      <p className="text-2xl font-semibold text-gray-900">
-                        {athleteLoad.data[0]?.dailyLoad.toFixed(0)}
-                      </p>
+                return (
+                  <div key={athleteLoad.athleteId} className="mb-8 last:mb-0">
+                    <h3 className="text-md font-medium text-gray-900 mb-4">
+                      {athleteLoad.name}
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                      {/* Remove Daily Load Card */}
+                      {/*
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <h4 className="text-sm font-medium text-gray-500">
+                          Daily Load
+                        </h4>
+                        <p className="text-2xl font-semibold text-gray-900">
+                          {athleteLoad.data.find(d => d.date === currentWeekEndDateString)?.dailyLoad.toFixed(0) || 0}
+                        </p>
+                      </div>
+                      */}
+
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <h4 className="text-sm font-medium text-gray-500">
+                          Weekly Load
+                        </h4>
+                        <p className="text-2xl font-semibold text-gray-900">
+                          {athleteLoad.data
+                            .find((d) => d.date === currentWeekEndDateString)
+                            ?.weeklyLoad.toFixed(0) || 0}
+                        </p>
+                      </div>
+
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <h4 className="text-sm font-medium text-gray-500">
+                          Chronic Load
+                        </h4>
+                        <p className="text-2xl font-semibold text-gray-900">
+                          {athleteLoad.data
+                            .find((d) => d.date === currentWeekEndDateString)
+                            ?.chronicLoad.toFixed(0) || 0}
+                        </p>
+                      </div>
+
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <h4 className="text-sm font-medium text-gray-500">
+                          ACWR
+                        </h4>
+                        <p
+                          className={`text-2xl font-semibold ${getACWRColor(
+                            athleteLoad.data.find(
+                              (d) => d.date === currentWeekEndDateString
+                            )?.acwr || 0
+                          )}`}
+                        >
+                          {athleteLoad.data
+                            .find((d) => d.date === currentWeekEndDateString)
+                            ?.acwr.toFixed(2) || "0.00"}
+                        </p>
+                      </div>
                     </div>
 
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <h4 className="text-sm font-medium text-gray-500">
-                        Weekly Load
+                    {/* ACWR Chart */}
+                    <div className="mt-4">
+                      <h4 className="text-sm font-medium text-gray-500 mb-2">
+                        ACWR Trend
                       </h4>
-                      <p className="text-2xl font-semibold text-gray-900">
-                        {athleteLoad.data[0]?.weeklyLoad.toFixed(0)}
-                      </p>
-                    </div>
-
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <h4 className="text-sm font-medium text-gray-500">
-                        Chronic Load
-                      </h4>
-                      <p className="text-2xl font-semibold text-gray-900">
-                        {athleteLoad.data[0]?.chronicLoad.toFixed(0)}
-                      </p>
-                    </div>
-
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <h4 className="text-sm font-medium text-gray-500">
-                        ACWR
-                      </h4>
-                      <p
-                        className={`text-2xl font-semibold ${getACWRColor(
-                          athleteLoad.data[0]?.acwr || 0
-                        )}`}
-                      >
-                        {athleteLoad.data[0]?.acwr.toFixed(2)}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* ACWR Chart */}
-                  <div className="mt-4">
-                    <h4 className="text-sm font-medium text-gray-500 mb-2">
-                      ACWR Trend
-                    </h4>
-                    <div className="h-64">
-                      <Line
-                        data={{
-                          labels: [athleteLoad.data[0]?.date],
-                          datasets: [
-                            {
-                              label: "ACWR",
-                              data: [athleteLoad.data[0]?.acwr],
-                              borderColor: "rgb(79, 70, 229)",
-                              tension: 0.4,
+                      <div className="h-64">
+                        <Line
+                          data={{
+                            labels: athleteLoad.data.map((d) => d.date),
+                            datasets: [
+                              {
+                                label: "ACWR",
+                                data: athleteLoad.data.map((d) => d.acwr),
+                                borderColor: "rgb(79, 70, 229)",
+                                tension: 0.4,
+                              },
+                            ],
+                          }}
+                          options={{
+                            maintainAspectRatio: false,
+                            scales: {
+                              y: {
+                                beginAtZero: true,
+                                max: 2,
+                              },
                             },
-                          ],
-                        }}
-                        options={{
-                          maintainAspectRatio: false,
-                          scales: {
-                            y: {
-                              beginAtZero: true,
-                              max: 2,
-                            },
-                          },
-                          plugins: {
-                            annotation: {
-                              annotations: {
-                                greenZone: {
-                                  type: "box",
-                                  yMin: 0.8,
-                                  yMax: 1.3,
-                                  backgroundColor: "rgba(34, 197, 94, 0.1)",
-                                  borderWidth: 0,
-                                },
-                                yellowZone1: {
-                                  type: "box",
-                                  yMin: 0.6,
-                                  yMax: 0.8,
-                                  backgroundColor: "rgba(234, 179, 8, 0.1)",
-                                  borderWidth: 0,
-                                },
-                                yellowZone2: {
-                                  type: "box",
-                                  yMin: 1.3,
-                                  yMax: 1.5,
-                                  backgroundColor: "rgba(234, 179, 8, 0.1)",
-                                  borderWidth: 0,
-                                },
-                                redZone1: {
-                                  type: "box",
-                                  yMin: 0,
-                                  yMax: 0.6,
-                                  backgroundColor: "rgba(239, 68, 68, 0.1)",
-                                  borderWidth: 0,
-                                },
-                                redZone2: {
-                                  type: "box",
-                                  yMin: 1.5,
-                                  yMax: 2,
-                                  backgroundColor: "rgba(239, 68, 68, 0.1)",
-                                  borderWidth: 0,
+                            plugins: {
+                              annotation: {
+                                annotations: {
+                                  greenZone: {
+                                    type: "box",
+                                    yMin: 0.8,
+                                    yMax: 1.3,
+                                    backgroundColor: "rgba(34, 197, 94, 0.1)",
+                                    borderWidth: 0,
+                                  },
+                                  yellowZone1: {
+                                    type: "box",
+                                    yMin: 0.6,
+                                    yMax: 0.8,
+                                    backgroundColor: "rgba(234, 179, 8, 0.1)",
+                                    borderWidth: 0,
+                                  },
+                                  yellowZone2: {
+                                    type: "box",
+                                    yMin: 1.3,
+                                    yMax: 1.5,
+                                    backgroundColor: "rgba(234, 179, 8, 0.1)",
+                                    borderWidth: 0,
+                                  },
+                                  redZone1: {
+                                    type: "box",
+                                    yMin: 0,
+                                    yMax: 0.6,
+                                    backgroundColor: "rgba(239, 68, 68, 0.1)",
+                                    borderWidth: 0,
+                                  },
+                                  redZone2: {
+                                    type: "box",
+                                    yMin: 1.5,
+                                    yMax: 2,
+                                    backgroundColor: "rgba(239, 68, 68, 0.1)",
+                                    borderWidth: 0,
+                                  },
                                 },
                               },
                             },
-                          },
-                        }}
-                      />
+                          }}
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             ) : (
               <div className="text-center py-8">
                 <p className="text-gray-500">

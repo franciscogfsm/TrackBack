@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, Fragment } from "react";
 import { supabase } from "../lib/supabase";
 import type { WeightRecord } from "../lib/database.types";
 import {
@@ -47,6 +47,11 @@ export default function WeightReport({ athleteId, theme = "light" }: Props) {
   ]);
   const [lvLoading, setLvLoading] = useState(false);
   const [lvError, setLvError] = useState<string | null>(null);
+
+  const [compareDates, setCompareDates] = useState<string[]>([]);
+  const [showCompare, setShowCompare] = useState(false);
+  const [allEntries, setAllEntries] = useState<any[]>([]);
+  const [compareDropdownOpen, setCompareDropdownOpen] = useState(false);
 
   useEffect(() => {
     fetchWeightRecords();
@@ -226,6 +231,44 @@ export default function WeightReport({ athleteId, theme = "light" }: Props) {
     return true;
   });
 
+  // Fetch all entries for this athlete on mount
+  useEffect(() => {
+    const fetchAll = async () => {
+      const { data, error } = await supabase
+        .from("load_velocity_power")
+        .select("entries")
+        .eq("athlete_id", athleteId)
+        .single();
+      if (data && data.entries) setAllEntries(data.entries);
+      else setAllEntries([]);
+    };
+    if (athleteId) fetchAll();
+  }, [athleteId]);
+
+  // Prepare comparison data
+  const compareData = useMemo(() => {
+    if (!showCompare || compareDates.length === 0) return [];
+    return compareDates
+      .map((date) => {
+        const entry = allEntries.find((e) => e.date === date);
+        if (!entry) return null;
+        return {
+          date,
+          lvData: [0, 1, 2, 3]
+            .map((i) => ({
+              load: entry.loads?.[i],
+              velocity: entry.velocities?.[i],
+              power: entry.powers?.[i],
+            }))
+            .filter(
+              (row) =>
+                !isNaN(row.load) && (!isNaN(row.velocity) || !isNaN(row.power))
+            ),
+        };
+      })
+      .filter(Boolean);
+  }, [showCompare, compareDates, allEntries]);
+
   return (
     <div
       className={clsx(
@@ -235,6 +278,92 @@ export default function WeightReport({ athleteId, theme = "light" }: Props) {
           : "bg-white border border-gray-200"
       )}
     >
+      {/* Compare UI - custom multi-select dropdown */}
+      <div className="mb-4 relative">
+        <label className="font-medium text-sm mr-2">Compare Dates:</label>
+        <div className="inline-block relative">
+          <button
+            type="button"
+            className="px-3 py-1.5 border rounded bg-white shadow-sm text-sm min-w-[140px] text-left"
+            onClick={() => setCompareDropdownOpen((v) => !v)}
+          >
+            {compareDates.length > 0
+              ? compareDates.join(", ")
+              : "Select dates..."}
+            <span className="ml-2">▼</span>
+          </button>
+          {compareDropdownOpen && (
+            <div className="absolute z-10 mt-1 bg-white border rounded shadow-lg min-w-[180px] max-h-48 overflow-y-auto">
+              {allEntries.length === 0 && (
+                <div className="px-4 py-2 text-gray-400 text-sm">
+                  No dates available
+                </div>
+              )}
+              {allEntries.map((entry) => (
+                <label
+                  key={entry.date}
+                  className="flex items-center px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm"
+                >
+                  <input
+                    type="checkbox"
+                    checked={compareDates.includes(entry.date)}
+                    onChange={() => {
+                      setCompareDates((prev) =>
+                        prev.includes(entry.date)
+                          ? prev.filter((d) => d !== entry.date)
+                          : [...prev, entry.date]
+                      );
+                    }}
+                    className="mr-2"
+                  />
+                  {entry.date}
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+        {/* Show selected dates as chips */}
+        <div className="inline-flex flex-wrap gap-2 ml-3 align-middle">
+          {compareDates.map((date) => (
+            <span
+              key={date}
+              className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs flex items-center gap-1"
+            >
+              {date}
+              <button
+                type="button"
+                className="ml-1 text-blue-500 hover:text-blue-700"
+                onClick={() =>
+                  setCompareDates((prev) => prev.filter((d) => d !== date))
+                }
+                aria-label={`Remove ${date}`}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+        {/* Compare/Cancel buttons */}
+        {showCompare ? (
+          <button
+            className="ml-4 px-3 py-1 rounded bg-gray-300 text-gray-700 text-sm font-medium"
+            onClick={() => {
+              setShowCompare(false);
+              setCompareDates([]);
+            }}
+          >
+            Cancel Compare
+          </button>
+        ) : (
+          <button
+            className="ml-4 px-3 py-1 rounded bg-blue-600 text-white text-sm font-medium disabled:opacity-50"
+            onClick={() => setShowCompare(true)}
+            disabled={compareDates.length < 2}
+          >
+            Compare
+          </button>
+        )}
+      </div>
       {/* Load-Velocity/Power Section */}
       <div className="mb-10">
         <h2
@@ -335,7 +464,11 @@ export default function WeightReport({ athleteId, theme = "light" }: Props) {
             </h3>
             <ResponsiveContainer width="100%" height={260}>
               <LineChart
-                data={lvData.filter((d) => !isNaN(d.velocity))}
+                data={
+                  showCompare
+                    ? undefined
+                    : lvData.filter((d) => !isNaN(d.velocity))
+                }
                 margin={{ top: 20, right: 30, left: 10, bottom: 20 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />
@@ -362,14 +495,33 @@ export default function WeightReport({ athleteId, theme = "light" }: Props) {
                 />
                 <Tooltip />
                 <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="velocity"
-                  stroke="#2563eb"
-                  strokeWidth={2}
-                  dot={{ r: 5 }}
-                  name="Velocity (m/s)"
-                />
+                {showCompare ? (
+                  compareData.map((d, idx) =>
+                    d ? (
+                      <Line
+                        key={d.date}
+                        type="monotone"
+                        data={d.lvData.filter((row) => !isNaN(row.velocity))}
+                        dataKey="velocity"
+                        stroke={
+                          ["#2563eb", "#f59e42", "#10b981", "#a21caf"][idx % 4]
+                        }
+                        strokeWidth={2}
+                        dot={{ r: 5 }}
+                        name={d.date}
+                      />
+                    ) : null
+                  )
+                ) : (
+                  <Line
+                    type="monotone"
+                    dataKey="velocity"
+                    stroke="#2563eb"
+                    strokeWidth={2}
+                    dot={{ r: 5 }}
+                    name="Velocity (m/s)"
+                  />
+                )}
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -380,7 +532,11 @@ export default function WeightReport({ athleteId, theme = "light" }: Props) {
             </h3>
             <ResponsiveContainer width="100%" height={260}>
               <LineChart
-                data={lvData.filter((d) => !isNaN(d.power))}
+                data={
+                  showCompare
+                    ? undefined
+                    : lvData.filter((d) => !isNaN(d.power))
+                }
                 margin={{ top: 20, right: 30, left: 10, bottom: 20 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />
@@ -407,14 +563,33 @@ export default function WeightReport({ athleteId, theme = "light" }: Props) {
                 />
                 <Tooltip />
                 <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="power"
-                  stroke="#a21caf"
-                  strokeWidth={2}
-                  dot={{ r: 5 }}
-                  name="Power (W)"
-                />
+                {showCompare ? (
+                  compareData.map((d, idx) =>
+                    d ? (
+                      <Line
+                        key={d.date}
+                        type="monotone"
+                        data={d.lvData.filter((row) => !isNaN(row.power))}
+                        dataKey="power"
+                        stroke={
+                          ["#a21caf", "#f59e42", "#10b981", "#2563eb"][idx % 4]
+                        }
+                        strokeWidth={2}
+                        dot={{ r: 5 }}
+                        name={d.date}
+                      />
+                    ) : null
+                  )
+                ) : (
+                  <Line
+                    type="monotone"
+                    dataKey="power"
+                    stroke="#a21caf"
+                    strokeWidth={2}
+                    dot={{ r: 5 }}
+                    name="Power (W)"
+                  />
+                )}
               </LineChart>
             </ResponsiveContainer>
           </div>
