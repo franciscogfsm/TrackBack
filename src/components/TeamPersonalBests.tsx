@@ -40,13 +40,57 @@ export default function TeamPersonalBests({
     let isMounted = true;
     const fetchData = async () => {
       setLoading(true);
-      // Fetch all athletes under this manager
+
+      // First, get the current athlete's group_id
+      const { data: currentAthleteData } = await supabase
+        .from("profiles")
+        .select("group_id")
+        .eq("id", currentAthlete.id)
+        .single();
+
+      if (!isMounted) return;
+
+      // If athlete has no group, show only themselves
+      if (!currentAthleteData?.group_id) {
+        setAthletes([
+          {
+            id: currentAthlete.id,
+            full_name: currentAthlete.full_name,
+            avatar_url: currentAthlete.avatar_url || "",
+            email: "",
+            role: "athlete",
+            manager_id: managerId,
+            group_id: null,
+            created_at: "",
+            updated_at: "",
+          },
+        ]);
+
+        // Fetch personal records for just this athlete
+        const { data: recordData } = await supabase
+          .from("personal_records")
+          .select("id, athlete_id, exercise, weight, record_date, video_url")
+          .eq("athlete_id", currentAthlete.id);
+
+        if (!isMounted) return;
+        setRecords(recordData || []);
+
+        if (!selectedExercise && recordData && recordData.length > 0) {
+          setSelectedExercise(recordData[0].exercise);
+        }
+        setLoading(false);
+        return;
+      }
+
+      // Fetch all athletes in the same group
       const { data: athleteData } = await supabase
         .from("profiles")
         .select("id, full_name, avatar_url")
-        .eq("manager_id", managerId)
+        .eq("group_id", currentAthleteData.group_id)
         .eq("role", "athlete");
+
       if (!isMounted) return;
+
       setAthletes(
         (athleteData || []).map((a: any) => ({
           id: a.id,
@@ -55,11 +99,13 @@ export default function TeamPersonalBests({
           email: "",
           role: "athlete",
           manager_id: managerId,
+          group_id: currentAthleteData.group_id,
           created_at: "",
           updated_at: "",
         }))
       );
-      // Fetch all personal records for these athletes
+
+      // Fetch all personal records for athletes in the same group
       const athleteIds = (athleteData || []).map((a: any) => a.id);
       if (athleteIds.length > 0) {
         const { data: recordData } = await supabase
@@ -79,7 +125,7 @@ export default function TeamPersonalBests({
     return () => {
       isMounted = false;
     };
-  }, [managerId]);
+  }, [managerId, currentAthlete.id]);
 
   // Calculate points for each athlete
   useEffect(() => {
@@ -184,7 +230,7 @@ export default function TeamPersonalBests({
         <div className="p-6 border-b border-gray-100">
           <div className="flex items-center gap-2 mb-2 animate-fade-in">
             <h3 className="text-lg font-semibold text-yellow-700">
-              Team Leaderboard
+              Group Leaderboard
             </h3>
             <span className="text-xl align-middle" role="img" aria-label="fire">
               🔥

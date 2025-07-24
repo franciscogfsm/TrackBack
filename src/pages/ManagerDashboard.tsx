@@ -48,6 +48,7 @@ import AthletesInsights from "../components/AthletesInsights";
 import type { PerformanceData } from "../services/aiInsights";
 import { useTheme } from "../components/ThemeProvider";
 import PersonalRecordsTable from "../components/PersonalRecordsTable";
+import GroupsManagement from "../components/GroupsManagement";
 import PersonalRecordsChart from "../components/PersonalRecordsChart";
 import TeamPersonalBests from "../components/TeamPersonalBests";
 import TrainingProgramManager from "../components/TrainingProgramManager";
@@ -611,9 +612,9 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
   const [prRefreshKey, setPRRefreshKey] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   // Add state for tab selection
-  const [athleteTab, setAthleteTab] = useState<"athletes" | "invite">(
-    "athletes"
-  );
+  const [athleteTab, setAthleteTab] = useState<
+    "athletes" | "invite" | "groups"
+  >("athletes");
   const [insightsMetricResponses, setInsightsMetricResponses] = useState<
     MetricResponseWithDetails[]
   >([]);
@@ -1104,6 +1105,25 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
       setInvitations(transformedInvitations);
     } catch (error) {
       console.error("Unexpected error in fetchInvitations:", error);
+    }
+  };
+
+  const fetchAthletes = async () => {
+    try {
+      const { data: athletesData, error: athletesError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("manager_id", profile.id)
+        .eq("role", "athlete");
+
+      if (athletesError) {
+        console.error("Error fetching athletes:", athletesError);
+        return;
+      }
+
+      setAthletes(athletesData || []);
+    } catch (error) {
+      console.error("Error in fetchAthletes:", error);
     }
   };
 
@@ -2125,10 +2145,10 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
         >
           {/* Responsive horizontal pill tab bar */}
           <div className="flex justify-center mt-4 mb-2">
-            <div className="flex flex-row gap-2 max-w-xl w-full rounded-lg shadow bg-white border border-gray-200 p-1">
+            <div className="flex flex-row gap-2 max-w-4xl w-full rounded-lg shadow bg-white border border-gray-200 p-1">
               <button
                 className={clsx(
-                  "flex-1 px-6 py-1.5 text-base font-medium rounded-lg transition-all duration-200 whitespace-nowrap focus:outline-none",
+                  "flex-1 px-4 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 whitespace-nowrap focus:outline-none",
                   athleteTab === "athletes"
                     ? "bg-blue-600 text-white shadow"
                     : "bg-blue-50 text-blue-700"
@@ -2140,7 +2160,19 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
               </button>
               <button
                 className={clsx(
-                  "flex-1 px-6 py-1.5 text-base font-medium rounded-lg transition-all duration-200 whitespace-nowrap focus:outline-none",
+                  "flex-1 px-4 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 whitespace-nowrap focus:outline-none",
+                  athleteTab === "groups"
+                    ? "bg-blue-600 text-white shadow"
+                    : "bg-blue-50 text-blue-700"
+                )}
+                data-active={athleteTab === "groups"}
+                onClick={() => setAthleteTab("groups")}
+              >
+                <Users className="h-4 w-4 inline-block mr-1" /> Groups
+              </button>
+              <button
+                className={clsx(
+                  "flex-1 px-4 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 whitespace-nowrap focus:outline-none",
                   athleteTab === "invite"
                     ? "bg-blue-600 text-white shadow"
                     : "bg-blue-50 text-blue-700"
@@ -2149,7 +2181,6 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
                 onClick={() => setAthleteTab("invite")}
               >
                 <UserPlus className="h-4 w-4 inline-block mr-1" /> Invite
-                Athlete
               </button>
             </div>
           </div>
@@ -2257,6 +2288,17 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
               managerId={profile.id}
             />
           )}
+          {athleteTab === "groups" && (
+            <div className="p-6">
+              <GroupsManagement
+                managerId={profile.id}
+                onGroupsUpdate={() => {
+                  // Only refresh athletes list, not the entire page
+                  fetchAthletes();
+                }}
+              />
+            </div>
+          )}
         </div>
 
         {/* Active Invitations Section */}
@@ -2287,10 +2329,16 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
                 <div>
                   <h2
                     className={clsx(
-                      "text-lg font-semibold",
+                      "text-lg font-semibold mb-4 flex items-center gap-2",
                       theme === "dark" ? "text-white" : "text-gray-900"
                     )}
                   >
+                    <Info
+                      className={clsx(
+                        "w-5 h-5",
+                        theme === "dark" ? "text-blue-400" : "text-blue-500"
+                      )}
+                    />
                     Active Invitations
                   </h2>
                   <p
@@ -2452,13 +2500,9 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
                             <span
                               className={clsx(
                                 "px-2 py-1 rounded-full text-xs font-medium",
-                                new Date(invitation.expires_at) > new Date()
-                                  ? theme === "dark"
-                                    ? "bg-emerald-500/10 text-emerald-400"
-                                    : "bg-emerald-100 text-emerald-800"
-                                  : theme === "dark"
-                                  ? "bg-red-500/10 text-red-400"
-                                  : "bg-red-100 text-red-800"
+                                theme === "dark"
+                                  ? "bg-emerald-500/10 text-emerald-400"
+                                  : "bg-emerald-100 text-emerald-800"
                               )}
                             >
                               {new Date(invitation.expires_at) > new Date()
@@ -3157,8 +3201,8 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
                   className={clsx(
                     "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200",
                     theme === "dark"
-                      ? "bg-gradient-to-br from-violet-500 via-purple-500 to-violet-600 shadow-lg shadow-violet-500/20"
-                      : "bg-gradient-to-br from-violet-600 via-purple-600 to-violet-700 shadow-lg shadow-violet-600/20"
+                      ? "bg-gradient-to-br from-blue-500 via-indigo-500 to-blue-600 shadow-lg shadow-blue-500/20"
+                      : "bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-700 shadow-lg shadow-blue-600/20"
                   )}
                 >
                   <span className="text-xl font-bold text-white tracking-wide transform -translate-y-px">

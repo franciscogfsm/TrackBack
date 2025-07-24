@@ -67,6 +67,35 @@ export interface Database {
           created_at?: string;
         };
       };
+      athlete_groups: {
+        Row: {
+          id: string;
+          manager_id: string;
+          name: string;
+          description: string | null;
+          color: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          manager_id: string;
+          name: string;
+          description?: string | null;
+          color?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          manager_id?: string;
+          name?: string;
+          description?: string | null;
+          color?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
       daily_form_status: {
         Row: {
           id: string;
@@ -105,6 +134,7 @@ export interface Database {
           manager_id: string | null;
           email: string;
           avatar_url: string | null;
+          group_id: string | null;
         };
         Insert: {
           id: string;
@@ -114,6 +144,7 @@ export interface Database {
           manager_id?: string | null;
           email: string;
           avatar_url?: string | null;
+          group_id?: string | null;
         };
         Update: {
           id?: string;
@@ -123,6 +154,7 @@ export interface Database {
           manager_id?: string | null;
           email?: string;
           avatar_url?: string | null;
+          group_id?: string | null;
         };
       };
       manager_invitations: {
@@ -229,6 +261,17 @@ export interface Profile {
   avatar_url: string | null;
   role: "manager" | "athlete";
   manager_id: string | null;
+  group_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AthleteGroup {
+  id: string;
+  manager_id: string;
+  name: string;
+  description: string | null;
+  color: string;
   created_at: string;
   updated_at: string;
 }
