@@ -51,65 +51,82 @@ export default function GroupsManagement({
   }, [managerId]);
 
   const fetchGroups = async () => {
-    const { data, error } = await supabase
-      .from("athlete_groups")
-      .select("*")
-      .eq("manager_id", managerId)
-      .order("created_at", { ascending: true });
+    try {
+      const { data, error } = await supabase
+        .from("athlete_groups")
+        .select("*")
+        .eq("manager_id", managerId)
+        .order("created_at", { ascending: true });
 
-    if (!error && data) {
-      setGroups(data);
+      if (error) {
+        console.error("Error fetching groups:", error);
+        return;
+      }
+
+      if (data) {
+        setGroups(data);
+      }
+    } catch (error) {
+      console.error("Unexpected error in fetchGroups:", error);
     }
   };
 
   const fetchAthletes = async () => {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("manager_id", managerId)
-      .eq("role", "athlete")
-      .order("full_name", { ascending: true });
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("manager_id", managerId)
+        .eq("role", "athlete")
+        .order("full_name", { ascending: true });
 
-    if (!error && data) {
-      setAthletes(data);
+      if (error) {
+        console.error("Error fetching athletes:", error);
+        return;
+      }
+
+      if (data) {
+        setAthletes(data);
+      }
+    } catch (error) {
+      console.error("Unexpected error in fetchAthletes:", error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const showNotification = (type: "success" | "error", message: string) => {
     setNotification({ type, message });
+    // Clear any existing timeout
+    const timeoutId = setTimeout(() => {
+      setNotification(null);
+    }, 3000);
 
-    // Auto-hide after 4 seconds with a smooth fade out
-    setTimeout(() => {
-      const notificationEl = document.querySelector("[data-notification]");
-      if (notificationEl) {
-        notificationEl.classList.remove("notification-enter");
-        notificationEl.classList.add("notification-exit");
-
-        // Remove from state after exit animation completes
-        setTimeout(() => setNotification(null), 200);
-      }
-    }, 4000);
+    return () => clearTimeout(timeoutId);
   };
 
   const handleCreateGroup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newGroup.name.trim()) return;
 
-    const { data, error } = await supabase
-      .from("athlete_groups")
-      .insert({
-        manager_id: managerId,
-        name: newGroup.name.trim(),
-        description: newGroup.description.trim() || null,
-        color: newGroup.color,
-      })
-      .select()
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from("athlete_groups")
+        .insert({
+          manager_id: managerId,
+          name: newGroup.name.trim(),
+          description: newGroup.description.trim() || null,
+          color: newGroup.color,
+        })
+        .select()
+        .single();
 
-    if (error) {
-      showNotification("error", "Failed to create group");
-    } else {
+      if (error) {
+        console.error("Error creating group:", error);
+        showNotification("error", "Failed to create group");
+        return;
+      }
+
       showNotification("success", "Group created successfully");
 
       // Update state directly instead of refetching
@@ -117,7 +134,16 @@ export default function GroupsManagement({
 
       setNewGroup({ name: "", description: "", color: GROUP_COLORS[0] });
       setShowCreateModal(false);
-      onGroupsUpdate?.();
+
+      // Call onGroupsUpdate safely
+      try {
+        onGroupsUpdate?.();
+      } catch (updateError) {
+        console.error("Error in onGroupsUpdate callback:", updateError);
+      }
+    } catch (error) {
+      console.error("Unexpected error in handleCreateGroup:", error);
+      showNotification("error", "An unexpected error occurred");
     }
   };
 
@@ -271,11 +297,13 @@ export default function GroupsManagement({
   };
 
   const getGroupAthletes = (groupId: string) => {
-    return athletes.filter((athlete) => athlete.group_id === groupId);
+    if (!Array.isArray(athletes) || !groupId) return [];
+    return athletes.filter((athlete) => athlete?.group_id === groupId);
   };
 
   const getUngroupedAthletes = () => {
-    return athletes.filter((athlete) => !athlete.group_id);
+    if (!Array.isArray(athletes)) return [];
+    return athletes.filter((athlete) => !athlete?.group_id);
   };
 
   if (loading) {
@@ -284,96 +312,61 @@ export default function GroupsManagement({
     );
   }
 
+  // Safety check
+  if (!managerId) {
+    return (
+      <div className="py-8 text-center text-red-500">
+        Error: Manager ID is required
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Notification */}
       {notification && (
         <div
-          data-notification
           className={clsx(
-            "fixed top-4 right-4 z-50 px-6 py-4 rounded-2xl shadow-xl backdrop-blur-sm border transition-all duration-300 transform",
-            "max-w-sm w-full sm:w-auto min-w-[300px] notification-enter hover:scale-105 cursor-pointer",
+            "fixed top-6 right-6 z-50 px-6 py-4 rounded-xl shadow-2xl border transition-all duration-500 transform",
+            "animate-in slide-in-from-right-5 fade-in-0",
             notification.type === "success"
-              ? "bg-white/95 border-green-200 text-green-800 shadow-green-100 hover:shadow-green-200"
-              : "bg-white/95 border-red-200 text-red-800 shadow-red-100 hover:shadow-red-200"
+              ? "bg-gradient-to-r from-green-500 to-green-600 text-white border-green-400 shadow-green-500/25"
+              : "bg-gradient-to-r from-red-500 to-red-600 text-white border-red-400 shadow-red-500/25"
           )}
-          onClick={() => {
-            const el = document.querySelector("[data-notification]");
-            if (el) {
-              el.classList.add("notification-exit");
-              setTimeout(() => setNotification(null), 200);
-            }
-          }}
         >
           <div className="flex items-center gap-3">
-            <div
-              className={clsx(
-                "flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center",
-                notification.type === "success"
-                  ? "bg-green-100 text-green-600"
-                  : "bg-red-100 text-red-600"
-              )}
-            >
+            <div className="flex-shrink-0">
               {notification.type === "success" ? (
                 <svg
-                  className="w-4 h-4"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
                 >
                   <path
-                    fillRule="evenodd"
-                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                    clipRule="evenodd"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
                   />
                 </svg>
               ) : (
                 <svg
-                  className="w-4 h-4"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
                 >
                   <path
-                    fillRule="evenodd"
-                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                    clipRule="evenodd"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
                   />
                 </svg>
               )}
             </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium">{notification.message}</p>
-            </div>
-            <button
-              onClick={() => setNotification(null)}
-              className={clsx(
-                "flex-shrink-0 p-1 rounded-lg transition-colors",
-                notification.type === "success"
-                  ? "hover:bg-green-50 text-green-400 hover:text-green-600"
-                  : "hover:bg-red-50 text-red-400 hover:text-red-600"
-              )}
-            >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path
-                  fillRule="evenodd"
-                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </button>
-          </div>
-
-          {/* Progress bar for auto-dismiss */}
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-100 rounded-b-2xl overflow-hidden">
-            <div
-              className={clsx(
-                "h-full w-full origin-left",
-                notification.type === "success" ? "bg-green-400" : "bg-red-400"
-              )}
-              style={{
-                transform: "scaleX(1)",
-                animation: "progress-shrink 4s linear forwards",
-              }}
-            />
+            <div className="font-medium text-sm">{notification.message}</div>
           </div>
         </div>
       )}
@@ -392,81 +385,92 @@ export default function GroupsManagement({
 
       {/* Groups List */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {groups.map((group) => {
-          const groupAthletes = getGroupAthletes(group.id);
-          return (
-            <div
-              key={group.id}
-              className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden transition-all duration-200 hover:shadow-md hover:border-gray-300"
-            >
-              <div className="h-3" style={{ backgroundColor: group.color }} />
-              <div className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      {group.name}
-                    </h3>
-                    {group.description && (
-                      <p className="text-sm text-gray-600 mt-1">
-                        {group.description}
-                      </p>
+        {Array.isArray(groups) && groups.length > 0 ? (
+          groups.map((group) => {
+            if (!group || !group.id) return null;
+            const groupAthletes = getGroupAthletes(group.id);
+            return (
+              <div
+                key={group.id}
+                className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden transition-all duration-200 hover:shadow-md hover:border-gray-300"
+              >
+                <div
+                  className="h-3"
+                  style={{ backgroundColor: group.color || "#3B82F6" }}
+                />
+                <div className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {group.name || "Unnamed Group"}
+                      </h3>
+                      {group.description && (
+                        <p className="text-sm text-gray-600 mt-1">
+                          {group.description}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => openEditModal(group)}
+                        className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteGroup(group.id)}
+                        className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Users className="h-4 w-4" />
+                      {groupAthletes.length} athletes
+                    </div>
+                    <button
+                      onClick={() => setShowManageModal(group)}
+                      className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                    >
+                      Manage Athletes
+                    </button>
+                  </div>
+
+                  {/* Athletes Preview */}
+                  <div className="space-y-2">
+                    {groupAthletes.slice(0, 3).map((athlete) => (
+                      <div key={athlete.id} className="flex items-center gap-3">
+                        <img
+                          src={
+                            athlete.avatar_url ||
+                            "https://via.placeholder.com/32"
+                          }
+                          alt={athlete.full_name}
+                          className="h-8 w-8 rounded-full"
+                        />
+                        <span className="text-sm text-gray-700">
+                          {athlete.full_name}
+                        </span>
+                      </div>
+                    ))}
+                    {groupAthletes.length > 3 && (
+                      <div className="text-xs text-gray-500">
+                        +{groupAthletes.length - 3} more
+                      </div>
                     )}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => openEditModal(group)}
-                      className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteGroup(group.id)}
-                      className="p-2 text-gray-400 hover:text-red-600 transition-colors"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Users className="h-4 w-4" />
-                    {groupAthletes.length} athletes
-                  </div>
-                  <button
-                    onClick={() => setShowManageModal(group)}
-                    className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                  >
-                    Manage Athletes
-                  </button>
-                </div>
-
-                {/* Athletes Preview */}
-                <div className="space-y-2">
-                  {groupAthletes.slice(0, 3).map((athlete) => (
-                    <div key={athlete.id} className="flex items-center gap-3">
-                      <img
-                        src={
-                          athlete.avatar_url || "https://via.placeholder.com/32"
-                        }
-                        alt={athlete.full_name}
-                        className="h-8 w-8 rounded-full"
-                      />
-                      <span className="text-sm text-gray-700">
-                        {athlete.full_name}
-                      </span>
-                    </div>
-                  ))}
-                  {groupAthletes.length > 3 && (
-                    <div className="text-xs text-gray-500">
-                      +{groupAthletes.length - 3} more
-                    </div>
-                  )}
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        ) : (
+          <div className="col-span-full text-center py-8 text-gray-500">
+            No groups created yet. Create your first group to get started!
+          </div>
+        )}
       </div>
 
       {/* Ungrouped Athletes */}
@@ -503,7 +507,14 @@ export default function GroupsManagement({
               {editingGroup ? "Edit Group" : "Create New Group"}
             </h3>
             <form
-              onSubmit={editingGroup ? handleUpdateGroup : handleCreateGroup}
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (editingGroup) {
+                  handleUpdateGroup(e);
+                } else {
+                  handleCreateGroup(e);
+                }
+              }}
             >
               <div className="space-y-4">
                 <div>

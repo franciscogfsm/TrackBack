@@ -50,7 +50,7 @@ import { useTheme } from "../components/ThemeProvider";
 import PersonalRecordsTable from "../components/PersonalRecordsTable";
 import GroupsManagement from "../components/GroupsManagement";
 import PersonalRecordsChart from "../components/PersonalRecordsChart";
-import TeamPersonalBests from "../components/TeamPersonalBests";
+import ManagerLeaderboard from "../components/ManagerLeaderboard";
 import TrainingProgramManager from "../components/TrainingProgramManager";
 import WeightReport from "../components/WeightReport";
 
@@ -610,6 +610,8 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
   const [editingPRId, setEditingPRId] = useState<string | null>(null);
   // Add a refreshKey to force refresh after adding a record
   const [prRefreshKey, setPRRefreshKey] = useState(0);
+  // Add a refreshKey to force refresh of groups/leaderboard
+  const [groupsRefreshKey, setGroupsRefreshKey] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   // Add state for tab selection
   const [athleteTab, setAthleteTab] = useState<
@@ -2293,8 +2295,14 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
               <GroupsManagement
                 managerId={profile.id}
                 onGroupsUpdate={() => {
-                  // Only refresh athletes list, not the entire page
-                  fetchAthletes();
+                  try {
+                    // Only refresh athletes list, not the entire page
+                    fetchAthletes();
+                    // Also refresh the leaderboard to show new groups
+                    setGroupsRefreshKey((prev) => prev + 1);
+                  } catch (error) {
+                    console.error("Error in onGroupsUpdate callback:", error);
+                  }
                 }}
               />
             </div>
@@ -2749,9 +2757,9 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
                 Team Leaderboard
               </h2>
             </div>
-            <TeamPersonalBests
-              currentAthlete={profile}
+            <ManagerLeaderboard
               managerId={profile.id}
+              refreshKey={groupsRefreshKey}
             />
           </div>
         </div>
