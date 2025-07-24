@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback, memo } from "react";
 import { supabase } from "../lib/supabase";
 import type { Profile, AthleteGroup } from "../lib/database.types";
 import clsx from "clsx";
@@ -25,7 +25,7 @@ interface ManagerLeaderboardProps {
   refreshKey?: number;
 }
 
-export default function ManagerLeaderboard({
+function ManagerLeaderboard({
   managerId,
   refreshKey,
 }: ManagerLeaderboardProps) {
@@ -35,121 +35,42 @@ export default function ManagerLeaderboard({
   const [records, setRecords] = useState<PersonalRecord[]>([]);
   const [selectedExercise, setSelectedExercise] = useState<string>("");
   const [loading, setLoading] = useState(true);
-  const [athletePoints, setAthletePoints] = useState<AthletePoints[]>([]);
 
-  useEffect(() => {
-    fetchData();
-  }, [managerId, refreshKey]);
+  // Memoized calculations for better performance
+  const groupsMap = useMemo(() => {
+    return new Map(groups.map((g) => [g.id, g]));
+  }, [groups]);
 
-  useEffect(() => {
-    if (groups.length > 0 && selectedGroupId === "all") {
-      // Set default to the group with the most athletes
-      const groupWithMostAthletes = groups.reduce((prev, current) => {
-        const prevCount = athletes.filter((a) => a.group_id === prev.id).length;
-        const currentCount = athletes.filter(
-          (a) => a.group_id === current.id
-        ).length;
-        return currentCount > prevCount ? current : prev;
-      });
-      setSelectedGroupId(groupWithMostAthletes.id);
-    }
-  }, [groups, athletes]);
-
-  useEffect(() => {
-    filterAthletesByGroup();
-  }, [selectedGroupId, athletes, records]);
-
-  const fetchData = async () => {
-    setLoading(true);
-
-    try {
-      // Fetch groups
-      const { data: groupsData } = await supabase
-        .from("athlete_groups")
-        .select("*")
-        .eq("manager_id", managerId)
-        .order("name", { ascending: true });
-
-      // Fetch all athletes under this manager
-      const { data: athletesData } = await supabase
-        .from("profiles")
-        .select("id, full_name, avatar_url, group_id")
-        .eq("manager_id", managerId)
-        .eq("role", "athlete");
-
-      if (athletesData) {
-        setAthletes(
-          athletesData.map((a) => ({
-            ...a,
-            email: "",
-            role: "athlete" as const,
-            manager_id: managerId,
-            created_at: "",
-            updated_at: "",
-          }))
-        );
-
-        // Fetch personal records for all athletes
-        const athleteIds = athletesData.map((a) => a.id);
-        if (athleteIds.length > 0) {
-          const { data: recordsData } = await supabase
-            .from("personal_records")
-            .select("id, athlete_id, exercise, weight, record_date, video_url")
-            .in("athlete_id", athleteIds);
-
-          if (recordsData) {
-            setRecords(recordsData);
-            // Set default exercise
-            if (!selectedExercise && recordsData.length > 0) {
-              setSelectedExercise(recordsData[0].exercise);
-            }
-          }
-        }
-      }
-
-      if (groupsData) {
-        setGroups(groupsData);
-      }
-    } catch (error) {
-      console.error("Error fetching leaderboard data:", error);
-    }
-
-    setLoading(false);
-  };
-
-  const filterAthletesByGroup = () => {
-    let filteredAthletes: Profile[];
-
+  const filteredAthletes = useMemo(() => {
     if (selectedGroupId === "all") {
-      filteredAthletes = athletes;
+      return athletes;
     } else if (selectedGroupId === "ungrouped") {
-      filteredAthletes = athletes.filter((a) => !a.group_id);
+      return athletes.filter((a) => !a.group_id);
     } else {
-      filteredAthletes = athletes.filter((a) => a.group_id === selectedGroupId);
+      return athletes.filter((a) => a.group_id === selectedGroupId);
     }
+  }, [selectedGroupId, athletes]);
 
-    // Calculate points for filtered athletes
-    calculatePoints(filteredAthletes);
-  };
-
-  const calculatePoints = (filteredAthletes: Profile[]) => {
-    if (records.length === 0) return;
-
-    // Get athlete IDs for filtering
+  const filteredRecords = useMemo(() => {
     const athleteIds = filteredAthletes.map((a) => a.id);
-    const filteredRecords = records.filter((r) =>
-      athleteIds.includes(r.athlete_id)
-    );
+    return records.filter((r) => athleteIds.includes(r.athlete_id));
+  }, [filteredAthletes, records]);
 
-    // Get unique exercises
-    const exercises = Array.from(
+  const exercises = useMemo(() => {
+    return Array.from(new Set(filteredRecords.map((r) => r.exercise)));
+  }, [filteredRecords]);
+
+  const athletePoints = useMemo(() => {
+    if (filteredRecords.length === 0) return [];
+
+    const exercisesList = Array.from(
       new Set(filteredRecords.map((r) => r.exercise))
     );
 
     // Initialize points for each athlete
     const pointsMap = new Map<string, AthletePoints>();
     filteredAthletes.forEach((athlete) => {
-      const group = groups.find((g) => g.id === athlete.group_id);
+      const group = groupsMap.get(athlete.group_id || "");
       pointsMap.set(athlete.id, {
         id: athlete.id,
         full_name: athlete.full_name,
@@ -160,14 +81,13 @@ export default function ManagerLeaderboard({
     });
 
     // Calculate points for each exercise
-    exercises.forEach((exercise) => {
+    exercisesList.forEach((exercise) => {
       const exerciseRecords = filteredRecords
         .filter((r) => r.exercise === exercise)
         .sort((a, b) => b.weight - a.weight);
 
       if (exerciseRecords.length === 0) return;
 
-      // Assign points based on ranking (1st = 3, 2nd = 2, 3rd = 1)
       let currentRank = 1;
       let currentWeight = exerciseRecords[0].weight;
       let points = 3;
@@ -175,73 +95,38 @@ export default function ManagerLeaderboard({
       exerciseRecords.forEach((record) => {
         if (record.weight !== currentWeight) {
           currentRank++;
-          points = Math.max(4 - currentRank, 0); // 3,2,1,0 points
+          points = Math.max(4 - currentRank, 0);
           currentWeight = record.weight;
         }
 
-        const athletePoints = pointsMap.get(record.athlete_id);
-        if (athletePoints) {
-          athletePoints.total_points += points;
+        const athletePoint = pointsMap.get(record.athlete_id);
+        if (athletePoint) {
+          athletePoint.total_points += points;
         }
       });
     });
 
-    // Convert to array and sort by total points
-    const sortedPoints = Array.from(pointsMap.values()).sort(
+    return Array.from(pointsMap.values()).sort(
       (a, b) => b.total_points - a.total_points
     );
+  }, [filteredAthletes, filteredRecords, groupsMap]);
 
-    setAthletePoints(sortedPoints);
-  };
-
-  // Get all unique exercises from current filtered records
-  const getExercises = () => {
-    let filteredAthletes: Profile[];
-
-    if (selectedGroupId === "all") {
-      filteredAthletes = athletes;
-    } else if (selectedGroupId === "ungrouped") {
-      filteredAthletes = athletes.filter((a) => !a.group_id);
-    } else {
-      filteredAthletes = athletes.filter((a) => a.group_id === selectedGroupId);
-    }
-
-    const athleteIds = filteredAthletes.map((a) => a.id);
-    const filteredRecords = records.filter((r) =>
-      athleteIds.includes(r.athlete_id)
-    );
-    return Array.from(new Set(filteredRecords.map((r) => r.exercise)));
-  };
-
-  // Get leaderboard for selected exercise
-  const getExerciseLeaderboard = () => {
+  const exerciseLeaderboard = useMemo(() => {
     if (!selectedExercise) return [];
-
-    let filteredAthletes: Profile[];
-
-    if (selectedGroupId === "all") {
-      filteredAthletes = athletes;
-    } else if (selectedGroupId === "ungrouped") {
-      filteredAthletes = athletes.filter((a) => !a.group_id);
-    } else {
-      filteredAthletes = athletes.filter((a) => a.group_id === selectedGroupId);
-    }
 
     const leaderboard = filteredAthletes
       .map((athlete) => {
-        // Find all records for this athlete and exercise
-        const athleteRecords = records.filter(
+        const athleteRecords = filteredRecords.filter(
           (r) => r.athlete_id === athlete.id && r.exercise === selectedExercise
         );
         if (athleteRecords.length === 0) return null;
 
-        // Find the best (highest weight) record
         const best = athleteRecords.reduce(
           (max, rec) => (rec.weight > max.weight ? rec : max),
           athleteRecords[0]
         );
 
-        const group = groups.find((g) => g.id === athlete.group_id);
+        const group = groupsMap.get(athlete.group_id || "");
         return best
           ? {
               ...best,
@@ -255,28 +140,103 @@ export default function ManagerLeaderboard({
       .filter(Boolean)
       .sort((a: any, b: any) => b.weight - a.weight);
 
-    // Add ranking
     return leaderboard.map((rec: any, idx: number) => ({
       ...rec,
       place: idx + 1,
     }));
-  };
+  }, [selectedExercise, filteredAthletes, filteredRecords, groupsMap]);
 
-  const exercises = getExercises();
-  const exerciseLeaderboard = getExerciseLeaderboard();
+  const getGroupName = useCallback(
+    (groupId: string) => {
+      if (groupId === "all") return "All Groups";
+      if (groupId === "ungrouped") return "Ungrouped Athletes";
+      return groupsMap.get(groupId)?.name || "Unknown Group";
+    },
+    [groupsMap]
+  );
 
-  const getGroupName = (groupId: string) => {
-    if (groupId === "all") return "All Groups";
-    if (groupId === "ungrouped") return "Ungrouped Athletes";
-    return groups.find((g) => g.id === groupId)?.name || "Unknown Group";
-  };
+  const getGroupAthleteCount = useCallback(
+    (groupId: string) => {
+      if (groupId === "all") return athletes.length;
+      if (groupId === "ungrouped")
+        return athletes.filter((a) => !a.group_id).length;
+      return athletes.filter((a) => a.group_id === groupId).length;
+    },
+    [athletes]
+  );
 
-  const getGroupAthleteCount = (groupId: string) => {
-    if (groupId === "all") return athletes.length;
-    if (groupId === "ungrouped")
-      return athletes.filter((a) => !a.group_id).length;
-    return athletes.filter((a) => a.group_id === groupId).length;
-  };
+  const fetchData = useCallback(async () => {
+    if (!managerId) return;
+
+    setLoading(true);
+
+    try {
+      const [groupsResult, athletesResult] = await Promise.all([
+        supabase
+          .from("athlete_groups")
+          .select("*")
+          .eq("manager_id", managerId)
+          .order("name", { ascending: true }),
+        supabase
+          .from("profiles")
+          .select("id, full_name, avatar_url, group_id")
+          .eq("manager_id", managerId)
+          .eq("role", "athlete"),
+      ]);
+
+      const { data: groupsData } = groupsResult;
+      const { data: athletesData } = athletesResult;
+
+      if (athletesData) {
+        const formattedAthletes = athletesData.map((a) => ({
+          ...a,
+          email: "",
+          role: "athlete" as const,
+          manager_id: managerId,
+          created_at: "",
+          updated_at: "",
+        }));
+        setAthletes(formattedAthletes);
+
+        const athleteIds = athletesData.map((a) => a.id);
+        if (athleteIds.length > 0) {
+          const { data: recordsData } = await supabase
+            .from("personal_records")
+            .select("id, athlete_id, exercise, weight, record_date, video_url")
+            .in("athlete_id", athleteIds);
+
+          if (recordsData) {
+            setRecords(recordsData);
+            if (!selectedExercise && recordsData.length > 0) {
+              setSelectedExercise(recordsData[0].exercise);
+            }
+          }
+        }
+      }
+
+      if (groupsData) {
+        setGroups(groupsData);
+      }
+    } catch (error) {
+      console.error("Error fetching leaderboard data:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [managerId, selectedExercise]);
+
+  // Optimized group selection handler with debouncing
+  const handleGroupChange = useCallback((newGroupId: string) => {
+    setSelectedGroupId(newGroupId);
+  }, []);
+
+  // Optimized exercise selection handler
+  const handleExerciseChange = useCallback((newExercise: string) => {
+    setSelectedExercise(newExercise);
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData, refreshKey]);
 
   if (loading) {
     return (
@@ -315,8 +275,9 @@ export default function ManagerLeaderboard({
                 </label>
                 <select
                   value={selectedGroupId}
-                  onChange={(e) => setSelectedGroupId(e.target.value)}
-                  className="px-4 py-2 rounded-lg border text-sm shadow-sm focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 bg-white hover:bg-yellow-50 min-w-[200px]"
+                  onChange={(e) => handleGroupChange(e.target.value)}
+                  className="px-4 py-2 pr-10 rounded-lg border text-sm shadow-sm focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 bg-white hover:bg-yellow-50 min-w-[200px] max-w-[300px] truncate appearance-none bg-no-repeat bg-right bg-[length:16px] bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIiIGhlaWdodD0iOCIgdmlld0JveD0iMCAwIDEyIDgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGQ9Ik0xIDFMNiA2TDExIDEiIHN0cm9rZT0iIzZCNzI4MCIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+')]"
+                  style={{ backgroundPosition: "right 12px center" }}
                 >
                   <option value="all">All Groups</option>
                   {groups.map((group) => (
@@ -338,7 +299,7 @@ export default function ManagerLeaderboard({
                   </label>
                   <select
                     value={selectedExercise}
-                    onChange={(e) => setSelectedExercise(e.target.value)}
+                    onChange={(e) => handleExerciseChange(e.target.value)}
                     className="px-4 py-2 rounded-lg border text-sm shadow-sm focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 bg-white hover:bg-yellow-50 min-w-[150px]"
                   >
                     {exercises.map((exercise) => (
@@ -391,7 +352,10 @@ export default function ManagerLeaderboard({
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {exerciseLeaderboard.map((rec: any) => (
-                        <tr key={rec.id} className="hover:bg-gray-50">
+                        <tr
+                          key={rec.id}
+                          className="hover:bg-gray-50 transition-colors duration-150"
+                        >
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
                               <span
@@ -413,12 +377,17 @@ export default function ManagerLeaderboard({
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
                               <img
-                                className="h-10 w-10 rounded-full"
+                                className="h-10 w-10 rounded-full object-cover transition-all duration-200"
                                 src={
                                   rec.athlete.avatar_url ||
                                   "https://via.placeholder.com/40"
                                 }
-                                alt=""
+                                alt={rec.athlete.full_name}
+                                loading="lazy"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src =
+                                    "https://via.placeholder.com/40";
+                                }}
                               />
                               <div className="ml-4">
                                 <div className="text-sm font-medium text-gray-900">
@@ -455,7 +424,7 @@ export default function ManagerLeaderboard({
                   {exerciseLeaderboard.map((rec: any) => (
                     <div
                       key={rec.id}
-                      className="rounded-xl bg-white border border-gray-100 shadow-sm p-4"
+                      className="rounded-xl bg-white border border-gray-100 shadow-sm p-4 transition-all duration-150 hover:shadow-md"
                     >
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
@@ -474,12 +443,17 @@ export default function ManagerLeaderboard({
                             {rec.place}
                           </span>
                           <img
-                            className="h-8 w-8 rounded-full"
+                            className="h-8 w-8 rounded-full object-cover transition-all duration-200"
                             src={
                               rec.athlete.avatar_url ||
                               "https://via.placeholder.com/32"
                             }
-                            alt=""
+                            alt={rec.athlete.full_name}
+                            loading="lazy"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src =
+                                "https://via.placeholder.com/32";
+                            }}
                           />
                           <div>
                             <div className="text-sm font-medium text-gray-900">
@@ -561,7 +535,10 @@ export default function ManagerLeaderboard({
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {athletePoints.map((athlete, index) => (
-                  <tr key={athlete.id} className="hover:bg-gray-50">
+                  <tr
+                    key={athlete.id}
+                    className="hover:bg-gray-50 transition-colors duration-150"
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
                         className={clsx(
@@ -581,12 +558,17 @@ export default function ManagerLeaderboard({
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <img
-                          className="h-10 w-10 rounded-full"
+                          className="h-10 w-10 rounded-full object-cover transition-all duration-200"
                           src={
                             athlete.avatar_url ||
                             "https://via.placeholder.com/40"
                           }
-                          alt=""
+                          alt={athlete.full_name}
+                          loading="lazy"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src =
+                              "https://via.placeholder.com/40";
+                          }}
                         />
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">
@@ -618,7 +600,7 @@ export default function ManagerLeaderboard({
             {athletePoints.map((athlete, index) => (
               <div
                 key={athlete.id}
-                className="rounded-xl bg-white border border-gray-100 shadow-sm p-3 flex items-center gap-3"
+                className="rounded-xl bg-white border border-gray-100 shadow-sm p-3 flex items-center gap-3 transition-all duration-150 hover:shadow-md"
               >
                 <span
                   className={clsx(
@@ -635,9 +617,14 @@ export default function ManagerLeaderboard({
                   {index + 1}
                 </span>
                 <img
-                  className="h-8 w-8 rounded-full"
+                  className="h-8 w-8 rounded-full object-cover transition-all duration-200"
                   src={athlete.avatar_url || "https://via.placeholder.com/32"}
-                  alt=""
+                  alt={athlete.full_name}
+                  loading="lazy"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src =
+                      "https://via.placeholder.com/32";
+                  }}
                 />
                 <div className="flex-1">
                   <div className="text-sm font-medium text-gray-900">
@@ -660,3 +647,5 @@ export default function ManagerLeaderboard({
     </div>
   );
 }
+
+export default memo(ManagerLeaderboard);

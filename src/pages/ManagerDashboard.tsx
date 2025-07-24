@@ -1,17 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback, memo } from "react";
 import { supabase } from "../lib/supabase";
-import type {
-  Profile,
-  CustomMetric,
-  MetricResponseType,
-  DailyFormStatus,
-  TrainingType,
-  TrainingSession,
-} from "../lib/database.types";
+import type { Profile, DailyFormStatus } from "../lib/database.types";
 import { useNavigate, Link } from "react-router-dom";
 import {
   LogOut,
-  Plus,
   User,
   Calendar,
   Settings,
@@ -23,10 +15,7 @@ import {
   Users,
   UserPlus,
   Copy,
-  RefreshCw,
   Brain,
-  Sparkles,
-  HelpCircle,
   Info,
   Moon,
   Sun,
@@ -559,7 +548,7 @@ function transformMetricResponses(
   );
 }
 
-export default function ManagerDashboard({ profile: initialProfile }: Props) {
+function ManagerDashboard({ profile: initialProfile }: Props) {
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile>(initialProfile);
@@ -623,6 +612,83 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
   // 1. Add new state for performanceReportAthlete
   const [performanceReportAthlete, setPerformanceReportAthlete] =
     useState<string>("");
+
+  // Memoized data structures for better performance
+  const athletesMap = useMemo(() => {
+    return new Map(athletes.map((athlete) => [athlete.id, athlete]));
+  }, [athletes]);
+
+  const metricsMap = useMemo(() => {
+    return new Map(metrics.map((metric) => [metric.id, metric]));
+  }, [metrics]);
+
+  const visibleInvitations = useMemo(() => {
+    return invitations.filter(
+      (invitation) => !hiddenInvitations.has(invitation.id)
+    );
+  }, [invitations, hiddenInvitations]);
+
+  const groupedMetricResponses = useMemo(() => {
+    return groupResponsesByAthlete(metricResponses);
+  }, [metricResponses]);
+
+  const filteredMetricResponses = useMemo(() => {
+    if (selectedAthlete === "all") {
+      return metricResponses;
+    }
+    return metricResponses.filter(
+      (response) => response.athlete_id === selectedAthlete
+    );
+  }, [metricResponses, selectedAthlete]);
+
+  // Memoized handler functions
+  const handleCopyLink = useCallback((invitationCode: string) => {
+    const inviteUrl = `${window.location.origin}/join?code=${invitationCode}`;
+    navigator.clipboard.writeText(inviteUrl);
+    setShowCopyNotification(invitationCode);
+    setTimeout(() => setShowCopyNotification(null), 2000);
+  }, []);
+
+  const handleProfileUpdate = useCallback((url: string) => {
+    setProfile((prev) => {
+      const updatedProfile = { ...prev, avatar_url: url };
+      localStorage.setItem("userProfile", JSON.stringify(updatedProfile));
+      return updatedProfile;
+    });
+  }, []);
+
+  const handleDeleteInvitation = useCallback(async (invitationId: string) => {
+    try {
+      setInvitations((currentInvitations) =>
+        currentInvitations.filter((inv) => inv.id !== invitationId)
+      );
+
+      const { error: deleteError } = await supabase
+        .from("manager_invitations")
+        .delete()
+        .eq("id", invitationId);
+
+      if (deleteError) {
+        setError("Failed to delete invitation. Please try again.");
+        fetchInvitations();
+      }
+    } catch (error) {
+      console.error("Error deleting invitation:", error);
+      setError("Failed to delete invitation. Please try again.");
+      fetchInvitations();
+    }
+  }, []);
+
+  const handleLogout = useCallback(async () => {
+    try {
+      localStorage.clear();
+      await supabase.auth.signOut();
+      navigate("/login");
+    } catch (error) {
+      console.error("Error during logout:", error);
+      navigate("/login");
+    }
+  }, [navigate]);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -698,7 +764,7 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
     }
   }, [selectedDate, selectedAthlete]);
 
-  const fetchMetricResponses = async () => {
+  const fetchMetricResponses = useCallback(async () => {
     try {
       // First get the manager's athletes
       const { data: athletesData, error: athletesError } = await supabase
@@ -744,7 +810,9 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
       const [athletesResult, metricsResult] = await Promise.all([
         supabase
           .from("profiles")
-          .select("id, full_name, email, role")
+          .select(
+            "id, full_name, email, role, avatar_url, manager_id, group_id, created_at, updated_at"
+          )
           .in("id", athleteIds),
         supabase
           .from("custom_metrics")
@@ -762,9 +830,11 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
         return;
       }
 
-      // Create lookup maps
-      const athletesMap = new Map(athletesResult.data?.map((a) => [a.id, a]));
-      const metricsMap = new Map(metricsResult.data?.map((m) => [m.id, m]));
+      // Create lookup maps for better performance
+      const athletesLookup = new Map(
+        athletesResult.data?.map((a) => [a.id, a])
+      );
+      const metricsLookup = new Map(metricsResult.data?.map((m) => [m.id, m]));
 
       // Combine the data
       const formattedResponses = responses.map((response) => ({
@@ -774,16 +844,24 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
         metric_id: response.metric_id,
         rating_value: response.rating_value,
         text_value: response.text_value,
-        athlete: athletesMap.get(response.athlete_id) || {
+        athlete: athletesLookup.get(response.athlete_id) || {
           id: response.athlete_id,
           full_name: "Unknown Athlete",
           email: "",
-          role: "athlete",
+          role: "athlete" as const,
+          avatar_url: "",
+          manager_id: profile.id,
+          group_id: null,
+          created_at: "",
+          updated_at: "",
         },
         metric: {
-          title: metricsMap.get(response.metric_id)?.title || "Unknown Metric",
-          type: metricsMap.get(response.metric_id)?.type || "rating",
-          description: metricsMap.get(response.metric_id)?.description || "",
+          title:
+            metricsLookup.get(response.metric_id)?.title || "Unknown Metric",
+          type: (metricsLookup.get(response.metric_id)?.type || "rating") as
+            | "rating"
+            | "text",
+          description: metricsLookup.get(response.metric_id)?.description || "",
         },
       }));
 
@@ -792,7 +870,7 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
       console.error("Unexpected error in fetchMetricResponses:", error);
       setMetricResponses([]);
     }
-  };
+  }, [profile.id, selectedDate]);
 
   const verifyAthleteAddition = async (athleteId: string) => {
     const { data, error } = await supabase
@@ -989,17 +1067,6 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      localStorage.clear();
-      await supabase.auth.signOut();
-      navigate("/login");
-    } catch (error) {
-      console.error("Error during logout:", error);
-      navigate("/login");
-    }
-  };
-
   const handleRemoveAthlete = async (
     athleteId: string,
     event: React.MouseEvent
@@ -1049,7 +1116,7 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
     }
   };
 
-  const fetchMetrics = async () => {
+  const fetchMetrics = useCallback(async () => {
     if (!profile?.id) return;
 
     try {
@@ -1068,9 +1135,9 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
     } catch (error) {
       console.error("Error in fetchMetrics:", error);
     }
-  };
+  }, [profile.id]);
 
-  const fetchInvitations = async () => {
+  const fetchInvitations = useCallback(async () => {
     try {
       const { data: invitationsData, error } = await supabase
         .from("manager_invitations")
@@ -1108,9 +1175,9 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
     } catch (error) {
       console.error("Unexpected error in fetchInvitations:", error);
     }
-  };
+  }, [profile.id, profile.email]);
 
-  const fetchAthletes = async () => {
+  const fetchAthletes = useCallback(async () => {
     try {
       const { data: athletesData, error: athletesError } = await supabase
         .from("profiles")
@@ -1127,32 +1194,34 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
     } catch (error) {
       console.error("Error in fetchAthletes:", error);
     }
-  };
+  }, [profile.id]);
 
-  const fetchInitialData = async () => {
+  const fetchInitialData = useCallback(async () => {
     try {
       setLoading(true);
 
-      // Fetch athletes
-      const { data: athletesData, error: athletesError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("manager_id", profile.id)
-        .eq("role", "athlete");
+      // Fetch all data in parallel for better performance
+      const [athletesResult, formStatusResult] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("*")
+          .eq("manager_id", profile.id)
+          .eq("role", "athlete"),
+        supabase
+          .from("daily_form_status")
+          .select("*")
+          .eq("manager_id", profile.id)
+          .single(),
+      ]);
+
+      const { data: athletesData, error: athletesError } = athletesResult;
+      const { data: formStatusData, error: formStatusError } = formStatusResult;
 
       if (athletesError) {
         console.error("Error fetching athletes:", athletesError);
-        return;
+      } else {
+        setAthletes(athletesData || []);
       }
-
-      setAthletes(athletesData || []);
-
-      // Fetch form status and reminder settings for this manager
-      const { data: formStatusData, error: formStatusError } = await supabase
-        .from("daily_form_status")
-        .select("*")
-        .eq("manager_id", profile.id)
-        .single();
 
       if (formStatusError && formStatusError.code !== "PGRST116") {
         console.error("Error fetching form status:", formStatusError);
@@ -1164,15 +1233,14 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
         }
       }
 
-      // Fetch metrics and responses
-      await fetchMetrics();
-      await fetchMetricResponses();
+      // Fetch metrics and responses in parallel
+      await Promise.all([fetchMetrics(), fetchMetricResponses()]);
     } catch (error) {
       console.error("Error in fetchInitialData:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [profile.id, fetchMetricResponses]);
 
   // Update the delete metric flow to use a confirmation modal
   const confirmDeleteMetric = (metric: Metric) => {
@@ -1262,23 +1330,9 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
     }
   };
 
-  // Add profile update handler
-  const handleProfileUpdate = (url: string) => {
-    // Update local state
-    setProfile((prev) => {
-      const updatedProfile = { ...prev, avatar_url: url };
-      // Update localStorage
-      localStorage.setItem("userProfile", JSON.stringify(updatedProfile));
-      return updatedProfile;
-    });
-  };
+  // Add profile update handler (now memoized above)
 
-  const handleCopyLink = (invitationCode: string) => {
-    const inviteUrl = `${window.location.origin}/join?code=${invitationCode}`;
-    navigator.clipboard.writeText(inviteUrl);
-    setShowCopyNotification(invitationCode);
-    setTimeout(() => setShowCopyNotification(null), 2000);
-  };
+  // Add copy link handler (now memoized above)
 
   // Add useEffect to handle hiding accepted invitations
   useEffect(() => {
@@ -1295,35 +1349,7 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
     hideAcceptedInvitations();
   }, [invitations]);
 
-  // Filter out hidden invitations from the display
-  const visibleInvitations = invitations.filter(
-    (invitation) => !hiddenInvitations.has(invitation.id)
-  );
-
-  const handleDeleteInvitation = async (invitationId: string) => {
-    try {
-      // Optimistically update UI
-      setInvitations((currentInvitations) =>
-        currentInvitations.filter((inv) => inv.id !== invitationId)
-      );
-
-      // Make API call
-      const { error: deleteError } = await supabase
-        .from("manager_invitations")
-        .delete()
-        .eq("id", invitationId);
-
-      if (deleteError) {
-        // If error occurs, revert the optimistic update
-        setError("Failed to delete invitation. Please try again.");
-        fetchInvitations(); // Refresh the invitations list
-      }
-    } catch (error) {
-      console.error("Error deleting invitation:", error);
-      setError("Failed to delete invitation. Please try again.");
-      fetchInvitations(); // Refresh the invitations list
-    }
-  };
+  // Filter out hidden invitations from the display (now memoized above)
 
   const handleUpdateGlobalReminderTime = async (newTime: string) => {
     try {
@@ -3408,3 +3434,5 @@ export default function ManagerDashboard({ profile: initialProfile }: Props) {
     </div>
   );
 }
+
+export default memo(ManagerDashboard);
