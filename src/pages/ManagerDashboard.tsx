@@ -28,6 +28,7 @@ import {
   Trophy,
   Menu,
   Dumbbell,
+  Loader2,
 } from "lucide-react";
 import clsx from "clsx";
 import ProfilePicture from "../components/ProfilePicture";
@@ -95,6 +96,50 @@ interface ManagerInvitationWithProfile extends Tables<"manager_invitations"> {
 
 // Add theme types
 type Theme = "light" | "dark" | "system";
+
+// Add skeleton components for loading states
+const SkeletonCard = ({ className = "" }: { className?: string }) => (
+  <div className={`animate-pulse ${className}`}>
+    <div className="bg-gray-200 dark:bg-slate-700 rounded-lg h-20 w-full"></div>
+  </div>
+);
+
+const SkeletonRow = () => (
+  <div className="animate-pulse flex items-center space-x-4 p-4">
+    <div className="rounded-full bg-gray-200 dark:bg-slate-700 h-10 w-10"></div>
+    <div className="flex-1 space-y-2">
+      <div className="h-4 bg-gray-200 dark:bg-slate-700 rounded w-3/4"></div>
+      <div className="h-3 bg-gray-200 dark:bg-slate-700 rounded w-1/2"></div>
+    </div>
+    <div className="h-4 bg-gray-200 dark:bg-slate-700 rounded w-20"></div>
+  </div>
+);
+
+const SkeletonStats = () => (
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    {[...Array(4)].map((_, i) => (
+      <SkeletonCard key={i} className="h-24" />
+    ))}
+  </div>
+);
+
+const LoadingSpinner = ({
+  size = "sm",
+  className = "",
+}: {
+  size?: "sm" | "md" | "lg";
+  className?: string;
+}) => {
+  const sizeClasses = {
+    sm: "w-4 h-4",
+    md: "w-6 h-6",
+    lg: "w-8 h-8",
+  };
+
+  return (
+    <Loader2 className={`animate-spin ${sizeClasses[size]} ${className}`} />
+  );
+};
 
 const RatingInput = ({
   value,
@@ -553,6 +598,7 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile>(initialProfile);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [metrics, setMetrics] = useState<Metric[]>([]);
   const [metricResponses, setMetricResponses] = useState<
     MetricResponseWithDetails[]
@@ -613,6 +659,20 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
   const [performanceReportAthlete, setPerformanceReportAthlete] =
     useState<string>("");
 
+  // Debounced refresh to prevent excessive API calls
+  const debouncedRefresh = useCallback(
+    (() => {
+      let timeout: NodeJS.Timeout;
+      return (delay: number = 300) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {
+          setRefreshKey((prev) => prev + 1);
+        }, delay);
+      };
+    })(),
+    []
+  );
+
   // Memoized data structures for better performance
   const athletesMap = useMemo(() => {
     return new Map(athletes.map((athlete) => [athlete.id, athlete]));
@@ -659,8 +719,11 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
 
   const handleDeleteInvitation = useCallback(async (invitationId: string) => {
     try {
+      // Show optimistic UI update with loading state
       setInvitations((currentInvitations) =>
-        currentInvitations.filter((inv) => inv.id !== invitationId)
+        currentInvitations.map((inv) =>
+          inv.id === invitationId ? { ...inv, deleting: true } : inv
+        )
       );
 
       const { error: deleteError } = await supabase
@@ -670,12 +733,28 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
 
       if (deleteError) {
         setError("Failed to delete invitation. Please try again.");
-        fetchInvitations();
+        // Revert optimistic update
+        setInvitations((currentInvitations) =>
+          currentInvitations.map((inv) =>
+            inv.id === invitationId ? { ...inv, deleting: false } : inv
+          )
+        );
+        return;
       }
+
+      // Remove from state after successful deletion
+      setInvitations((currentInvitations) =>
+        currentInvitations.filter((inv) => inv.id !== invitationId)
+      );
     } catch (error) {
       console.error("Error deleting invitation:", error);
       setError("Failed to delete invitation. Please try again.");
-      fetchInvitations();
+      // Revert optimistic update
+      setInvitations((currentInvitations) =>
+        currentInvitations.map((inv) =>
+          inv.id === invitationId ? { ...inv, deleting: false } : inv
+        )
+      );
     }
   }, []);
 
@@ -689,24 +768,6 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
       navigate("/login");
     }
   }, [navigate]);
-
-  useEffect(() => {
-    const root = window.document.documentElement;
-    const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
-      .matches
-      ? "dark"
-      : "light";
-    const activeTheme = theme === "system" ? systemTheme : theme;
-
-    root.classList.remove("light", "dark");
-    root.classList.add(activeTheme);
-    localStorage.setItem("theme", theme);
-  }, [theme]);
-
-  useEffect(() => {
-    fetchInitialData();
-    fetchInvitations();
-  }, [profile.id, refreshKey]);
 
   // Add new useEffect for time-based form status updates
   useEffect(() => {
@@ -1177,6 +1238,21 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
     }
   }, [profile.id, profile.email]);
 
+  // Optimized refresh function that doesn't reload everything
+  const softRefresh = useCallback(async () => {
+    if (refreshing) return; // Prevent multiple simultaneous refreshes
+
+    setRefreshing(true);
+    try {
+      // Only refresh specific data instead of everything
+      await Promise.all([fetchInvitations(), fetchMetricResponses()]);
+    } catch (error) {
+      console.error("Error during soft refresh:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshing, fetchInvitations, fetchMetricResponses]);
+
   const fetchAthletes = useCallback(async () => {
     try {
       const { data: athletesData, error: athletesError } = await supabase
@@ -1487,10 +1563,68 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
     setInsightsMetricResponses(allResponses);
   };
 
+  // Move useEffect hooks here, after all function declarations
+  useEffect(() => {
+    const root = window.document.documentElement;
+    const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
+      .matches
+      ? "dark"
+      : "light";
+    const activeTheme = theme === "system" ? systemTheme : theme;
+
+    root.classList.remove("light", "dark");
+    root.classList.add(activeTheme);
+    localStorage.setItem("theme", theme);
+  }, [theme]);
+
+  useEffect(() => {
+    // Only fetch initial data on mount or when profile.id changes
+    fetchInitialData();
+  }, [fetchInitialData]);
+
+  useEffect(() => {
+    // Separate effect for invitations - debounce this to prevent excessive calls
+    const timeoutId = setTimeout(() => {
+      fetchInvitations();
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
+  }, [fetchInvitations, refreshKey]);
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
+        {/* Header Skeleton */}
+        <nav className="sticky top-0 z-50 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-white/20 animate-pulse"></div>
+                <div className="space-y-1">
+                  <div className="h-5 w-24 bg-white/20 rounded animate-pulse"></div>
+                  <div className="h-3 w-32 bg-white/10 rounded animate-pulse"></div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-20 bg-white/20 rounded animate-pulse"></div>
+                <div className="h-8 w-8 bg-white/20 rounded-full animate-pulse"></div>
+              </div>
+            </div>
+          </div>
+        </nav>
+
+        {/* Main Content Skeleton */}
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Stats Skeleton */}
+          <SkeletonStats />
+
+          {/* Cards Skeleton */}
+          <div className="space-y-6">
+            <SkeletonCard className="h-64" />
+            <SkeletonCard className="h-80" />
+            <SkeletonCard className="h-48" />
+          </div>
+        </main>
       </div>
     );
   }
