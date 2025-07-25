@@ -374,71 +374,90 @@ export async function generateComprehensiveAthleteInsights(
     checkRateLimit();
     console.log("✅ Rate limit check passed");
 
-    // Create a detailed analysis prompt
-    const prompt = `As an expert sports performance coach, analyze this comprehensive athlete data and provide actionable coaching insights.
+    // Create a detailed analysis prompt focused on coaching actionability
+    const prompt = `You are an elite sports performance coach analyzing athlete data. Provide SPECIFIC, ACTIONABLE insights based on this comprehensive data.
 
 ATHLETE PROFILE:
 - Name: ${comprehensiveData.athlete.name}
-- Training Period: ${comprehensiveData.dateRange.start} to ${
+- Period: ${comprehensiveData.dateRange.start} to ${
       comprehensiveData.dateRange.end
     } (${comprehensiveData.dateRange.totalDays} days)
 - Total Responses: ${comprehensiveData.totalResponses}
-- Consistency Score: ${comprehensiveData.consistencyScore}% (response rate)
+- Response Consistency: ${comprehensiveData.consistencyScore}%
 
-DETAILED METRICS ANALYSIS:
+DETAILED METRICS BREAKDOWN:
 ${Object.entries(comprehensiveData.metrics)
   .map(([metricName, data]) => {
     if (data.type === "rating") {
+      const recent = data.values.slice(0, 7);
+      const older = data.values.slice(7, 14);
+      const recentAvg =
+        recent.length > 0
+          ? recent.reduce((sum, v) => sum + (v.value as number), 0) /
+            recent.length
+          : 0;
+      const olderAvg =
+        older.length > 0
+          ? older.reduce((sum, v) => sum + (v.value as number), 0) /
+            older.length
+          : 0;
+      const trendDirection =
+        recentAvg > olderAvg
+          ? "↗️ IMPROVING"
+          : recentAvg < olderAvg
+          ? "↘️ DECLINING"
+          : "→ STABLE";
+
       return `
-${metricName} (Rating Scale 1-5):
-- Average Rating: ${data.averageRating?.toFixed(2) || "N/A"}
-- Trend: ${data.trend}
-- Total Entries: ${data.values.length}
-- Recent Values: ${data.values
+📊 ${metricName}:
+- Current Avg: ${data.averageRating?.toFixed(1)}/5.0 (${getTrendLabel(
+        data.averageRating || 0
+      )})
+- 7-Day Trend: ${trendDirection} (${recentAvg.toFixed(1)} vs ${olderAvg.toFixed(
+        1
+      )})
+- Pattern: ${data.trend.toUpperCase()}
+- Last 5 values: [${recent
         .slice(0, 5)
-        .map((v) => `${v.date}: ${v.value}`)
-        .join(", ")}
-- Description: ${data.description || "No description"}`;
+        .map((v) => v.value)
+        .join(", ")}]
+- Risk Level: ${getRiskLevel(data.averageRating || 0, data.trend)}`;
     } else {
       return `
-${metricName} (Text Responses):
-- Total Entries: ${data.values.length}
-- Recent Entries: ${data.values
+💭 ${metricName}:
+- Type: Qualitative feedback
+- Recent entries: ${data.values
         .slice(0, 3)
-        .map((v) => `${v.date}: "${v.value}"`)
-        .join(", ")}
-- Description: ${data.description || "No description"}`;
+        .map((v) => `"${v.value}"`)
+        .join(" | ")}
+- Total responses: ${data.values.length}`;
     }
   })
   .join("\n")}
 
-RECENT ACTIVITY SUMMARY:
-${comprehensiveData.recentEntries
-  .slice(0, 5)
-  .map(
-    (entry) =>
-      `${entry.created_at.split("T")[0]}: ${entry.metric_title} = ${
-        entry.rating_value || entry.text_value
-      }`
-  )
-  .join("\n")}
+CRITICAL ANALYSIS REQUIREMENTS:
+1. Identify SPECIFIC performance risks or opportunities
+2. Provide IMMEDIATE actionable steps (today/this week)
+3. Give clear metrics to monitor
+4. Suggest conversation topics for athlete meetings
+5. Include training load adjustments if needed
 
-Please provide 4 detailed coaching insights covering:
+Format EXACTLY as:
+AREA|SPECIFIC_TREND_WITH_DATA|IMMEDIATE_ACTION_PLAN
 
-1. **Performance Trends**: Analyze overall performance trajectory and key patterns
-2. **Recovery & Wellness**: Evaluate recovery patterns and wellness indicators  
-3. **Training Load Management**: Assess current training load and adaptation
-4. **Action Plan**: Specific next steps and recommendations for the coach
+Provide exactly 4 insights covering:
+1. Performance Risk Assessment
+2. Recovery & Readiness Status  
+3. Training Load Optimization
+4. Athlete Communication Plan
 
-CRITICAL: Format each insight EXACTLY as: Area Name|Current Trend Description|Specific Action Recommendation
+Each insight must include specific numbers, timeframes, and actionable steps.`;
 
-Example format:
-Performance Trends|Jorge shows declining motivation over the past week with inconsistent health ratings|Schedule a one-on-one meeting to discuss training concerns and adjust intensity levels
-
-Each line must contain exactly 3 parts separated by pipe symbols (|). Focus on actionable advice that a coach can immediately implement.`;
-
-    console.log("🚀 Making OpenAI API call...");
-    console.log("📝 Prompt preview:", prompt.substring(0, 200) + "...");
+    console.log("🚀 Making enhanced OpenAI API call...");
+    console.log(
+      "📝 Enhanced prompt preview:",
+      prompt.substring(0, 300) + "..."
+    );
 
     let response;
     try {
@@ -447,15 +466,20 @@ Each line must contain exactly 3 parts separated by pipe symbols (|). Focus on a
         messages: [
           {
             role: "system",
-            content: `You are an expert sports performance coach with 15+ years of experience. Analyze the comprehensive athlete data and provide specific, actionable coaching insights. Always base your recommendations on the actual data provided. Format each insight as: area|trend|recommendation`,
+            content: `You are an elite sports performance coach with 20+ years experience. Analyze athlete data with laser focus on:
+            - IMMEDIATE performance risks (injury, overtraining, motivation drops)
+            - SPECIFIC coaching actions (reduce load by X%, schedule meeting, adjust intensity)
+            - MEASURABLE outcomes (target metrics, timelines, success indicators)
+            
+            Always include specific numbers from the data and concrete next steps. Format: AREA|TREND_WITH_DATA|ACTION_WITH_SPECIFICS`,
           },
           {
             role: "user",
             content: prompt,
           },
         ],
-        temperature: 0.7,
-        max_tokens: 1000, // Increased for more detailed responses
+        temperature: 0.3, // Lower temperature for more focused, consistent responses
+        max_tokens: 1200, // Increased for detailed responses
       });
       console.log("✅ OpenAI API call successful");
     } catch (apiError) {
@@ -597,65 +621,132 @@ Provide 3 detailed insights with clear trends and actionable recommendations. Fo
   }
 }
 
+// Enhanced helper functions for better analysis
+function getTrendLabel(average: number): string {
+  if (average >= 4.0) return "EXCELLENT";
+  if (average >= 3.5) return "GOOD";
+  if (average >= 2.5) return "MODERATE";
+  if (average >= 2.0) return "CONCERNING";
+  return "CRITICAL";
+}
+
+function getRiskLevel(average: number, trend: string): string {
+  if (average <= 2.0) return "🔴 HIGH RISK";
+  if (average <= 2.5 && trend === "declining") return "🟡 MODERATE RISK";
+  if (trend === "declining") return "🟡 MONITOR CLOSELY";
+  return "🟢 LOW RISK";
+}
+
 // Generate fallback insights when API calls fail
 function generateFallbackInsights(data: any): Insight[] {
   const isComprehensive = data && data.athlete;
 
   if (isComprehensive) {
     const comprehensiveData = data as ComprehensiveAthleteData;
+
+    // Analyze the actual data to provide meaningful fallbacks
+    const metrics = Object.entries(comprehensiveData.metrics);
+    const ratingMetrics = metrics.filter(([_, data]) => data.type === "rating");
+
+    // Calculate overall risk assessment
+    const avgRatings = ratingMetrics.map(
+      ([_, data]) => data.averageRating || 0
+    );
+    const overallAvg =
+      avgRatings.length > 0
+        ? avgRatings.reduce((sum, val) => sum + val, 0) / avgRatings.length
+        : 3;
+    const criticalMetrics = ratingMetrics.filter(
+      ([_, data]) => (data.averageRating || 0) <= 2.5
+    );
+
     return [
       {
-        area: "Performance Overview",
-        trend: `Athlete has ${comprehensiveData.totalResponses} total responses with ${comprehensiveData.consistencyScore}% consistency over ${comprehensiveData.dateRange.totalDays} days.`,
+        area: "🚨 Performance Risk Assessment",
+        trend: `Overall average: ${overallAvg.toFixed(1)}/5.0. ${
+          criticalMetrics.length > 0
+            ? `CRITICAL: ${criticalMetrics.length} metrics below 2.5`
+            : "Performance within acceptable range"
+        }. Response consistency: ${comprehensiveData.consistencyScore}%`,
         recommendation:
-          "Continue monitoring daily metrics and maintain consistent tracking habits for better performance analysis.",
-        confidence: 0.7,
+          criticalMetrics.length > 0
+            ? `IMMEDIATE ACTION: Schedule urgent meeting to discuss ${criticalMetrics
+                .map(([name]) => name)
+                .join(", ")}. Reduce training load by 20-30% this week.`
+            : `Continue monitoring. Schedule weekly check-in. Maintain current training load with emphasis on consistency.`,
+        confidence: 0.9,
       },
       {
-        area: "Data Consistency",
-        trend:
-          comprehensiveData.consistencyScore > 70
-            ? "Good response consistency shows commitment to tracking"
-            : "Inconsistent data submission may limit analysis accuracy",
+        area: "💪 Training Load Optimization",
+        trend: `${ratingMetrics.length} metrics tracked over ${
+          comprehensiveData.dateRange.totalDays
+        } days. ${
+          comprehensiveData.consistencyScore < 70
+            ? "Inconsistent reporting may indicate stress/motivation issues"
+            : "Good tracking consistency shows engagement"
+        }`,
         recommendation:
-          comprehensiveData.consistencyScore > 70
-            ? "Maintain current tracking discipline and consider adding weekly performance reviews."
-            : "Improve daily tracking consistency. Set up reminders and establish a routine for metric submission.",
+          comprehensiveData.consistencyScore < 70
+            ? `Focus on motivation and barriers to tracking. Simplify daily reporting. Consider deload week.`
+            : `Current tracking excellent. Consider adding specific performance metrics. Plan progressive overload for next phase.`,
         confidence: 0.8,
       },
       {
-        area: "Training Management",
-        trend:
-          "Based on available metrics, general training patterns are observable.",
+        area: "🎯 Athlete Communication Plan",
+        trend: `${comprehensiveData.totalResponses} total responses indicate ${
+          comprehensiveData.totalResponses > 20
+            ? "good engagement"
+            : "limited data availability"
+        }. Last response: ${
+          comprehensiveData.recentEntries[0]?.created_at.split("T")[0] ||
+          "Unknown"
+        }`,
         recommendation:
-          "Schedule regular check-ins to discuss metric trends and adjust training based on subjective feedback.",
-        confidence: 0.6,
+          comprehensiveData.totalResponses > 20
+            ? `Schedule performance review meeting. Discuss trends and goal adjustments. Celebrate consistency in tracking.`
+            : `PRIORITY: Improve data collection frequency. Set up automated reminders. Address barriers to daily reporting.`,
+        confidence: 0.8,
+      },
+      {
+        area: "📊 Monitoring Strategy",
+        trend: `Current metrics: ${ratingMetrics
+          .map(([name]) => name)
+          .join(", ")}. Data span: ${
+          comprehensiveData.dateRange.totalDays
+        } days`,
+        recommendation: `Continue tracking current metrics. ${
+          ratingMetrics.length < 3
+            ? "Consider adding sleep quality and training RPE metrics."
+            : "Good metric coverage."
+        } Set weekly review schedule.`,
+        confidence: 0.7,
       },
     ];
   }
 
-  // Fallback for legacy data structure
+  // Enhanced fallback for legacy data structure
   return [
     {
-      area: "Performance Analysis",
-      trend: "Limited data available for comprehensive analysis.",
+      area: "📊 Data Collection Priority",
+      trend: "Limited performance data available for comprehensive analysis",
       recommendation:
-        "Increase data collection frequency and ensure all metrics are being tracked consistently.",
-      confidence: 0.5,
+        "Implement daily tracking system with key metrics: sleep quality, energy levels, motivation, and training load perception",
+      confidence: 0.6,
     },
     {
-      area: "Recovery Monitoring",
-      trend: "Recovery patterns need more detailed tracking.",
+      area: "🎯 Initial Assessment Protocol",
+      trend: "Baseline data collection needed for meaningful insights",
       recommendation:
-        "Focus on consistent daily reporting of recovery metrics and sleep quality.",
-      confidence: 0.5,
+        "Establish 2-week baseline period with consistent daily metrics. Focus on simple 1-5 scale ratings for key indicators",
+      confidence: 0.7,
     },
     {
-      area: "Training Adaptation",
-      trend: "Current training response requires more data points.",
+      area: "💬 Athlete Engagement",
+      trend:
+        "Insufficient data suggests potential engagement or system usability issues",
       recommendation:
-        "Continue current training approach while improving data collection for better insights.",
-      confidence: 0.5,
+        "Meet with athlete to discuss tracking system. Identify barriers and simplify data collection process",
+      confidence: 0.8,
     },
   ];
 }
