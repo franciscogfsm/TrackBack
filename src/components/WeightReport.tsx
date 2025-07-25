@@ -284,7 +284,12 @@ export default function WeightReport({ athleteId, theme = "light" }: Props) {
         <div className="inline-block relative">
           <button
             type="button"
-            className="px-3 py-1.5 border rounded bg-white shadow-sm text-sm min-w-[140px] text-left"
+            className={clsx(
+              "px-3 py-1.5 border rounded shadow-sm text-sm min-w-[140px] text-left",
+              theme === "dark"
+                ? "bg-blue-900/50 border-blue-700/50 text-blue-100"
+                : "bg-white border-gray-300"
+            )}
             onClick={() => setCompareDropdownOpen((v) => !v)}
           >
             {compareDates.length > 0
@@ -293,7 +298,14 @@ export default function WeightReport({ athleteId, theme = "light" }: Props) {
             <span className="ml-2">▼</span>
           </button>
           {compareDropdownOpen && (
-            <div className="absolute z-10 mt-1 bg-white border rounded shadow-lg min-w-[180px] max-h-48 overflow-y-auto">
+            <div
+              className={clsx(
+                "absolute z-10 mt-1 border rounded shadow-lg min-w-[180px] max-h-48 overflow-y-auto",
+                theme === "dark"
+                  ? "bg-blue-900/80 border-blue-700/50"
+                  : "bg-white border-gray-300"
+              )}
+            >
               {allEntries.length === 0 && (
                 <div className="px-4 py-2 text-gray-400 text-sm">
                   No dates available
@@ -380,22 +392,49 @@ export default function WeightReport({ athleteId, theme = "light" }: Props) {
             type="date"
             value={lvDate}
             onChange={(e) => handleDateChange(e.target.value)}
-            className="px-2 py-1 rounded border text-sm"
+            className={clsx(
+              "px-2 py-1 rounded border text-sm",
+              theme === "dark"
+                ? "bg-blue-900/50 border-blue-700 text-blue-100"
+                : "bg-white border-gray-300"
+            )}
           />
         </div>
         <div className="overflow-x-auto">
-          <table className="min-w-full mb-4 border rounded-lg">
+          <table
+            className={clsx(
+              "min-w-full mb-4 border rounded-lg",
+              theme === "dark"
+                ? "border-blue-700 bg-blue-900/20"
+                : "border-gray-300 bg-white"
+            )}
+          >
             <thead
-              className={theme === "dark" ? "bg-slate-800/50" : "bg-gray-50"}
+              className={theme === "dark" ? "bg-blue-800/50" : "bg-gray-50"}
             >
               <tr>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider">
+                <th
+                  className={clsx(
+                    "px-3 py-2 text-left text-xs font-medium uppercase tracking-wider",
+                    theme === "dark" ? "text-white" : "text-gray-900"
+                  )}
+                >
                   Load (kg)
                 </th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider">
+                <th
+                  className={clsx(
+                    "px-3 py-2 text-left text-xs font-medium uppercase tracking-wider",
+                    theme === "dark" ? "text-white" : "text-gray-900"
+                  )}
+                >
                   Velocity (m/s)
                 </th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider">
+                <th
+                  className={clsx(
+                    "px-3 py-2 text-left text-xs font-medium uppercase tracking-wider",
+                    theme === "dark" ? "text-white" : "text-gray-900"
+                  )}
+                >
                   Power (W)
                 </th>
               </tr>
@@ -416,7 +455,12 @@ export default function WeightReport({ athleteId, theme = "light" }: Props) {
                           )
                         );
                       }}
-                      className="w-24 px-2 py-1 rounded border text-sm"
+                      className={clsx(
+                        "w-24 px-2 py-1 rounded border text-sm",
+                        theme === "dark"
+                          ? "bg-blue-900/50 border-blue-700 text-blue-100"
+                          : "bg-white border-gray-300"
+                      )}
                     />
                   </td>
                   <td className="px-3 py-2">
@@ -432,7 +476,12 @@ export default function WeightReport({ athleteId, theme = "light" }: Props) {
                           )
                         );
                       }}
-                      className="w-24 px-2 py-1 rounded border text-sm"
+                      className={clsx(
+                        "w-24 px-2 py-1 rounded border text-sm",
+                        theme === "dark"
+                          ? "bg-blue-900/50 border-blue-700 text-blue-100"
+                          : "bg-white border-gray-300"
+                      )}
                     />
                   </td>
                   <td className="px-3 py-2">
@@ -448,7 +497,12 @@ export default function WeightReport({ athleteId, theme = "light" }: Props) {
                           )
                         );
                       }}
-                      className="w-24 px-2 py-1 rounded border text-sm"
+                      className={clsx(
+                        "w-24 px-2 py-1 rounded border text-sm",
+                        theme === "dark"
+                          ? "bg-blue-900/50 border-blue-700 text-blue-100"
+                          : "bg-white border-gray-300"
+                      )}
                     />
                   </td>
                 </tr>
@@ -458,8 +512,20 @@ export default function WeightReport({ athleteId, theme = "light" }: Props) {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Load-Velocity Chart */}
-          <div className="bg-white rounded-xl shadow p-4 border border-gray-100">
-            <h3 className="font-semibold mb-2 text-blue-700">
+          <div
+            className={clsx(
+              "rounded-xl shadow p-4 border",
+              theme === "dark"
+                ? "bg-blue-900/30 border-blue-700/50"
+                : "bg-white border-gray-100"
+            )}
+          >
+            <h3
+              className={clsx(
+                "font-semibold mb-2",
+                theme === "dark" ? "text-blue-300" : "text-blue-700"
+              )}
+            >
               Load-Velocity Curve
             </h3>
             <ResponsiveContainer width="100%" height={260}>
@@ -526,8 +592,20 @@ export default function WeightReport({ athleteId, theme = "light" }: Props) {
             </ResponsiveContainer>
           </div>
           {/* Load-Power Chart */}
-          <div className="bg-white rounded-xl shadow p-4 border border-gray-100">
-            <h3 className="font-semibold mb-2 text-purple-700">
+          <div
+            className={clsx(
+              "rounded-xl shadow p-4 border",
+              theme === "dark"
+                ? "bg-blue-900/30 border-blue-700/50"
+                : "bg-white border-gray-100"
+            )}
+          >
+            <h3
+              className={clsx(
+                "font-semibold mb-2",
+                theme === "dark" ? "text-blue-300" : "text-purple-700"
+              )}
+            >
               Load-Power Curve
             </h3>
             <ResponsiveContainer width="100%" height={260}>
@@ -765,14 +843,23 @@ export default function WeightReport({ athleteId, theme = "light" }: Props) {
                     className={clsx(
                       "rounded-full w-10 h-10 flex items-center justify-center border transition",
                       page === 0
-                        ? "border-gray-200 bg-gray-50 text-gray-300 cursor-not-allowed"
+                        ? theme === "dark"
+                          ? "border-blue-800 bg-blue-950/50 text-blue-700 cursor-not-allowed"
+                          : "border-gray-200 bg-gray-50 text-gray-300 cursor-not-allowed"
+                        : theme === "dark"
+                        ? "border-blue-600 text-blue-300 bg-blue-900/50 hover:bg-blue-800/50 hover:border-blue-500"
                         : "border-blue-500 text-blue-600 bg-white hover:bg-blue-50 hover:border-blue-600"
                     )}
                     aria-label="Previous page"
                   >
                     <ChevronLeft className="w-5 h-5" />
                   </button>
-                  <span className="text-sm font-medium text-gray-700">
+                  <span
+                    className={clsx(
+                      "text-sm font-medium",
+                      theme === "dark" ? "text-blue-300" : "text-gray-700"
+                    )}
+                  >
                     Page {page + 1} of{" "}
                     {Math.ceil(filteredRecords.length / PAGE_SIZE)}
                   </span>
@@ -791,7 +878,11 @@ export default function WeightReport({ athleteId, theme = "light" }: Props) {
                     className={clsx(
                       "rounded-full w-10 h-10 flex items-center justify-center border transition",
                       page >= Math.ceil(filteredRecords.length / PAGE_SIZE) - 1
-                        ? "border-gray-200 bg-gray-50 text-gray-300 cursor-not-allowed"
+                        ? theme === "dark"
+                          ? "border-blue-800 bg-blue-950/50 text-blue-700 cursor-not-allowed"
+                          : "border-gray-200 bg-gray-50 text-gray-300 cursor-not-allowed"
+                        : theme === "dark"
+                        ? "border-blue-600 text-blue-300 bg-blue-900/50 hover:bg-blue-800/50 hover:border-blue-500"
                         : "border-blue-500 text-blue-600 bg-white hover:bg-blue-50 hover:border-blue-600"
                     )}
                     aria-label="Next page"

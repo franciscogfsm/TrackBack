@@ -7,6 +7,7 @@ import clsx from "clsx";
 interface GroupsManagementProps {
   managerId: string;
   onGroupsUpdate?: () => void;
+  theme?: "light" | "dark" | "system";
 }
 
 const GROUP_COLORS = [
@@ -25,6 +26,7 @@ const GROUP_COLORS = [
 export default function GroupsManagement({
   managerId,
   onGroupsUpdate,
+  theme = "light",
 }: GroupsManagementProps) {
   const [groups, setGroups] = useState<AthleteGroup[]>([]);
   const [athletes, setAthletes] = useState<Profile[]>([]);
@@ -392,7 +394,12 @@ export default function GroupsManagement({
             return (
               <div
                 key={group.id}
-                className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden transition-all duration-200 hover:shadow-md hover:border-gray-300"
+                className={clsx(
+                  "rounded-xl border shadow-sm overflow-hidden transition-all duration-200 hover:shadow-md",
+                  theme === "dark"
+                    ? "bg-blue-900/40 border-blue-700/50 hover:border-blue-600/70"
+                    : "bg-white border-gray-200 hover:border-gray-300"
+                )}
               >
                 <div
                   className="h-3"
@@ -401,11 +408,21 @@ export default function GroupsManagement({
                 <div className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900">
+                      <h3
+                        className={clsx(
+                          "text-lg font-semibold",
+                          theme === "dark" ? "text-blue-100" : "text-gray-900"
+                        )}
+                      >
                         {group.name || "Unnamed Group"}
                       </h3>
                       {group.description && (
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p
+                          className={clsx(
+                            "text-sm mt-1",
+                            theme === "dark" ? "text-blue-200" : "text-gray-600"
+                          )}
+                        >
                           {group.description}
                         </p>
                       )}
@@ -483,7 +500,12 @@ export default function GroupsManagement({
             {getUngroupedAthletes().map((athlete) => (
               <div
                 key={athlete.id}
-                className="flex items-center gap-3 p-3 bg-white rounded-lg"
+                className={clsx(
+                  "flex items-center gap-3 p-3 rounded-lg",
+                  theme === "dark"
+                    ? "bg-blue-900/30 border border-blue-700/50"
+                    : "bg-white"
+                )}
               >
                 <img
                   src={athlete.avatar_url || "https://via.placeholder.com/32"}
@@ -502,8 +524,20 @@ export default function GroupsManagement({
       {/* Create/Edit Group Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          <div
+            className={clsx(
+              "rounded-xl max-w-md w-full p-6",
+              theme === "dark"
+                ? "bg-blue-900/95 border border-blue-700/50"
+                : "bg-white"
+            )}
+          >
+            <h3
+              className={clsx(
+                "text-lg font-semibold mb-4",
+                theme === "dark" ? "text-blue-100" : "text-gray-900"
+              )}
+            >
               {editingGroup ? "Edit Group" : "Create New Group"}
             </h3>
             <form
@@ -591,9 +625,21 @@ export default function GroupsManagement({
       {/* Manage Athletes Modal */}
       {showManageModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-2xl w-full p-6 max-h-[80vh] overflow-y-auto">
+          <div
+            className={clsx(
+              "rounded-xl max-w-2xl w-full p-6 max-h-[80vh] overflow-y-auto",
+              theme === "dark"
+                ? "bg-blue-900/95 border border-blue-700/50"
+                : "bg-white"
+            )}
+          >
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-gray-900">
+              <h3
+                className={clsx(
+                  "text-lg font-semibold",
+                  theme === "dark" ? "text-blue-100" : "text-gray-900"
+                )}
+              >
                 Manage Athletes - {showManageModal.name}
               </h3>
               <button
@@ -663,7 +709,12 @@ export default function GroupsManagement({
                   {getUngroupedAthletes().map((athlete) => (
                     <div
                       key={athlete.id}
-                      className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg"
+                      className={clsx(
+                        "flex items-center justify-between p-3 border rounded-lg",
+                        theme === "dark"
+                          ? "bg-blue-900/30 border-blue-700/50"
+                          : "bg-white border-gray-200"
+                      )}
                     >
                       <div className="flex items-center gap-3">
                         <img

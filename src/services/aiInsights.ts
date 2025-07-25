@@ -25,10 +25,10 @@ try {
   );
 }
 
-// Rate limiting configuration
+// Rate limiting configuration - Updated to 10 requests per minute
 const RATE_LIMIT_WINDOW = 60000; // 1 minute in milliseconds
-const MAX_REQUESTS_PER_WINDOW = 1; // Maximum 1 request per minute
-const MIN_REQUEST_INTERVAL = 5000; // Minimum 5 seconds between requests
+const MAX_REQUESTS_PER_WINDOW = 10; // Maximum 10 requests per minute
+const MIN_REQUEST_INTERVAL = 6000; // Minimum 6 seconds between requests
 
 let requestTimestamps: number[] = [];
 let lastRequestTime = 0;
@@ -37,6 +37,46 @@ let insightsCache = new Map<
   { insights: Insight[]; timestamp: number }
 >();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Enhanced interfaces for comprehensive athlete data
+export interface AthleteMetricResponse {
+  id: number;
+  created_at: string;
+  metric_title: string;
+  metric_type: "rating" | "text";
+  metric_description?: string;
+  rating_value?: number;
+  text_value?: string;
+}
+
+export interface ComprehensiveAthleteData {
+  athlete: {
+    id: string;
+    name: string;
+    email: string;
+    created_at: string;
+  };
+  totalResponses: number;
+  dateRange: {
+    start: string;
+    end: string;
+    totalDays: number;
+  };
+  metrics: {
+    [metricName: string]: {
+      type: "rating" | "text";
+      description?: string;
+      values: Array<{
+        date: string;
+        value: number | string;
+      }>;
+      averageRating?: number;
+      trend?: "improving" | "declining" | "stable";
+    };
+  };
+  recentEntries: AthleteMetricResponse[];
+  consistencyScore: number; // 0-100 based on response frequency
+}
 
 // Rate limiting function
 function checkRateLimit(): void {
@@ -100,31 +140,316 @@ export interface Insight {
   };
 }
 
-// Add fallback insights for when API calls fail
-const FALLBACK_INSIGHTS: Insight[] = [
-  {
-    area: "Training Load",
-    trend: "Based on recent metrics",
-    recommendation:
-      "Maintain current training intensity while monitoring recovery levels. Consider adjusting based on daily feedback.",
-    confidence: 0.7,
-  },
-  {
-    area: "Recovery",
-    trend: "Recovery patterns analysis",
-    recommendation:
-      "Focus on quality sleep and proper nutrition. Take rest days when needed to prevent overtraining.",
-    confidence: 0.7,
-  },
-  {
-    area: "Performance",
-    trend: "Overall performance indicators",
-    recommendation:
-      "Set specific goals for each training session. Track progress consistently and adjust training plans accordingly.",
-    confidence: 0.7,
-  },
-];
+// Function to fetch comprehensive athlete data from database
+export async function fetchComprehensiveAthleteData(
+  athleteId: string
+): Promise<ComprehensiveAthleteData | null> {
+  try {
+    // Fetch athlete profile
+    const { data: athlete, error: athleteError } = await supabase
+      .from("profiles")
+      .select("id, full_name, email, created_at")
+      .eq("id", athleteId)
+      .single();
 
+    if (athleteError) {
+      console.error("Error fetching athlete:", athleteError);
+      return null;
+    }
+
+    // Fetch all metric responses for the athlete
+    const { data: responses, error: responsesError } = await supabase
+      .from("metric_responses")
+      .select(
+        `
+        id,
+        created_at,
+        rating_value,
+        text_value,
+        custom_metrics!inner(
+          id,
+          title,
+          type,
+          description
+        )
+      `
+      )
+      .eq("athlete_id", athleteId)
+      .order("created_at", { ascending: false });
+
+    if (responsesError) {
+      console.error("Error fetching responses:", responsesError);
+      return null;
+    }
+
+    if (!responses || responses.length === 0) {
+      return {
+        athlete: {
+          id: athlete.id,
+          name: athlete.full_name,
+          email: athlete.email,
+          created_at: athlete.created_at,
+        },
+        totalResponses: 0,
+        dateRange: {
+          start: new Date().toISOString().split("T")[0],
+          end: new Date().toISOString().split("T")[0],
+          totalDays: 0,
+        },
+        metrics: {},
+        recentEntries: [],
+        consistencyScore: 0,
+      };
+    }
+
+    // Process the responses
+    const processedResponses: AthleteMetricResponse[] = responses.map(
+      (r: any) => ({
+        id: r.id,
+        created_at: r.created_at,
+        metric_title: r.custom_metrics.title,
+        metric_type: r.custom_metrics.type,
+        metric_description: r.custom_metrics.description,
+        rating_value: r.rating_value,
+        text_value: r.text_value,
+      })
+    );
+
+    // Calculate date range
+    const dates = processedResponses.map((r) => new Date(r.created_at));
+    const startDate = new Date(Math.min(...dates.map((d) => d.getTime())));
+    const endDate = new Date(Math.max(...dates.map((d) => d.getTime())));
+    const totalDays =
+      Math.ceil(
+        (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+      ) + 1;
+
+    // Group by metrics and calculate trends
+    const metricsData: { [metricName: string]: any } = {};
+
+    processedResponses.forEach((response) => {
+      const metricName = response.metric_title;
+
+      if (!metricsData[metricName]) {
+        metricsData[metricName] = {
+          type: response.metric_type,
+          description: response.metric_description,
+          values: [],
+          averageRating: undefined,
+          trend: "stable" as const,
+        };
+      }
+
+      const value =
+        response.metric_type === "rating"
+          ? response.rating_value
+          : response.text_value;
+
+      if (value !== null && value !== undefined) {
+        metricsData[metricName].values.push({
+          date: response.created_at.split("T")[0],
+          value: value,
+        });
+      }
+    });
+
+    // Calculate averages and trends for rating metrics
+    Object.keys(metricsData).forEach((metricName) => {
+      const metric = metricsData[metricName];
+      if (metric.type === "rating") {
+        const ratingValues = metric.values
+          .map((v: any) => v.value)
+          .filter((v: any) => typeof v === "number");
+
+        if (ratingValues.length > 0) {
+          metric.averageRating =
+            ratingValues.reduce((sum: number, val: number) => sum + val, 0) /
+            ratingValues.length;
+
+          // Calculate trend (comparing first half vs second half)
+          if (ratingValues.length >= 4) {
+            const midPoint = Math.floor(ratingValues.length / 2);
+            const firstHalf = ratingValues.slice(0, midPoint);
+            const secondHalf = ratingValues.slice(midPoint);
+
+            const firstAvg =
+              firstHalf.reduce((sum: number, val: number) => sum + val, 0) /
+              firstHalf.length;
+            const secondAvg =
+              secondHalf.reduce((sum: number, val: number) => sum + val, 0) /
+              secondHalf.length;
+
+            if (secondAvg > firstAvg + 0.3) {
+              metric.trend = "improving";
+            } else if (secondAvg < firstAvg - 0.3) {
+              metric.trend = "declining";
+            } else {
+              metric.trend = "stable";
+            }
+          }
+        }
+      }
+    });
+
+    // Calculate consistency score
+    const expectedResponses = totalDays; // Assuming daily responses are expected
+    const actualResponses = processedResponses.length;
+    const consistencyScore = Math.min(
+      100,
+      Math.round((actualResponses / expectedResponses) * 100)
+    );
+
+    return {
+      athlete: {
+        id: athlete.id,
+        name: athlete.full_name,
+        email: athlete.email,
+        created_at: athlete.created_at,
+      },
+      totalResponses: processedResponses.length,
+      dateRange: {
+        start: startDate.toISOString().split("T")[0],
+        end: endDate.toISOString().split("T")[0],
+        totalDays,
+      },
+      metrics: metricsData,
+      recentEntries: processedResponses.slice(0, 10), // Last 10 entries
+      consistencyScore,
+    };
+  } catch (error) {
+    console.error("Error fetching comprehensive athlete data:", error);
+    return null;
+  }
+}
+
+// Enhanced AI insights function with comprehensive data analysis
+export async function generateComprehensiveAthleteInsights(
+  comprehensiveData: ComprehensiveAthleteData,
+  model: string = "gpt-3.5-turbo"
+): Promise<Insight[]> {
+  try {
+    // Create a cache key based on the comprehensive data
+    const cacheKey = `comprehensive_${
+      comprehensiveData.athlete.id
+    }_${JSON.stringify(comprehensiveData.dateRange)}_${model}`;
+    const cached = insightsCache.get(cacheKey);
+
+    // Return cached insights if they exist and are not expired
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      return cached.insights;
+    }
+
+    checkRateLimit();
+
+    // Create a detailed analysis prompt
+    const prompt = `As an expert sports performance coach, analyze this comprehensive athlete data and provide actionable coaching insights.
+
+ATHLETE PROFILE:
+- Name: ${comprehensiveData.athlete.name}
+- Training Period: ${comprehensiveData.dateRange.start} to ${
+      comprehensiveData.dateRange.end
+    } (${comprehensiveData.dateRange.totalDays} days)
+- Total Responses: ${comprehensiveData.totalResponses}
+- Consistency Score: ${comprehensiveData.consistencyScore}% (response rate)
+
+DETAILED METRICS ANALYSIS:
+${Object.entries(comprehensiveData.metrics)
+  .map(([metricName, data]) => {
+    if (data.type === "rating") {
+      return `
+${metricName} (Rating Scale 1-5):
+- Average Rating: ${data.averageRating?.toFixed(2) || "N/A"}
+- Trend: ${data.trend}
+- Total Entries: ${data.values.length}
+- Recent Values: ${data.values
+        .slice(0, 5)
+        .map((v) => `${v.date}: ${v.value}`)
+        .join(", ")}
+- Description: ${data.description || "No description"}`;
+    } else {
+      return `
+${metricName} (Text Responses):
+- Total Entries: ${data.values.length}
+- Recent Entries: ${data.values
+        .slice(0, 3)
+        .map((v) => `${v.date}: "${v.value}"`)
+        .join(", ")}
+- Description: ${data.description || "No description"}`;
+    }
+  })
+  .join("\n")}
+
+RECENT ACTIVITY SUMMARY:
+${comprehensiveData.recentEntries
+  .slice(0, 5)
+  .map(
+    (entry) =>
+      `${entry.created_at.split("T")[0]}: ${entry.metric_title} = ${
+        entry.rating_value || entry.text_value
+      }`
+  )
+  .join("\n")}
+
+Please provide 4 detailed coaching insights covering:
+
+1. **Performance Trends**: Analyze overall performance trajectory and key patterns
+2. **Recovery & Wellness**: Evaluate recovery patterns and wellness indicators
+3. **Training Load Management**: Assess current training load and adaptation
+4. **Action Plan**: Specific next steps and recommendations for the coach
+
+For each insight, provide:
+- Clear trend analysis based on the data
+- Specific coaching recommendations
+- Evidence from the metrics to support your analysis
+
+Format each insight as: area|trend|recommendation
+
+Focus on actionable advice that a coach can immediately implement. Consider both the quantitative data and qualitative feedback.`;
+
+    const response = await openai.chat.completions.create({
+      model,
+      messages: [
+        {
+          role: "system",
+          content: `You are an expert sports performance coach with 15+ years of experience. Analyze the comprehensive athlete data and provide specific, actionable coaching insights. Always base your recommendations on the actual data provided. Format each insight as: area|trend|recommendation`,
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      temperature: 0.7,
+      max_tokens: 1000, // Increased for more detailed responses
+    });
+
+    const insights =
+      response.choices[0].message.content
+        ?.split("\n")
+        .filter((line: string) => line.trim() && line.includes("|"))
+        .map((line: string) => {
+          const [area, trend, recommendation] = line.split("|");
+          return {
+            area: area?.trim() || "",
+            trend: trend?.trim() || "",
+            recommendation: recommendation?.trim() || "",
+            confidence: 0.8, // Higher confidence for comprehensive data
+          };
+        }) || generateFallbackInsights(comprehensiveData);
+
+    // Cache the results
+    insightsCache.set(cacheKey, {
+      insights,
+      timestamp: Date.now(),
+    });
+
+    return insights;
+  } catch (error) {
+    console.error("Error generating comprehensive insights:", error);
+    return generateFallbackInsights(comprehensiveData);
+  }
+}
+
+// Legacy function for backward compatibility
 export async function generateAthleteInsights(
   data: PerformanceData[],
   model: string = "gpt-3.5-turbo"
@@ -198,75 +523,67 @@ Provide 3 detailed insights with clear trends and actionable recommendations. Fo
   }
 }
 
-// New function to generate more contextual fallback insights
-function generateFallbackInsights(data: PerformanceData[]): Insight[] {
-  return [
-    {
-      area: "Performance Overview",
-      trend:
-        "Based on the available data, we can see consistent performance patterns.",
-      recommendation:
-        "Continue monitoring key metrics and maintain current training approach.",
-      confidence: 0.7,
-      supportingData: {
-        metrics: Object.keys(data[0]?.metrics || {}),
-        dateRange: `${data[0]?.date || ""} to ${
-          data[data.length - 1]?.date || ""
-        }`,
-        trendValues: [],
-      },
-    },
-    {
-      area: "Recovery Analysis",
-      trend: "Recovery patterns show good adaptation to training load.",
-      recommendation:
-        "Maintain current recovery protocols and monitor for any changes.",
-      confidence: 0.6,
-      supportingData: {
-        metrics: Object.keys(data[0]?.metrics || {}),
-        dateRange: `${data[0]?.date || ""} to ${
-          data[data.length - 1]?.date || ""
-        }`,
-        trendValues: [],
-      },
-    },
-    {
-      area: "Training Response",
-      trend: "Athlete shows positive response to current training intensity.",
-      recommendation:
-        "Consider gradual progression in training volume while maintaining intensity.",
-      confidence: 0.8,
-      supportingData: {
-        metrics: Object.keys(data[0]?.metrics || {}),
-        dateRange: `${data[0]?.date || ""} to ${
-          data[data.length - 1]?.date || ""
-        }`,
-        trendValues: [],
-      },
-    },
-  ];
-}
+// Generate fallback insights when API calls fail
+function generateFallbackInsights(data: any): Insight[] {
+  const isComprehensive = data && data.athlete;
 
-// Helper function to generate fallback content based on actual data
-function generateFallbackContent(data: PerformanceData[]): string {
-  // If we have actual data, try to provide more relevant fallback insights
-  if (data.length > 0 && data[0].metrics) {
-    const metrics = Object.keys(data[0].metrics);
-    return metrics
-      .map((metric, index) => {
-        if (index === 0)
-          return `Training Management|Analyzing ${metric}|Focus on maintaining consistent ${metric.toLowerCase()} while monitoring your body's response.`;
-        if (index === 1)
-          return `Recovery|Tracking ${metric}|Pay attention to your ${metric.toLowerCase()} patterns and adjust training accordingly.`;
-        return `Performance|Overall Progress|Set specific goals and track your progress consistently across all metrics.`;
-      })
-      .join("\n");
+  if (isComprehensive) {
+    const comprehensiveData = data as ComprehensiveAthleteData;
+    return [
+      {
+        area: "Performance Overview",
+        trend: `Athlete has ${comprehensiveData.totalResponses} total responses with ${comprehensiveData.consistencyScore}% consistency over ${comprehensiveData.dateRange.totalDays} days.`,
+        recommendation:
+          "Continue monitoring daily metrics and maintain consistent tracking habits for better performance analysis.",
+        confidence: 0.7,
+      },
+      {
+        area: "Data Consistency",
+        trend:
+          comprehensiveData.consistencyScore > 70
+            ? "Good response consistency shows commitment to tracking"
+            : "Inconsistent data submission may limit analysis accuracy",
+        recommendation:
+          comprehensiveData.consistencyScore > 70
+            ? "Maintain current tracking discipline and consider adding weekly performance reviews."
+            : "Improve daily tracking consistency. Set up reminders and establish a routine for metric submission.",
+        confidence: 0.8,
+      },
+      {
+        area: "Training Management",
+        trend:
+          "Based on available metrics, general training patterns are observable.",
+        recommendation:
+          "Schedule regular check-ins to discuss metric trends and adjust training based on subjective feedback.",
+        confidence: 0.6,
+      },
+    ];
   }
 
-  // If no data, return generic insights
-  return `Training Load|Recent Analysis|Maintain balanced training intensity and monitor recovery.
-Recovery|Pattern Analysis|Focus on quality sleep and proper nutrition between sessions.
-Performance|Progress Tracking|Set specific goals and maintain consistent tracking.`;
+  // Fallback for legacy data structure
+  return [
+    {
+      area: "Performance Analysis",
+      trend: "Limited data available for comprehensive analysis.",
+      recommendation:
+        "Increase data collection frequency and ensure all metrics are being tracked consistently.",
+      confidence: 0.5,
+    },
+    {
+      area: "Recovery Monitoring",
+      trend: "Recovery patterns need more detailed tracking.",
+      recommendation:
+        "Focus on consistent daily reporting of recovery metrics and sleep quality.",
+      confidence: 0.5,
+    },
+    {
+      area: "Training Adaptation",
+      trend: "Current training response requires more data points.",
+      recommendation:
+        "Continue current training approach while improving data collection for better insights.",
+      confidence: 0.5,
+    },
+  ];
 }
 
 export async function generateTeamInsights(
@@ -332,9 +649,9 @@ Format each insight as: area|trend|recommendation`;
     return [
       {
         area: "Team Performance",
-        trend: "Unable to analyze team data.",
-        recommendation: "Please try again later.",
-        confidence: 0.7,
+        trend: "Unable to analyze team data at this time.",
+        recommendation: "Please try again later or check data availability.",
+        confidence: 0.5,
       },
     ];
   }
@@ -376,7 +693,14 @@ export async function analyzeMetric(
 
     // Cache the results
     insightsCache.set(cacheKey, {
-      insights: [{ area: metricName, trend: "", recommendation: analysis }],
+      insights: [
+        {
+          area: metricName,
+          trend: "",
+          recommendation: analysis,
+          confidence: 0.7,
+        },
+      ],
       timestamp: Date.now(),
     });
 

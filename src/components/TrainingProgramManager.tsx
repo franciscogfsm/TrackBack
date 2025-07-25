@@ -228,8 +228,8 @@ export default function TrainingProgramManager({
       className={clsx(
         "rounded-2xl shadow-sm p-6 mb-8",
         theme === "dark"
-          ? "bg-slate-800/50 ring-1 ring-slate-700/50"
-          : "bg-white/90 shadow-xl shadow-blue-900/5"
+          ? "bg-blue-900/50 ring-1 ring-blue-700/50"
+          : "bg-blue-50/90 shadow-xl shadow-blue-900/10"
       )}
     >
       <div className="flex items-center justify-between mb-6">
@@ -284,8 +284,8 @@ export default function TrainingProgramManager({
                     className={clsx(
                       "flex-1 px-4 py-2 rounded-lg border",
                       theme === "dark"
-                        ? "bg-slate-900/50 border-slate-700 text-white"
-                        : "bg-white border-gray-300 text-gray-900"
+                        ? "bg-blue-900/50 border-blue-700 text-blue-100"
+                        : "bg-blue-50 border-blue-300 text-blue-900"
                     )}
                   />
                   <button
@@ -310,8 +310,8 @@ export default function TrainingProgramManager({
                   className={clsx(
                     "flex-1 px-4 py-2 rounded-lg border",
                     theme === "dark"
-                      ? "bg-slate-900/50 border-slate-700 text-white"
-                      : "bg-white border-gray-300 text-gray-900"
+                      ? "bg-blue-900/50 border-blue-700 text-blue-100"
+                      : "bg-blue-50 border-blue-300 text-blue-900"
                   )}
                 />
                 <button
@@ -352,8 +352,8 @@ export default function TrainingProgramManager({
                     className={clsx(
                       "flex-1 px-4 py-2 rounded-lg border",
                       theme === "dark"
-                        ? "bg-slate-900/50 border-slate-700 text-white"
-                        : "bg-white border-gray-300 text-gray-900"
+                        ? "bg-blue-900/50 border-blue-700 text-blue-100"
+                        : "bg-blue-50 border-blue-300 text-blue-900"
                     )}
                   />
                   <button
@@ -378,8 +378,8 @@ export default function TrainingProgramManager({
                   className={clsx(
                     "flex-1 px-4 py-2 rounded-lg border",
                     theme === "dark"
-                      ? "bg-slate-900/50 border-slate-700 text-white"
-                      : "bg-white border-gray-300 text-gray-900"
+                      ? "bg-blue-900/50 border-blue-700 text-blue-100"
+                      : "bg-blue-50 border-blue-300 text-blue-900"
                   )}
                 />
                 <button
@@ -403,7 +403,7 @@ export default function TrainingProgramManager({
               className={clsx(
                 "px-4 py-2 rounded-lg font-medium text-sm",
                 theme === "dark"
-                  ? "text-slate-300 hover:text-white hover:bg-slate-700/50"
+                  ? "text-blue-300 hover:text-white hover:bg-blue-700/50"
                   : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
               )}
             >
@@ -440,7 +440,7 @@ export default function TrainingProgramManager({
               <ul
                 className={clsx(
                   "space-y-2",
-                  theme === "dark" ? "text-slate-300" : "text-gray-600"
+                  theme === "dark" ? "text-white" : "text-gray-600"
                 )}
               >
                 {planAExercises.map((exercise, index) => (
@@ -465,7 +465,7 @@ export default function TrainingProgramManager({
               <ul
                 className={clsx(
                   "space-y-2",
-                  theme === "dark" ? "text-slate-300" : "text-gray-600"
+                  theme === "dark" ? "text-white" : "text-gray-600"
                 )}
               >
                 {planBExercises.map((exercise, index) => (
@@ -496,8 +496,8 @@ export default function TrainingProgramManager({
                 className={clsx(
                   "px-4 py-2 rounded-lg border appearance-none pr-10",
                   theme === "dark"
-                    ? "bg-slate-900/50 border-slate-700 text-white"
-                    : "bg-white border-gray-300 text-gray-900"
+                    ? "bg-blue-900/50 border-blue-700 text-blue-100"
+                    : "bg-blue-50 border-blue-300 text-blue-900"
                 )}
                 style={{
                   backgroundImage:
@@ -521,8 +521,8 @@ export default function TrainingProgramManager({
                 className={clsx(
                   "px-4 py-2 rounded-lg border",
                   theme === "dark"
-                    ? "bg-slate-900/50 border-slate-700 text-white"
-                    : "bg-white border-gray-300 text-gray-900"
+                    ? "bg-blue-900/50 border-blue-700 text-blue-100"
+                    : "bg-blue-50 border-blue-300 text-blue-900"
                 )}
               />
             </div>
@@ -536,16 +536,36 @@ export default function TrainingProgramManager({
                 <thead>
                   <tr>
                     <th className="px-4 py-2"></th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                    <th
+                      className={clsx(
+                        "px-6 py-3 text-left text-xs font-medium uppercase tracking-wider",
+                        theme === "dark" ? "text-white" : "text-gray-900"
+                      )}
+                    >
                       Athlete
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                    <th
+                      className={clsx(
+                        "px-6 py-3 text-left text-xs font-medium uppercase tracking-wider",
+                        theme === "dark" ? "text-white" : "text-gray-900"
+                      )}
+                    >
                       Plan
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                    <th
+                      className={clsx(
+                        "px-6 py-3 text-left text-xs font-medium uppercase tracking-wider",
+                        theme === "dark" ? "text-white" : "text-gray-900"
+                      )}
+                    >
                       Exercise
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                    <th
+                      className={clsx(
+                        "px-6 py-3 text-left text-xs font-medium uppercase tracking-wider",
+                        theme === "dark" ? "text-white" : "text-gray-900"
+                      )}
+                    >
                       Series
                     </th>
                   </tr>
@@ -599,7 +619,7 @@ export default function TrainingProgramManager({
                               className={clsx(
                                 "px-6 py-4 whitespace-nowrap text-sm font-semibold",
                                 theme === "dark"
-                                  ? "text-slate-100"
+                                  ? "text-white"
                                   : "text-gray-900"
                               )}
                               colSpan={4}
@@ -613,7 +633,7 @@ export default function TrainingProgramManager({
                                 colSpan={5}
                                 className={clsx(
                                   theme === "dark"
-                                    ? "bg-slate-800/40"
+                                    ? "bg-blue-900/40"
                                     : "bg-blue-50/40"
                                 )}
                               >
@@ -637,13 +657,34 @@ export default function TrainingProgramManager({
                                       <table className="min-w-[220px] text-sm mb-2">
                                         <thead>
                                           <tr>
-                                            <th className="text-left pr-4 font-semibold">
+                                            <th
+                                              className={clsx(
+                                                "text-left pr-4 font-semibold",
+                                                theme === "dark"
+                                                  ? "text-white"
+                                                  : "text-gray-900"
+                                              )}
+                                            >
                                               Series
                                             </th>
-                                            <th className="text-left pr-4 font-semibold">
+                                            <th
+                                              className={clsx(
+                                                "text-left pr-4 font-semibold",
+                                                theme === "dark"
+                                                  ? "text-white"
+                                                  : "text-gray-900"
+                                              )}
+                                            >
                                               Weight
                                             </th>
-                                            <th className="text-left font-semibold">
+                                            <th
+                                              className={clsx(
+                                                "text-left font-semibold",
+                                                theme === "dark"
+                                                  ? "text-white"
+                                                  : "text-gray-900"
+                                              )}
+                                            >
                                               Reps
                                             </th>
                                           </tr>
@@ -668,7 +709,11 @@ export default function TrainingProgramManager({
                                             <tr>
                                               <td
                                                 colSpan={3}
-                                                className="text-gray-400"
+                                                className={clsx(
+                                                  theme === "dark"
+                                                    ? "text-gray-300"
+                                                    : "text-gray-400"
+                                                )}
                                               >
                                                 -
                                               </td>

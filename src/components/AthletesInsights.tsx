@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Brain,
   TrendingUp,
@@ -6,11 +6,11 @@ import {
   AlertCircle,
   Sparkles,
   X,
-  Calendar,
 } from "lucide-react";
 import {
-  generateAthleteInsights,
   generateTeamInsights,
+  generateComprehensiveAthleteInsights,
+  fetchComprehensiveAthleteData,
   PerformanceData,
   Insight,
 } from "../services/aiInsights";
@@ -36,60 +36,6 @@ export default function AthletesInsights({
   const fetchingRef = useRef<boolean>(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Preprocess data to include date ranges and trends
-  const preprocessData = (data: PerformanceData[]) => {
-    if (!data.length) return data;
-
-    // Sort by date
-    const sortedData = [...data].sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
-
-    // Add date range info
-    const firstDate = new Date(sortedData[0].date);
-    const lastDate = new Date(sortedData[sortedData.length - 1].date);
-    const dateRange = {
-      start: firstDate.toISOString().split("T")[0],
-      end: lastDate.toISOString().split("T")[0],
-      days: Math.ceil(
-        (lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24)
-      ),
-    };
-
-    // Calculate trends for each metric
-    const metrics = Object.keys(sortedData[0].metrics);
-    const trends = metrics.reduce((acc, metric) => {
-      const values = sortedData
-        .map((d) => d.metrics[metric])
-        .filter((v) => v !== undefined);
-      if (values.length < 2) return acc;
-
-      const firstValue = values[0];
-      const lastValue = values[values.length - 1];
-      const trend = lastValue - firstValue;
-      const trendPercentage = (trend / firstValue) * 100;
-
-      acc[metric] = {
-        trend,
-        trendPercentage,
-        average: values.reduce((sum, val) => sum + val, 0) / values.length,
-        min: Math.min(...values),
-        max: Math.max(...values),
-      };
-      return acc;
-    }, {} as Record<string, any>);
-
-    return {
-      data: sortedData,
-      metadata: {
-        dateRange,
-        trends,
-        totalEntries: sortedData.length,
-        metrics,
-      },
-    };
-  };
-
   useEffect(() => {
     const currentDataString = JSON.stringify(data);
 
@@ -105,15 +51,30 @@ export default function AthletesInsights({
         setError(null);
         fetchingRef.current = true;
 
-        // Preprocess the data
-        let processedData:
-          | PerformanceData[]
-          | { [athleteId: string]: PerformanceData[] };
-
+        // For individual athletes, use comprehensive data fetching
         if (athleteId) {
-          processedData = data as PerformanceData[];
+          // Fetch comprehensive data from database
+          const comprehensiveData = await fetchComprehensiveAthleteData(
+            athleteId
+          );
+
+          if (!comprehensiveData) {
+            throw new Error("Could not fetch athlete data from database");
+          }
+
+          // Generate insights using comprehensive data
+          const response = await generateComprehensiveAthleteInsights(
+            comprehensiveData,
+            model
+          );
+
+          if (!abortControllerRef.current?.signal.aborted) {
+            setInsights(response);
+            dataRef.current = currentDataString;
+          }
         } else {
-          processedData = Object.entries(
+          // For team insights, use legacy approach
+          const processedData = Object.entries(
             data as { [athleteId: string]: PerformanceData[] }
           ).reduce(
             (acc, [id, athleteData]) => ({
@@ -122,22 +83,13 @@ export default function AthletesInsights({
             }),
             {} as { [athleteId: string]: PerformanceData[] }
           );
-        }
 
-        // Generate insights with the processed data
-        const response = athleteId
-          ? await generateAthleteInsights(
-              processedData as PerformanceData[],
-              model
-            )
-          : await generateTeamInsights(
-              processedData as { [athleteId: string]: PerformanceData[] },
-              model
-            );
+          const response = await generateTeamInsights(processedData, model);
 
-        if (!abortControllerRef.current?.signal.aborted) {
-          setInsights(response);
-          dataRef.current = currentDataString;
+          if (!abortControllerRef.current?.signal.aborted) {
+            setInsights(response);
+            dataRef.current = currentDataString;
+          }
         }
       } catch (err) {
         if (!abortControllerRef.current?.signal.aborted) {
@@ -195,12 +147,16 @@ export default function AthletesInsights({
           </div>
           <div>
             <h3 className="text-xl font-bold text-white">
-              AI Analysis in Progress
+              {athleteId
+                ? "Comprehensive AI Analysis in Progress"
+                : "AI Analysis in Progress"}
             </h3>
             <div className="flex items-center gap-2 mt-1">
               <div className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse"></div>
               <p className="text-blue-200 text-sm">
-                Analyzing performance patterns...
+                {athleteId
+                  ? "Analyzing complete training history and patterns..."
+                  : "Analyzing performance patterns..."}
               </p>
             </div>
           </div>

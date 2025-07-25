@@ -1559,6 +1559,7 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
   const handleShowInsights = async (athlete: Profile) => {
     setSelectedAthleteForInsights(athlete);
     setShowInsightsModal(true);
+    // Use the new comprehensive data fetching
     const allResponses = await fetchAllMetricResponsesForAthlete(athlete.id);
     setInsightsMetricResponses(allResponses);
   };
@@ -1632,50 +1633,63 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
   return (
     <div
       className={clsx(
-        "min-h-screen transition-colors duration-200",
+        "min-h-screen transition-colors duration-300",
         "bg-gradient-to-br",
         theme === "dark"
-          ? "from-slate-900 via-slate-800 to-slate-900"
-          : "from-blue-50 via-indigo-50/50 to-violet-50"
+          ? "from-blue-950 via-indigo-950 to-slate-950"
+          : "from-blue-100 via-indigo-100 to-blue-200"
       )}
     >
       {/* Header */}
       <nav
         className={clsx(
-          "sticky top-0 z-50 transition-all duration-200",
+          "sticky top-0 z-50 transition-all duration-300 backdrop-blur-xl border-b",
           theme === "dark"
-            ? "bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900/95 border-b border-slate-700/50"
-            : "bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600"
+            ? "bg-blue-950/90 border-blue-800/50 shadow-2xl shadow-blue-500/10"
+            : "bg-blue-50/90 border-blue-200/50 shadow-xl shadow-blue-900/10"
         )}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+          <div className="flex items-center justify-between h-20">
             {/* Logo and Brand */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <div
                 className={clsx(
-                  "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200",
+                  "w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-xl",
                   theme === "dark"
-                    ? "bg-gradient-to-br from-blue-500 via-indigo-500 to-blue-600 shadow-lg shadow-blue-500/20"
-                    : "bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-700 shadow-lg shadow-blue-600/20"
+                    ? "bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 shadow-blue-500/25"
+                    : "bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 shadow-blue-600/25"
                 )}
               >
-                <span className="text-xl font-bold text-white tracking-wide transform -translate-y-px">
-                  T
-                </span>
+                <Dumbbell className="w-6 h-6 text-white" />
               </div>
               <div className="flex flex-col">
-                <h1 className="text-xl font-semibold tracking-tight text-white">
+                <h1
+                  className={clsx(
+                    "text-2xl font-bold tracking-tight",
+                    theme === "dark" ? "text-blue-100" : "text-blue-900"
+                  )}
+                >
                   TrackBack
                 </h1>
-                <span className="text-xs text-white/70">
-                  Athlete Feedback System
+                <span
+                  className={clsx(
+                    "text-sm font-medium",
+                    theme === "dark" ? "text-blue-300" : "text-blue-700"
+                  )}
+                >
+                  Manager Dashboard
                 </span>
               </div>
             </div>
             {/* Hamburger menu for mobile */}
             <button
-              className="sm:hidden p-2 rounded-md text-white hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white ml-auto"
+              className={clsx(
+                "sm:hidden p-2 rounded-md focus:outline-none focus:ring-2 ml-auto transition-colors",
+                theme === "dark"
+                  ? "text-white hover:bg-white/10 focus:ring-white"
+                  : "text-gray-700 hover:bg-gray-100 focus:ring-gray-500"
+              )}
               onClick={() => setMobileMenuOpen((open) => !open)}
               aria-label="Open menu"
             >
@@ -1688,8 +1702,8 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
                 className={clsx(
                   "flex items-center gap-1 p-1 rounded-lg transition-all duration-200 mr-2",
                   theme === "dark"
-                    ? "bg-white/10 backdrop-blur-md"
-                    : "bg-white/20 backdrop-blur-md"
+                    ? "bg-blue-900/30 backdrop-blur-md"
+                    : "bg-blue-200/50 backdrop-blur-md"
                 )}
               >
                 <button
@@ -1697,8 +1711,12 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
                   className={clsx(
                     "p-1.5 rounded-md transition-colors",
                     theme === "light"
-                      ? "bg-white/20 text-white"
-                      : "text-white/70 hover:text-white hover:bg-white/10"
+                      ? theme === "dark"
+                        ? "bg-blue-500/30 text-blue-100"
+                        : "bg-blue-500 text-white shadow-sm"
+                      : theme === "dark"
+                      ? "text-blue-200 hover:text-blue-100 hover:bg-blue-800/30"
+                      : "text-blue-700 hover:text-blue-900 hover:bg-blue-300/50"
                   )}
                   title="Light mode"
                 >
@@ -1709,8 +1727,10 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
                   className={clsx(
                     "p-1.5 rounded-md transition-colors",
                     theme === "system"
-                      ? "bg-white/20 text-white"
-                      : "text-white/70 hover:text-white hover:bg-white/10"
+                      ? "bg-blue-500 text-white shadow-sm"
+                      : theme === "dark"
+                      ? "text-blue-200 hover:text-blue-100 hover:bg-blue-800/30"
+                      : "text-blue-700 hover:text-blue-900 hover:bg-blue-300/50"
                   )}
                   title="System preference"
                 >
@@ -1721,8 +1741,8 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
                   className={clsx(
                     "p-1.5 rounded-md transition-colors",
                     theme === "dark"
-                      ? "bg-white/20 text-white"
-                      : "text-white/70 hover:text-white hover:bg-white/10"
+                      ? "bg-blue-500/30 text-blue-100"
+                      : "text-blue-700 hover:text-blue-900 hover:bg-blue-300/50"
                   )}
                   title="Dark mode"
                 >
@@ -1743,14 +1763,24 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
                       recordsSection.scrollIntoView({ behavior: "smooth" });
                     }
                   }}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 text-white/80 hover:text-white hover:bg-white/10 ml-1"
+                  className={clsx(
+                    "flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 ml-1",
+                    theme === "dark"
+                      ? "text-blue-200 hover:text-blue-100 hover:bg-blue-800/30"
+                      : "text-blue-700 hover:text-blue-900 hover:bg-blue-200/50"
+                  )}
                 >
                   <Trophy className="h-4 w-4" />
                   <span>Records</span>
                 </Link>
                 <Link
                   to="/statistics"
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 text-white/80 hover:text-white hover:bg-white/10"
+                  className={clsx(
+                    "flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200",
+                    theme === "dark"
+                      ? "text-blue-200 hover:text-blue-100 hover:bg-blue-800/30"
+                      : "text-blue-700 hover:text-blue-900 hover:bg-blue-200/50"
+                  )}
                 >
                   <BarChart2 className="h-4 w-4" />
                   <span>Statistics</span>
@@ -1766,22 +1796,44 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
                       responsesSection.scrollIntoView({ behavior: "smooth" });
                     }
                   }}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 text-white/80 hover:text-white hover:bg-white/10 ml-1"
+                  className={clsx(
+                    "flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 ml-1",
+                    theme === "dark"
+                      ? "text-blue-200 hover:text-blue-100 hover:bg-blue-800/30"
+                      : "text-blue-700 hover:text-blue-900 hover:bg-blue-200/50"
+                  )}
                 >
                   <CalendarIcon className="h-4 w-4" />
                   <span>Daily Responses</span>
                 </Link>
                 <button
                   onClick={() => setShowMetricsModal(true)}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 text-white/80 hover:text-white hover:bg-white/10 ml-1"
+                  className={clsx(
+                    "flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 ml-1",
+                    theme === "dark"
+                      ? "text-blue-200 hover:text-blue-100 hover:bg-blue-800/30"
+                      : "text-blue-700 hover:text-blue-900 hover:bg-blue-200/50"
+                  )}
                 >
                   <Settings className="h-4 w-4" />
                   <span>Metrics</span>
                 </button>
               </div>
-              <div className="h-5 w-px mx-2 bg-white/20"></div>
+              <div
+                className={clsx(
+                  "h-5 w-px mx-2",
+                  theme === "dark" ? "bg-blue-400/30" : "bg-blue-300"
+                )}
+              ></div>
               {/* User Menu */}
-              <div className="flex items-center rounded-full py-1 pl-1 pr-3 transition-all duration-200 bg-white/10 backdrop-blur-md hover:bg-white/20">
+              <div
+                className={clsx(
+                  "flex items-center rounded-full py-1 pl-1 pr-3 transition-all duration-200 backdrop-blur-md",
+                  theme === "dark"
+                    ? "bg-blue-900/30 hover:bg-blue-800/40"
+                    : "bg-blue-200/50 hover:bg-blue-300/50"
+                )}
+              >
                 <ProfilePicture
                   profile={profile}
                   size="sm"
@@ -1789,15 +1841,32 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
                   onUpdate={handleProfileUpdate}
                 />
                 <div className="ml-3 mr-2">
-                  <p className="text-sm font-medium line-clamp-1 text-white">
+                  <p
+                    className={clsx(
+                      "text-sm font-medium line-clamp-1",
+                      theme === "dark" ? "text-blue-100" : "text-blue-900"
+                    )}
+                  >
                     {profile.full_name}
                   </p>
-                  <p className="text-xs text-white/70">Manager</p>
+                  <p
+                    className={clsx(
+                      "text-xs",
+                      theme === "dark" ? "text-blue-200" : "text-blue-700"
+                    )}
+                  >
+                    Manager
+                  </p>
                 </div>
               </div>
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 text-white/80 hover:text-white hover:bg-white/10 ml-1"
+                className={clsx(
+                  "flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 ml-1",
+                  theme === "dark"
+                    ? "text-blue-200 hover:text-blue-100 hover:bg-blue-800/30"
+                    : "text-blue-700 hover:text-blue-900 hover:bg-blue-200/50"
+                )}
                 title="Sign out"
               >
                 <LogOut className="h-4 w-4" />
@@ -1952,45 +2021,53 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
       </nav>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Form Status Settings */}
         <div
           className={clsx(
-            "rounded-2xl shadow-sm p-8 mb-8 transition-all duration-200",
+            "rounded-3xl shadow-lg p-8 mb-12 transition-all duration-300 backdrop-blur-xl border",
             theme === "dark"
-              ? "bg-slate-800/50 ring-1 ring-slate-700/50 backdrop-blur-xl"
-              : "bg-white/90 shadow-xl shadow-blue-900/5 backdrop-blur-xl"
+              ? "bg-blue-900/40 ring-1 ring-blue-700/50 border-blue-700/30 shadow-2xl shadow-blue-500/10"
+              : "bg-blue-50/80 shadow-xl shadow-blue-900/10 border-blue-200/50"
           )}
         >
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-4">
+          <div className="flex items-center justify-between mb-10">
+            <div className="flex items-center gap-6">
               <div
                 className={clsx(
-                  "p-4 rounded-2xl",
+                  "p-5 rounded-3xl shadow-lg",
                   theme === "dark"
-                    ? "bg-blue-500/10 text-blue-400"
-                    : "bg-gradient-to-br from-blue-500 to-indigo-600 text-white"
+                    ? "bg-gradient-to-br from-blue-500/20 to-indigo-600/20 text-blue-400 ring-1 ring-blue-500/30"
+                    : "bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-blue-500/25"
                 )}
               >
-                <Calendar className="w-6 h-6" />
+                <Calendar className="w-7 h-7" />
               </div>
               <div>
                 <h2
                   className={clsx(
-                    "text-2xl font-bold",
-                    theme === "dark" ? "text-white" : "text-gray-900"
+                    "text-3xl font-bold tracking-tight",
+                    theme === "dark" ? "text-blue-100" : "text-blue-900"
                   )}
                 >
                   Form Status Settings
                 </h2>
+                <p
+                  className={clsx(
+                    "text-base mt-2",
+                    theme === "dark" ? "text-blue-200" : "text-blue-700"
+                  )}
+                >
+                  Configure when athletes can submit their daily feedback
+                </p>
                 {formStatus?.is_open && (
                   <p
                     className={clsx(
-                      "text-sm mt-2 flex items-center gap-2",
+                      "text-sm mt-3 flex items-center gap-2 font-medium",
                       theme === "dark" ? "text-emerald-400" : "text-emerald-600"
                     )}
                   >
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-lg shadow-emerald-500/50" />
                     Forms open until {formatTimeForInput(formStatus.close_time)}
                   </p>
                 )}
@@ -2003,7 +2080,7 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
               <label
                 className={clsx(
                   "block text-sm font-medium mb-2",
-                  theme === "dark" ? "text-slate-300" : "text-gray-700"
+                  theme === "dark" ? "text-blue-200" : "text-blue-800"
                 )}
               >
                 Open Time
@@ -2021,8 +2098,8 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
                 className={clsx(
                   "w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500/50 transition-all duration-200",
                   theme === "dark"
-                    ? "bg-slate-900/50 border-slate-700 text-white focus:border-blue-500/50"
-                    : "bg-white border-gray-300 text-gray-900"
+                    ? "bg-blue-950/50 border-blue-700 text-blue-100 focus:border-blue-500/50"
+                    : "bg-white border-blue-300 text-blue-900"
                 )}
               />
             </div>
@@ -2031,7 +2108,7 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
               <label
                 className={clsx(
                   "block text-sm font-medium mb-2",
-                  theme === "dark" ? "text-slate-300" : "text-gray-700"
+                  theme === "dark" ? "text-blue-200" : "text-blue-800"
                 )}
               >
                 Close Time
@@ -2049,8 +2126,8 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
                 className={clsx(
                   "w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500/50 transition-all duration-200",
                   theme === "dark"
-                    ? "bg-slate-900/50 border-slate-700 text-white focus:border-blue-500/50"
-                    : "bg-white border-gray-300 text-gray-900"
+                    ? "bg-blue-950/50 border-blue-700 text-blue-100 focus:border-blue-500/50"
+                    : "bg-white border-blue-300 text-blue-900"
                 )}
               />
             </div>
@@ -2060,40 +2137,40 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
         {/* Notification Settings */}
         <div
           className={clsx(
-            "rounded-2xl shadow-sm p-6 mb-8 transition-all duration-200",
+            "rounded-3xl shadow-lg p-8 mb-12 transition-all duration-300 backdrop-blur-xl border",
             theme === "dark"
-              ? "bg-slate-800/50 ring-1 ring-slate-700/50 backdrop-blur-xl"
-              : "bg-white/90 shadow-xl shadow-blue-900/5 backdrop-blur-xl"
+              ? "bg-blue-900/40 ring-1 ring-blue-700/50 border-blue-700/30 shadow-2xl shadow-blue-500/10"
+              : "bg-blue-50/80 shadow-xl shadow-blue-900/10 border-blue-200/50"
           )}
         >
           {/* Header */}
-          <div className="flex items-center gap-3 mb-6">
+          <div className="flex items-center gap-6 mb-8">
             <div
               className={clsx(
-                "p-3 rounded-xl",
+                "p-5 rounded-3xl shadow-lg",
                 theme === "dark"
-                  ? "bg-blue-500/10 text-blue-400"
-                  : "bg-blue-100 text-blue-600"
+                  ? "bg-gradient-to-br from-blue-500/20 to-indigo-600/20 text-blue-400 ring-1 ring-blue-500/30"
+                  : "bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-blue-500/25"
               )}
             >
-              <Bell className="w-5 h-5" />
+              <Bell className="w-7 h-7" />
             </div>
             <div>
               <h2
                 className={clsx(
-                  "text-lg font-semibold",
-                  theme === "dark" ? "text-white" : "text-gray-900"
+                  "text-3xl font-bold tracking-tight",
+                  theme === "dark" ? "text-blue-100" : "text-blue-900"
                 )}
               >
                 Notification Settings
               </h2>
               <p
                 className={clsx(
-                  "text-sm",
-                  theme === "dark" ? "text-slate-400" : "text-gray-500"
+                  "text-base mt-2",
+                  theme === "dark" ? "text-blue-200" : "text-blue-700"
                 )}
               >
-                Configure daily reminder settings
+                Manage daily reminder notifications for athletes
               </p>
             </div>
           </div>
@@ -2204,26 +2281,36 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
         </div>
 
         {/* Training Programs Section */}
-        <div className="mb-8">
-          <div className="flex items-center gap-4 mb-6">
+        <div className="mb-12">
+          <div className="flex items-center gap-6 mb-8">
             <div
               className={clsx(
-                "p-4 rounded-2xl",
+                "p-5 rounded-3xl shadow-lg",
                 theme === "dark"
-                  ? "bg-blue-500/10 text-blue-400"
-                  : "bg-gradient-to-br from-blue-500 to-indigo-600 text-white"
+                  ? "bg-gradient-to-br from-blue-500/20 to-indigo-600/20 text-blue-400 ring-1 ring-blue-500/30"
+                  : "bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-blue-500/25"
               )}
             >
-              <Dumbbell className="w-6 h-6" />
+              <Dumbbell className="w-7 h-7" />
             </div>
-            <h2
-              className={clsx(
-                "text-2xl font-bold",
-                theme === "dark" ? "text-white" : "text-gray-900"
-              )}
-            >
-              Training Programs
-            </h2>
+            <div>
+              <h2
+                className={clsx(
+                  "text-3xl font-bold tracking-tight",
+                  theme === "dark" ? "text-blue-100" : "text-blue-900"
+                )}
+              >
+                Training Programs
+              </h2>
+              <p
+                className={clsx(
+                  "text-base mt-2",
+                  theme === "dark" ? "text-blue-200" : "text-blue-700"
+                )}
+              >
+                Manage and assign training programs to athletes
+              </p>
+            </div>
           </div>
           <TrainingProgramManager
             managerId={profile.id}
@@ -2235,57 +2322,91 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
         {/* Performance Report Section */}
         <div
           className={clsx(
-            "rounded-2xl shadow-lg bg-white/90 border border-gray-100 p-6 mb-12 w-full max-w-full mx-auto",
-            theme === "dark" ? "bg-slate-800/70 ring-1 ring-slate-700/50" : ""
+            "rounded-3xl shadow-lg p-8 mb-12 transition-all duration-300 backdrop-blur-xl border",
+            theme === "dark"
+              ? "bg-slate-800/60 ring-1 ring-slate-700/50 border-slate-700/30 shadow-2xl shadow-orange-500/5"
+              : "bg-white/70 shadow-xl shadow-orange-900/10 border-white/50"
           )}
         >
-          <div className="flex items-center gap-4 mb-6">
+          <div className="flex items-center gap-6 mb-8">
             <div
               className={clsx(
-                "p-4 rounded-2xl",
+                "p-5 rounded-3xl shadow-lg",
                 theme === "dark"
-                  ? "bg-blue-500/10 text-blue-400"
-                  : "bg-gradient-to-br from-blue-500 to-indigo-600 text-white"
+                  ? "bg-gradient-to-br from-blue-500/20 to-indigo-600/20 text-blue-400 ring-1 ring-blue-500/30"
+                  : "bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-blue-500/25"
               )}
             >
-              <BarChart2 className="w-6 h-6" />
+              <BarChart2 className="w-7 h-7" />
             </div>
-            <h2
-              className={clsx(
-                "text-2xl font-bold",
-                theme === "dark" ? "text-white" : "text-gray-900"
-              )}
-            >
-              Performance Report
-            </h2>
+            <div>
+              <h2
+                className={clsx(
+                  "text-3xl font-bold tracking-tight",
+                  theme === "dark" ? "text-blue-100" : "text-blue-900"
+                )}
+              >
+                Performance Report
+              </h2>
+              <p
+                className={clsx(
+                  "text-base mt-2",
+                  theme === "dark" ? "text-blue-200" : "text-blue-700"
+                )}
+              >
+                View detailed performance analytics and progress tracking
+              </p>
+            </div>
           </div>
           <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-4">
             <label
               className={clsx(
-                "font-medium",
-                theme === "dark" ? "text-white" : "text-gray-900"
+                "font-medium text-sm",
+                theme === "dark" ? "text-blue-100" : "text-blue-900"
               )}
             >
               Select Athlete:
             </label>
-            <select
-              value={performanceReportAthlete}
-              onChange={(e) => setPerformanceReportAthlete(e.target.value)}
-              className={clsx(
-                "px-4 py-2 rounded-lg border text-sm pr-12 min-w-[200px] shadow-sm transition-all duration-200 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 bg-white hover:bg-blue-50",
-                theme === "dark"
-                  ? "bg-slate-900/50 border-slate-700 text-white hover:bg-slate-800"
-                  : "bg-white border-gray-300 text-gray-900 hover:bg-blue-50"
-              )}
-              style={{ appearance: "none" }}
-            >
-              <option value="">-- Select --</option>
-              {athletes.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.full_name}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                value={performanceReportAthlete}
+                onChange={(e) => setPerformanceReportAthlete(e.target.value)}
+                className={clsx(
+                  "px-4 py-3 pr-12 rounded-xl border text-sm min-w-[240px] shadow-lg transition-all duration-300 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 focus:shadow-xl cursor-pointer",
+                  theme === "dark"
+                    ? "bg-blue-900/70 border-blue-600/50 text-blue-50 hover:bg-blue-800/70 hover:border-blue-500/70 focus:bg-blue-800/80"
+                    : "bg-white border-blue-200 text-gray-900 hover:bg-blue-50 hover:border-blue-300 focus:bg-blue-50"
+                )}
+                style={{ appearance: "none" }}
+              >
+                <option value="">-- Select --</option>
+                {athletes.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.full_name}
+                  </option>
+                ))}
+              </select>
+              {/* Custom dropdown arrow */}
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                <svg
+                  className={clsx(
+                    "w-4 h-4 transition-colors duration-300",
+                    theme === "dark" ? "text-blue-200" : "text-blue-700"
+                  )}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2.5}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </div>
+            </div>
           </div>
           {performanceReportAthlete ? (
             <WeightReport athleteId={performanceReportAthlete} theme={theme} />
@@ -2307,12 +2428,21 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
         >
           {/* Responsive horizontal pill tab bar */}
           <div className="flex justify-center mt-4 mb-2">
-            <div className="flex flex-row gap-2 max-w-4xl w-full rounded-lg shadow bg-white border border-gray-200 p-1">
+            <div
+              className={clsx(
+                "flex flex-row gap-2 max-w-4xl w-full rounded-lg shadow p-1",
+                theme === "dark"
+                  ? "bg-blue-900/40 border border-blue-700/50"
+                  : "bg-white border border-gray-200"
+              )}
+            >
               <button
                 className={clsx(
                   "flex-1 px-4 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 whitespace-nowrap focus:outline-none",
                   athleteTab === "athletes"
                     ? "bg-blue-600 text-white shadow"
+                    : theme === "dark"
+                    ? "bg-blue-800/30 text-blue-200 hover:bg-blue-700/40"
                     : "bg-blue-50 text-blue-700"
                 )}
                 data-active={athleteTab === "athletes"}
@@ -2325,6 +2455,8 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
                   "flex-1 px-4 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 whitespace-nowrap focus:outline-none",
                   athleteTab === "groups"
                     ? "bg-blue-600 text-white shadow"
+                    : theme === "dark"
+                    ? "bg-blue-800/30 text-blue-200 hover:bg-blue-700/40"
                     : "bg-blue-50 text-blue-700"
                 )}
                 data-active={athleteTab === "groups"}
@@ -2337,6 +2469,8 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
                   "flex-1 px-4 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 whitespace-nowrap focus:outline-none",
                   athleteTab === "invite"
                     ? "bg-blue-600 text-white shadow"
+                    : theme === "dark"
+                    ? "bg-blue-800/30 text-blue-200 hover:bg-blue-700/40"
                     : "bg-blue-50 text-blue-700"
                 )}
                 data-active={athleteTab === "invite"}
@@ -2350,19 +2484,40 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
             <div className="mt-4 overflow-x-auto w-full">
               <table
                 className={clsx(
-                  "min-w-full rounded-xl shadow bg-white border border-gray-200 text-sm",
-                  theme === "dark" ? "divide-slate-700/50" : "divide-gray-200"
+                  "min-w-full rounded-xl shadow text-sm",
+                  theme === "dark"
+                    ? "bg-blue-900/30 border border-blue-700/50 divide-blue-700/50"
+                    : "bg-white border border-gray-200 divide-gray-200"
                 )}
               >
                 <thead>
-                  <tr className="bg-gray-50">
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                  <tr
+                    className={clsx(
+                      theme === "dark" ? "bg-blue-800/40" : "bg-gray-50"
+                    )}
+                  >
+                    <th
+                      className={clsx(
+                        "px-6 py-3 text-left text-xs font-medium uppercase tracking-wider",
+                        theme === "dark" ? "text-blue-200" : "text-gray-500"
+                      )}
+                    >
                       Name
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                    <th
+                      className={clsx(
+                        "px-6 py-3 text-left text-xs font-medium uppercase tracking-wider",
+                        theme === "dark" ? "text-blue-200" : "text-gray-500"
+                      )}
+                    >
                       Email
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider">
+                    <th
+                      className={clsx(
+                        "px-6 py-3 text-right text-xs font-medium uppercase tracking-wider",
+                        theme === "dark" ? "text-blue-200" : "text-gray-500"
+                      )}
+                    >
                       Actions
                     </th>
                   </tr>
@@ -2454,6 +2609,7 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
             <div className="p-6">
               <GroupsManagement
                 managerId={profile.id}
+                theme={theme}
                 onGroupsUpdate={() => {
                   try {
                     // Only refresh athletes list, not the entire page
@@ -2759,14 +2915,14 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
           className={clsx(
             "rounded-2xl shadow-sm overflow-hidden mb-8",
             theme === "dark"
-              ? "bg-slate-800/50 ring-1 ring-slate-700/50 backdrop-blur-xl"
+              ? "bg-blue-900/40 ring-1 ring-blue-700/50 backdrop-blur-xl"
               : "bg-white/90 shadow-xl shadow-blue-900/5 backdrop-blur-xl"
           )}
         >
           <div
             className={clsx(
               "px-8 py-6 border-b",
-              theme === "dark" ? "border-slate-700/50" : "border-gray-100"
+              theme === "dark" ? "border-blue-700/50" : "border-gray-100"
             )}
           >
             <div className="flex items-center gap-4">
@@ -2774,7 +2930,7 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
                 className={clsx(
                   "p-4 rounded-2xl",
                   theme === "dark"
-                    ? "bg-blue-500/10 text-blue-400"
+                    ? "bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/30"
                     : "bg-gradient-to-br from-blue-500 to-indigo-600 text-white"
                 )}
               >
@@ -2783,7 +2939,7 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
               <h2
                 className={clsx(
                   "text-2xl font-bold",
-                  theme === "dark" ? "text-white" : "text-gray-900"
+                  theme === "dark" ? "text-blue-100" : "text-blue-900"
                 )}
               >
                 Daily Responses
@@ -2796,7 +2952,7 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
                 <label
                   className={clsx(
                     "block text-sm font-medium mb-2",
-                    theme === "dark" ? "text-slate-300" : "text-gray-700"
+                    theme === "dark" ? "text-blue-200" : "text-blue-800"
                   )}
                 >
                   Date
@@ -2808,7 +2964,7 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
                   className={clsx(
                     "w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-blue-500/50 transition-all duration-200",
                     theme === "dark"
-                      ? "bg-slate-900/50 border-slate-700 text-white"
+                      ? "bg-blue-950/50 border-blue-700 text-blue-100"
                       : "bg-white border-gray-300 text-gray-900"
                   )}
                 />
@@ -2817,7 +2973,7 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
                 <label
                   className={clsx(
                     "block text-sm font-medium mb-2",
-                    theme === "dark" ? "text-slate-300" : "text-gray-700"
+                    theme === "dark" ? "text-blue-200" : "text-blue-800"
                   )}
                 >
                   Athlete
@@ -2828,7 +2984,7 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
                   className={clsx(
                     "w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-blue-500/50 transition-all duration-200 appearance-none flex items-center bg-no-repeat",
                     theme === "dark"
-                      ? "bg-slate-900/50 border-slate-700 text-white"
+                      ? "bg-blue-950/50 border-blue-700 text-blue-100"
                       : "bg-white border-gray-300 text-gray-900",
                     "pr-10" // add right padding for arrow
                   )}
@@ -2892,7 +3048,7 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
           className={clsx(
             "rounded-2xl shadow-sm overflow-hidden mb-8",
             theme === "dark"
-              ? "bg-slate-800/50 ring-1 ring-slate-700/50 backdrop-blur-xl"
+              ? "bg-blue-900/40 ring-1 ring-blue-700/50 backdrop-blur-xl"
               : "bg-white/90 shadow-xl shadow-blue-900/5 backdrop-blur-xl"
           )}
         >
@@ -2902,7 +3058,7 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
                 className={clsx(
                   "p-4 rounded-2xl",
                   theme === "dark"
-                    ? "bg-yellow-500/10 text-yellow-400"
+                    ? "bg-yellow-500/20 text-yellow-400 ring-1 ring-yellow-500/30"
                     : "bg-gradient-to-br from-yellow-400 to-yellow-600 text-white"
                 )}
               >
@@ -2911,7 +3067,7 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
               <h2
                 className={clsx(
                   "text-2xl font-bold",
-                  theme === "dark" ? "text-white" : "text-gray-900"
+                  theme === "dark" ? "text-blue-100" : "text-blue-900"
                 )}
               >
                 Team Leaderboard
@@ -2952,47 +3108,68 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
           <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-4">
             <label
               className={clsx(
-                "font-medium",
-                theme === "dark" ? "text-white" : "text-gray-900"
+                "font-medium text-sm",
+                theme === "dark" ? "text-blue-100" : "text-blue-900"
               )}
             >
               Select Athlete:
             </label>
-            <select
-              value={selectedAthlete}
-              onChange={(e) => setSelectedAthlete(e.target.value)}
-              className={clsx(
-                "px-4 py-2 rounded-lg border text-sm pr-12 min-w-[200px] shadow-sm transition-all duration-200 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 bg-white hover:bg-yellow-50",
-                "bg-[url('data:image/svg+xml;utf8,<svg fill='none' stroke='%23333' stroke-width='2' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'><path stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'></path></svg>')] bg-no-repeat bg-[right_1rem_center]",
-                theme === "dark"
-                  ? "bg-slate-900/50 border-slate-700 text-white hover:bg-slate-800"
-                  : "bg-white border-gray-300 text-gray-900 hover:bg-yellow-50"
-              )}
-              style={{ appearance: "none" }}
-            >
-              <option value="">-- Select --</option>
-              {athletes.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.full_name}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                value={selectedAthlete}
+                onChange={(e) => setSelectedAthlete(e.target.value)}
+                className={clsx(
+                  "px-4 py-3 pr-12 rounded-xl border text-sm min-w-[240px] shadow-lg transition-all duration-300 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 focus:shadow-xl cursor-pointer",
+                  theme === "dark"
+                    ? "bg-blue-900/70 border-blue-600/50 text-blue-50 hover:bg-blue-800/70 hover:border-blue-500/70 focus:bg-blue-800/80"
+                    : "bg-white border-yellow-200 text-gray-900 hover:bg-yellow-50 hover:border-yellow-300 focus:bg-yellow-50"
+                )}
+                style={{ appearance: "none" }}
+              >
+                <option value="">-- Select --</option>
+                {athletes.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.full_name}
+                  </option>
+                ))}
+              </select>
+              {/* Custom dropdown arrow */}
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                <svg
+                  className={clsx(
+                    "w-4 h-4 transition-colors duration-300",
+                    theme === "dark" ? "text-blue-200" : "text-yellow-700"
+                  )}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2.5}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </div>
+            </div>
           </div>
           {selectedAthlete &&
             selectedAthlete !== "" &&
             selectedAthlete !== "all" && (
               <div
                 className={clsx(
-                  "rounded-2xl shadow-lg bg-white/90 border border-gray-100 p-2 sm:p-8 mt-8 mb-12 w-full max-w-full mx-auto flex flex-col items-center",
+                  "rounded-2xl shadow-lg p-2 sm:p-8 mt-8 mb-12 w-full max-w-full mx-auto flex flex-col items-center",
                   theme === "dark"
-                    ? "bg-slate-800/70 ring-1 ring-slate-700/50"
-                    : ""
+                    ? "bg-blue-900/40 ring-1 ring-blue-700/50 border border-blue-700/30"
+                    : "bg-white/90 border border-gray-100"
                 )}
               >
                 <h3
                   className={clsx(
                     "text-xl font-bold mb-6 w-full text-center",
-                    theme === "dark" ? "text-white" : "text-gray-900"
+                    theme === "dark" ? "text-blue-100" : "text-blue-900"
                   )}
                 >
                   Performance Report
