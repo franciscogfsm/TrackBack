@@ -3,7 +3,11 @@ import { supabase } from "../lib/supabase";
 
 // Add debug logging for API key
 const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-console.log("API Key status:", apiKey ? "Present" : "Missing");
+console.log(
+  "API Key status:",
+  apiKey ? `Present (${apiKey.substring(0, 10)}...)` : "Missing"
+);
+console.log("API Key length:", apiKey ? apiKey.length : 0);
 
 if (!apiKey) {
   throw new Error(
@@ -36,7 +40,7 @@ let insightsCache = new Map<
   string,
   { insights: Insight[]; timestamp: number }
 >();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes (increased from 5 minutes)
 
 // Enhanced interfaces for comprehensive athlete data
 export interface AthleteMetricResponse {
@@ -87,8 +91,8 @@ function checkRateLimit(): void {
     (timestamp) => now - timestamp < RATE_LIMIT_WINDOW
   );
 
-  // Check minimum interval between requests
-  if (now - lastRequestTime < MIN_REQUEST_INTERVAL) {
+  // Check minimum interval between requests (skip check for first request)
+  if (lastRequestTime > 0 && now - lastRequestTime < MIN_REQUEST_INTERVAL) {
     const waitTime = MIN_REQUEST_INTERVAL - (now - lastRequestTime);
     throw new Error(
       `Please wait ${Math.ceil(waitTime / 1000)} seconds between requests.`
@@ -144,6 +148,8 @@ export interface Insight {
 export async function fetchComprehensiveAthleteData(
   athleteId: string
 ): Promise<ComprehensiveAthleteData | null> {
+  console.log("📥 Fetching comprehensive data for athlete:", athleteId);
+
   try {
     // Fetch athlete profile
     const { data: athlete, error: athleteError } = await supabase
@@ -153,9 +159,11 @@ export async function fetchComprehensiveAthleteData(
       .single();
 
     if (athleteError) {
-      console.error("Error fetching athlete:", athleteError);
+      console.error("❌ Error fetching athlete:", athleteError);
       return null;
     }
+
+    console.log("👤 Athlete found:", athlete.full_name);
 
     // Fetch all metric responses for the athlete
     const { data: responses, error: responsesError } = await supabase
@@ -178,11 +186,14 @@ export async function fetchComprehensiveAthleteData(
       .order("created_at", { ascending: false });
 
     if (responsesError) {
-      console.error("Error fetching responses:", responsesError);
+      console.error("❌ Error fetching responses:", responsesError);
       return null;
     }
 
+    console.log("📊 Responses found:", responses?.length || 0);
+
     if (!responses || responses.length === 0) {
+      console.log("⚠️ No responses found for athlete");
       return {
         athlete: {
           id: athlete.id,
@@ -327,19 +338,41 @@ export async function generateComprehensiveAthleteInsights(
   comprehensiveData: ComprehensiveAthleteData,
   model: string = "gpt-3.5-turbo"
 ): Promise<Insight[]> {
+  console.log(
+    "🔍 Starting comprehensive insights generation for:",
+    comprehensiveData.athlete.name
+  );
+  console.log("📊 Data summary:", {
+    totalResponses: comprehensiveData.totalResponses,
+    dateRange: comprehensiveData.dateRange,
+    metricsCount: Object.keys(comprehensiveData.metrics).length,
+  });
+
   try {
     // Create a cache key based on the comprehensive data
-    const cacheKey = `comprehensive_${
-      comprehensiveData.athlete.id
-    }_${JSON.stringify(comprehensiveData.dateRange)}_${model}`;
+    const cacheKey = `comprehensive_${comprehensiveData.athlete.id}_${comprehensiveData.totalResponses}_${model}`;
+    console.log("🔑 Cache key:", cacheKey);
+
     const cached = insightsCache.get(cacheKey);
+    console.log("📋 Cache status:", cached ? "Found" : "Not found");
+    console.log("📋 Cache size:", insightsCache.size);
 
     // Return cached insights if they exist and are not expired
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      console.log(
+        "✅ Using cached insights - valid for",
+        Math.round((cached.timestamp + CACHE_DURATION - Date.now()) / 1000),
+        "more seconds"
+      );
       return cached.insights;
+    } else if (cached) {
+      console.log("⚠️ Cache expired, fetching new insights");
+      insightsCache.delete(cacheKey);
     }
 
+    console.log("⏱️ Checking rate limit...");
     checkRateLimit();
+    console.log("✅ Rate limit check passed");
 
     // Create a detailed analysis prompt
     const prompt = `As an expert sports performance coach, analyze this comprehensive athlete data and provide actionable coaching insights.
@@ -393,48 +426,88 @@ ${comprehensiveData.recentEntries
 Please provide 4 detailed coaching insights covering:
 
 1. **Performance Trends**: Analyze overall performance trajectory and key patterns
-2. **Recovery & Wellness**: Evaluate recovery patterns and wellness indicators
+2. **Recovery & Wellness**: Evaluate recovery patterns and wellness indicators  
 3. **Training Load Management**: Assess current training load and adaptation
 4. **Action Plan**: Specific next steps and recommendations for the coach
 
-For each insight, provide:
-- Clear trend analysis based on the data
-- Specific coaching recommendations
-- Evidence from the metrics to support your analysis
+CRITICAL: Format each insight EXACTLY as: Area Name|Current Trend Description|Specific Action Recommendation
 
-Format each insight as: area|trend|recommendation
+Example format:
+Performance Trends|Jorge shows declining motivation over the past week with inconsistent health ratings|Schedule a one-on-one meeting to discuss training concerns and adjust intensity levels
 
-Focus on actionable advice that a coach can immediately implement. Consider both the quantitative data and qualitative feedback.`;
+Each line must contain exactly 3 parts separated by pipe symbols (|). Focus on actionable advice that a coach can immediately implement.`;
 
-    const response = await openai.chat.completions.create({
-      model,
-      messages: [
-        {
-          role: "system",
-          content: `You are an expert sports performance coach with 15+ years of experience. Analyze the comprehensive athlete data and provide specific, actionable coaching insights. Always base your recommendations on the actual data provided. Format each insight as: area|trend|recommendation`,
-        },
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 1000, // Increased for more detailed responses
-    });
+    console.log("🚀 Making OpenAI API call...");
+    console.log("📝 Prompt preview:", prompt.substring(0, 200) + "...");
+
+    let response;
+    try {
+      response = await openai.chat.completions.create({
+        model,
+        messages: [
+          {
+            role: "system",
+            content: `You are an expert sports performance coach with 15+ years of experience. Analyze the comprehensive athlete data and provide specific, actionable coaching insights. Always base your recommendations on the actual data provided. Format each insight as: area|trend|recommendation`,
+          },
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+        temperature: 0.7,
+        max_tokens: 1000, // Increased for more detailed responses
+      });
+      console.log("✅ OpenAI API call successful");
+    } catch (apiError) {
+      console.error("❌ OpenAI API Error:", apiError);
+      throw apiError;
+    }
+    console.log("📄 Raw response:", response.choices[0].message.content);
+
+    const rawContent = response.choices[0].message.content;
+    if (!rawContent) {
+      console.log("⚠️ Empty response from OpenAI");
+      return generateFallbackInsights(comprehensiveData);
+    }
 
     const insights =
-      response.choices[0].message.content
+      rawContent
         ?.split("\n")
         .filter((line: string) => line.trim() && line.includes("|"))
         .map((line: string) => {
-          const [area, trend, recommendation] = line.split("|");
-          return {
-            area: area?.trim() || "",
-            trend: trend?.trim() || "",
-            recommendation: recommendation?.trim() || "",
-            confidence: 0.8, // Higher confidence for comprehensive data
-          };
-        }) || generateFallbackInsights(comprehensiveData);
+          console.log("🔍 Processing line:", line);
+          const parts = line.split("|");
+
+          if (parts.length >= 3) {
+            const [area, trend, ...recommendationParts] = parts;
+            const recommendation = recommendationParts.join("|"); // In case recommendation contains |
+
+            const insight = {
+              area: area?.trim() || "General Analysis",
+              trend: trend?.trim() || "Analysis in progress",
+              recommendation:
+                recommendation?.trim() ||
+                "Continue monitoring and maintain current approach",
+              confidence: 0.8,
+            };
+
+            console.log("✅ Parsed insight:", insight);
+            return insight;
+          } else {
+            console.log("⚠️ Invalid format, skipping line:", line);
+            return null;
+          }
+        })
+        .filter((insight): insight is Insight => insight !== null) ||
+      generateFallbackInsights(comprehensiveData);
+
+    console.log("🎯 Parsed insights:", insights);
+
+    // If no valid insights were parsed, use fallback
+    if (!insights || insights.length === 0) {
+      console.log("⚠️ No valid insights parsed, using fallback");
+      return generateFallbackInsights(comprehensiveData);
+    }
 
     // Cache the results
     insightsCache.set(cacheKey, {
@@ -444,7 +517,8 @@ Focus on actionable advice that a coach can immediately implement. Consider both
 
     return insights;
   } catch (error) {
-    console.error("Error generating comprehensive insights:", error);
+    console.error("❌ Error generating comprehensive insights:", error);
+    console.error("🔄 Falling back to default insights");
     return generateFallbackInsights(comprehensiveData);
   }
 }
