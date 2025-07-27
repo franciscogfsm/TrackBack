@@ -37,6 +37,8 @@ export default function GroupsManagement({
   const [showManageModal, setShowManageModal] = useState<AthleteGroup | null>(
     null
   );
+  const [showDeleteConfirm, setShowDeleteConfirm] =
+    useState<AthleteGroup | null>(null);
   const [newGroup, setNewGroup] = useState({
     name: "",
     description: "",
@@ -185,15 +187,40 @@ export default function GroupsManagement({
   };
 
   const handleDeleteGroup = async (groupId: string) => {
-    const { error } = await supabase
-      .from("athlete_groups")
-      .delete()
-      .eq("id", groupId);
+    try {
+      // First, delete any training programs assigned to this group
+      const { error: trainingProgramsError } = await supabase
+        .from("training_programs")
+        .delete()
+        .eq("group_id", groupId);
 
-    if (error) {
-      showNotification("error", "Failed to delete group");
-    } else {
-      showNotification("success", "Group deleted successfully");
+      if (trainingProgramsError) {
+        console.error(
+          "Error deleting training programs:",
+          trainingProgramsError
+        );
+        showNotification(
+          "error",
+          "Failed to delete associated training programs"
+        );
+        return;
+      }
+
+      // Then delete the group
+      const { error: groupError } = await supabase
+        .from("athlete_groups")
+        .delete()
+        .eq("id", groupId);
+
+      if (groupError) {
+        showNotification("error", "Failed to delete group");
+        return;
+      }
+
+      showNotification(
+        "success",
+        "Group and associated training programs deleted successfully"
+      );
 
       // Update state directly instead of refetching
       setGroups((prev) => prev.filter((group) => group.id !== groupId));
@@ -208,7 +235,24 @@ export default function GroupsManagement({
       );
 
       onGroupsUpdate?.();
+    } catch (error) {
+      console.error("Unexpected error deleting group:", error);
+      showNotification(
+        "error",
+        "An unexpected error occurred while deleting the group"
+      );
     }
+  };
+
+  const confirmDeleteGroup = () => {
+    if (showDeleteConfirm) {
+      handleDeleteGroup(showDeleteConfirm.id);
+      setShowDeleteConfirm(null);
+    }
+  };
+
+  const cancelDeleteGroup = () => {
+    setShowDeleteConfirm(null);
   };
 
   const handleAddAthleteToGroup = async (
@@ -435,7 +479,7 @@ export default function GroupsManagement({
                         <Edit2 className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() => handleDeleteGroup(group.id)}
+                        onClick={() => setShowDeleteConfirm(group)}
                         className="p-2 text-gray-400 hover:text-red-600 transition-colors"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -754,6 +798,96 @@ export default function GroupsManagement({
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div
+            className={clsx(
+              "rounded-2xl shadow-xl w-full max-w-md",
+              theme === "dark"
+                ? "bg-blue-900/90 border border-blue-700/50"
+                : "bg-white border border-gray-200"
+            )}
+          >
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                  <Trash2 className="w-5 h-5 text-red-600" />
+                </div>
+                <h3
+                  className={clsx(
+                    "text-lg font-semibold",
+                    theme === "dark" ? "text-blue-100" : "text-gray-900"
+                  )}
+                >
+                  Delete Group
+                </h3>
+              </div>
+
+              <div className="space-y-3 mb-6">
+                <p
+                  className={clsx(
+                    "text-sm",
+                    theme === "dark" ? "text-blue-200" : "text-gray-600"
+                  )}
+                >
+                  Are you sure you want to delete the group{" "}
+                  <span className="font-medium text-red-600">
+                    "{showDeleteConfirm.name}"
+                  </span>
+                  ?
+                </p>
+                <div
+                  className={clsx(
+                    "p-3 rounded-lg border-l-4 border-red-500",
+                    theme === "dark" ? "bg-red-900/20" : "bg-red-50"
+                  )}
+                >
+                  <p
+                    className={clsx(
+                      "text-sm font-medium",
+                      theme === "dark" ? "text-red-200" : "text-red-800"
+                    )}
+                  >
+                    ⚠️ Warning: This action will also delete any training
+                    programs assigned to this group.
+                  </p>
+                </div>
+                <p
+                  className={clsx(
+                    "text-xs",
+                    theme === "dark" ? "text-blue-300" : "text-gray-500"
+                  )}
+                >
+                  This action cannot be undone. Athletes in this group will be
+                  moved to "No Group".
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={cancelDeleteGroup}
+                  className={clsx(
+                    "flex-1 px-4 py-2 rounded-lg font-medium transition-colors",
+                    theme === "dark"
+                      ? "bg-blue-800/50 text-blue-200 hover:bg-blue-800/70"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  )}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDeleteGroup}
+                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
+                >
+                  Delete Group
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
