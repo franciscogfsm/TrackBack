@@ -18,12 +18,34 @@ export default function ProfilePicture({
 }: Props) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [imageError, setImageError] = useState(false);
 
   const sizeClasses = {
     sm: "w-8 h-8",
     md: "w-12 h-12",
     lg: "w-16 h-16",
   };
+
+  // Helper function to get the correct avatar URL
+  const getAvatarUrl = (avatarUrl: string | null) => {
+    if (!avatarUrl) return null;
+
+    // If it's already a full URL (starts with http), return as is
+    if (avatarUrl.startsWith("http")) {
+      return avatarUrl;
+    }
+
+    // If it's a file path, convert to public URL
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("avatars").getPublicUrl(avatarUrl);
+    return publicUrl;
+  };
+
+  // Reset image error when profile changes
+  React.useEffect(() => {
+    setImageError(false);
+  }, [profile.avatar_url]);
 
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
@@ -103,11 +125,13 @@ export default function ProfilePicture({
       <div
         className={`relative rounded-full overflow-hidden bg-blue-100 flex items-center justify-center ${sizeClasses[size]}`}
       >
-        {profile.avatar_url ? (
+        {profile.avatar_url && !imageError ? (
           <img
-            src={profile.avatar_url}
+            src={getAvatarUrl(profile.avatar_url)}
             alt={`${profile.full_name}'s avatar`}
             className="w-full h-full object-cover"
+            onError={() => setImageError(true)}
+            onLoad={() => setImageError(false)}
           />
         ) : (
           <User

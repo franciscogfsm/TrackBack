@@ -5,7 +5,6 @@ import {
   Route,
   Navigate,
   useLocation,
-  useSearchParams,
 } from "react-router-dom";
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "./lib/supabase";
@@ -16,6 +15,7 @@ import Register from "./pages/Register";
 import AthleteDashboard from "./pages/AthleteDashboard";
 import ManagerDashboard from "./pages/ManagerDashboard";
 import Statistics from "./pages/Statistics";
+import Records from "./pages/Records";
 import ResetPassword from "./pages/ResetPassword";
 import UpdatePassword from "./pages/UpdatePassword";
 import JoinTeam from "./pages/JoinTeam";
@@ -55,22 +55,22 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-// Join route handler component
-function JoinRouteHandler({ user }: { user: User | null }) {
-  const [searchParams] = useSearchParams();
-  const code = searchParams.get("code");
+// Join route handler component (unused - keeping for potential future use)
+// function JoinRouteHandler({ user }: { user: User | null }) {
+//   const [searchParams] = useSearchParams();
+//   const code = searchParams.get("code");
 
-  if (!user) {
-    return (
-      <Navigate
-        to={`/login?redirect=/join${code ? `?code=${code}` : ""}`}
-        replace
-      />
-    );
-  }
+//   if (!user) {
+//     return (
+//       <Navigate
+//         to={`/login?redirect=/join${code ? `?code=${code}` : ""}`}
+//         replace
+//       />
+//     );
+//   }
 
-  return <JoinTeam />;
-}
+//   return <JoinTeam />;
+// }
 
 // Dashboard redirect component
 function DashboardRedirect() {
@@ -115,7 +115,6 @@ function DashboardRedirect() {
 // Protected component wrapper that includes profile
 function ProtectedComponent({
   children,
-  profile,
 }: {
   children: React.ReactNode;
   profile: Profile;
@@ -368,6 +367,24 @@ function App() {
             ) : (
               <Navigate to="/login" replace />
             )
+          }
+        />
+        <Route
+          path="/records"
+          element={
+            <ProtectedRoute>
+              <Records />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Dashboard route that redirects based on role */}
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <DashboardRedirect />
+            </ProtectedRoute>
           }
         />
 

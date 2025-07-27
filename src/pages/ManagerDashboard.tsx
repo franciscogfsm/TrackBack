@@ -29,6 +29,9 @@ import {
   Menu,
   Dumbbell,
   Loader2,
+  Activity,
+  Home,
+  ChevronDown,
 } from "lucide-react";
 import clsx from "clsx";
 import ProfilePicture from "../components/ProfilePicture";
@@ -43,6 +46,7 @@ import PersonalRecordsChart from "../components/PersonalRecordsChart";
 import ManagerLeaderboard from "../components/ManagerLeaderboard";
 import TrainingProgramManager from "../components/TrainingProgramManager";
 import WeightReport from "../components/WeightReport";
+import Statistics from "./Statistics";
 
 type ManagerInvitation = Tables<"manager_invitations">;
 
@@ -593,6 +597,644 @@ function transformMetricResponses(
   );
 }
 
+// Daily Responses Tab Component
+interface DailyResponsesTabProps {
+  profile: Profile;
+  athletes: Profile[];
+}
+
+function DailyResponsesTab({ profile, athletes }: DailyResponsesTabProps) {
+  const [responses, setResponses] = useState<any[]>([]);
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
+  const [selectedAthlete, setSelectedAthlete] = useState<string>("all");
+  const [loading, setLoading] = useState(false);
+  const [athleteResponses, setAthleteResponses] = useState<any[]>([]);
+
+  const fetchDailyResponses = useCallback(async () => {
+    if (!selectedAthlete || selectedAthlete === "") {
+      setAthleteResponses([]);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      if (selectedAthlete === "all") {
+        // Fetch responses for all athletes under this manager
+        const { data: athletesData, error: athletesError } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("manager_id", profile.id)
+          .eq("role", "athlete");
+
+        if (athletesError) {
+          console.error("Error fetching athletes:", athletesError);
+          return;
+        }
+
+        if (!athletesData || athletesData.length === 0) {
+          setAthleteResponses([]);
+          return;
+        }
+
+        const athleteIds = athletesData.map((athlete) => athlete.id);
+
+        // Fetch responses for all athletes
+        let query = supabase
+          .from("metric_responses")
+          .select(
+            `
+            *,
+            custom_metrics(id, title, type, description)
+          `
+          )
+          .in("athlete_id", athleteIds)
+          .order("date", { ascending: false });
+
+        // Apply date filter if selected
+        if (selectedDate) {
+          query = query.eq("date", selectedDate);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+          console.error("Error fetching daily responses:", error);
+          return;
+        }
+
+        if (!data || data.length === 0) {
+          setAthleteResponses([]);
+          return;
+        }
+
+        // Get all unique athlete IDs from responses
+        const responseAthleteIds = [...new Set(data.map((r) => r.athlete_id))];
+
+        // Fetch athlete information for all athletes who have responses
+        const { data: allAthletesData, error: allAthletesError } =
+          await supabase
+            .from("profiles")
+            .select(
+              "id, full_name, email, role, avatar_url, manager_id, group_id, created_at"
+            )
+            .in("id", responseAthleteIds);
+
+        if (allAthletesError) {
+          console.error("Error fetching athlete profiles:", allAthletesError);
+          setAthleteResponses([]);
+          return;
+        }
+
+        // Create athlete lookup map
+        const athleteMap = new Map(
+          allAthletesData?.map((athlete) => [athlete.id, athlete]) || []
+        );
+
+        // Group responses by date, then by athlete
+        const responsesByDate = data.reduce((acc: any, response: any) => {
+          const date = response.date;
+          if (!acc[date]) {
+            acc[date] = {};
+          }
+          if (!acc[date][response.athlete_id]) {
+            acc[date][response.athlete_id] = [];
+          }
+          acc[date][response.athlete_id].push({
+            ...response,
+            athlete: athleteMap.get(response.athlete_id),
+            metric: response.custom_metrics || {
+              title: "Unknown Metric",
+              type: "rating",
+              description: "",
+            },
+          });
+          return acc;
+        }, {});
+
+        // Convert to array format for display
+        const groupedResponses = Object.entries(responsesByDate)
+          .map(([date, athleteResponses]) => ({
+            date,
+            athletes: Object.entries(athleteResponses as any).map(
+              ([athleteId, responses]) => ({
+                athleteId,
+                athlete: athleteMap.get(athleteId),
+                responses: responses as any[],
+              })
+            ),
+          }))
+          .sort(
+            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+          );
+
+        setAthleteResponses(groupedResponses);
+      } else {
+        // Fetch responses for the selected athlete (existing logic)
+        let query = supabase
+          .from("metric_responses")
+          .select(
+            `
+            *,
+            custom_metrics(id, title, type, description)
+          `
+          )
+          .eq("athlete_id", selectedAthlete)
+          .order("date", { ascending: false });
+
+        // Apply date filter if selected
+        if (selectedDate) {
+          query = query.eq("date", selectedDate);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+          console.error("Error fetching daily responses:", error);
+          return;
+        }
+
+        if (!data || data.length === 0) {
+          setAthleteResponses([]);
+          return;
+        }
+
+        // Get athlete information
+        const { data: athleteData, error: athleteError } = await supabase
+          .from("profiles")
+          .select(
+            "id, full_name, email, role, avatar_url, manager_id, group_id, created_at"
+          )
+          .eq("id", selectedAthlete)
+          .single();
+
+        if (athleteError) {
+          console.error("Error fetching athlete profile:", athleteError);
+          setAthleteResponses(data);
+          return;
+        }
+
+        // Group responses by date
+        const responsesByDate = data.reduce((acc: any, response: any) => {
+          const date = response.date;
+          if (!acc[date]) {
+            acc[date] = [];
+          }
+          acc[date].push({
+            ...response,
+            athlete: athleteData,
+            metric: response.custom_metrics || {
+              title: "Unknown Metric",
+              type: "rating",
+              description: "",
+            },
+          });
+          return acc;
+        }, {});
+
+        // Convert to array and sort by date
+        const groupedResponses = Object.entries(responsesByDate)
+          .map(([date, responses]) => ({
+            date,
+            responses: responses as any[],
+          }))
+          .sort(
+            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+          );
+
+        setAthleteResponses(groupedResponses);
+      }
+    } catch (error) {
+      console.error("Error:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedAthlete, selectedDate, profile.id]);
+
+  useEffect(() => {
+    fetchDailyResponses();
+  }, [fetchDailyResponses]);
+
+  const getScoreColor = (score: number, reverse = false) => {
+    if (reverse) {
+      if (score <= 3) return "text-green-600 bg-green-50";
+      if (score <= 6) return "text-yellow-600 bg-yellow-50";
+      return "text-red-600 bg-red-50";
+    } else {
+      if (score >= 7) return "text-green-600 bg-green-50";
+      if (score >= 4) return "text-yellow-600 bg-yellow-50";
+      return "text-red-600 bg-red-50";
+    }
+  };
+
+  return (
+    <div className="space-y-8">
+      {/* Page Header */}
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+          <Calendar className="w-6 h-6 text-white" />
+        </div>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Daily Responses</h1>
+          <p className="text-gray-600">
+            Track daily wellness metrics and athlete feedback
+          </p>
+        </div>
+      </div>
+
+      {/* Athlete Selection */}
+      <div className="bg-white rounded-xl border border-blue-200 p-6 shadow-sm">
+        <div className="flex items-center gap-3 mb-4">
+          <User className="w-5 h-5 text-blue-600" />
+          <h2 className="text-lg font-semibold text-gray-900">
+            Select Athlete
+          </h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Athlete
+            </label>
+            <select
+              value={selectedAthlete}
+              onChange={(e) => setSelectedAthlete(e.target.value)}
+              className="w-full border border-blue-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="all">All Athletes</option>
+              {athletes.map((athlete) => (
+                <option key={athlete.id} value={athlete.id}>
+                  {athlete.full_name || athlete.email}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Date (Optional)
+            </label>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="w-full border border-blue-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Responses Display */}
+      {!selectedAthlete ? (
+        <div className="bg-white rounded-xl border border-blue-200 p-12 shadow-sm text-center">
+          <User className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-xl font-medium text-gray-900 mb-2">
+            Select an Athlete
+          </h3>
+          <p className="text-gray-600">
+            Choose an individual athlete or "All Athletes" from the dropdown
+            above to view their daily responses and metrics.
+          </p>
+        </div>
+      ) : loading ? (
+        <div className="bg-white rounded-xl border border-blue-200 p-12 shadow-sm text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading responses...</p>
+        </div>
+      ) : athleteResponses.length === 0 ? (
+        <div className="bg-white rounded-xl border border-blue-200 p-12 shadow-sm text-center">
+          <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-xl font-medium text-gray-900 mb-2">
+            No Responses Found
+          </h3>
+          <p className="text-gray-600">
+            No metric responses found for{" "}
+            {selectedAthlete === "all"
+              ? "any athletes"
+              : "the selected athlete"}{" "}
+            and date.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {selectedAthlete === "all"
+            ? // All Athletes View
+              athleteResponses.map((dayData: any) => (
+                <div
+                  key={dayData.date}
+                  className="bg-white rounded-xl border border-blue-200 shadow-sm overflow-hidden"
+                >
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-blue-200">
+                    <div className="flex items-center gap-3">
+                      <Calendar className="w-5 h-5 text-blue-600" />
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {new Date(dayData.date).toLocaleDateString("en-US", {
+                          weekday: "long",
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })}
+                      </h3>
+                      <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                        {dayData.athletes?.length || 0} athlete
+                        {(dayData.athletes?.length || 0) !== 1 ? "s" : ""}{" "}
+                        responded
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="p-6 space-y-6">
+                    {(dayData.athletes || []).map((athleteData: any) => (
+                      <div
+                        key={athleteData.athleteId}
+                        className="border border-gray-100 rounded-lg p-4 bg-gray-50/50"
+                      >
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                            <User className="w-4 h-4 text-blue-600" />
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-gray-900">
+                              {athleteData.athlete?.full_name ||
+                                athleteData.athlete?.email ||
+                                "Unknown Athlete"}
+                            </h4>
+                            <p className="text-xs text-gray-500">
+                              {athleteData.responses.length} metric
+                              {athleteData.responses.length !== 1
+                                ? "s"
+                                : ""}{" "}
+                              submitted
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {athleteData.responses.map((response: any) => (
+                            <div
+                              key={response.id}
+                              className="bg-white rounded-lg p-3 border border-gray-200"
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <h5 className="font-medium text-gray-900 text-xs">
+                                  {response.metric?.title || "Unknown Metric"}
+                                </h5>
+                                <span className="text-xs text-gray-500">
+                                  {new Date(
+                                    response.created_at
+                                  ).toLocaleTimeString("en-US", {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                </span>
+                              </div>
+
+                              {response.metric?.type === "rating" &&
+                                response.rating_value && (
+                                  <div className="text-center">
+                                    <span
+                                      className={`inline-block px-2 py-1 rounded-lg text-sm font-semibold ${getScoreColor(
+                                        response.rating_value
+                                      )}`}
+                                    >
+                                      {response.rating_value}/10
+                                    </span>
+                                  </div>
+                                )}
+
+                              {response.metric?.type === "text" &&
+                                response.text_value && (
+                                  <div className="bg-gray-50 rounded-lg p-2 border border-gray-100">
+                                    <p className="text-xs text-gray-700 leading-relaxed">
+                                      {response.text_value}
+                                    </p>
+                                  </div>
+                                )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))
+            : // Single Athlete View
+              athleteResponses.map((dayData: any) => (
+                <div
+                  key={dayData.date}
+                  className="bg-white rounded-xl border border-blue-200 shadow-sm overflow-hidden"
+                >
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-blue-200">
+                    <div className="flex items-center gap-3">
+                      <Calendar className="w-5 h-5 text-blue-600" />
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {new Date(dayData.date).toLocaleDateString("en-US", {
+                          weekday: "long",
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })}
+                      </h3>
+                      <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                        {dayData.responses.length} metric
+                        {dayData.responses.length !== 1 ? "s" : ""}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="p-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {dayData.responses.map((response: any) => (
+                        <div
+                          key={response.id}
+                          className="bg-gray-50 rounded-lg p-4 border border-gray-200"
+                        >
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="font-medium text-gray-900 text-sm">
+                              {response.metric?.title || "Unknown Metric"}
+                            </h4>
+                            <span className="text-xs text-gray-500">
+                              {new Date(response.created_at).toLocaleTimeString(
+                                "en-US",
+                                {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                }
+                              )}
+                            </span>
+                          </div>
+
+                          {response.metric?.type === "rating" &&
+                            response.rating_value && (
+                              <div className="text-center">
+                                <span
+                                  className={`inline-block px-3 py-2 rounded-lg text-lg font-semibold ${getScoreColor(
+                                    response.rating_value
+                                  )}`}
+                                >
+                                  {response.rating_value}/10
+                                </span>
+                              </div>
+                            )}
+
+                          {response.metric?.type === "text" &&
+                            response.text_value && (
+                              <div className="bg-white rounded-lg p-3 border border-gray-200">
+                                <p className="text-sm text-gray-700 leading-relaxed">
+                                  {response.text_value}
+                                </p>
+                              </div>
+                            )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Records Tab Component
+interface RecordsTabProps {
+  profile: Profile;
+  athletes: Profile[];
+  prRefreshKey: number;
+  setPRRefreshKey: (value: number | ((prev: number) => number)) => void;
+  groupsRefreshKey: number;
+}
+
+function RecordsTab({
+  profile,
+  athletes,
+  prRefreshKey,
+  setPRRefreshKey,
+  groupsRefreshKey,
+}: RecordsTabProps) {
+  // Personal Records state
+  const [showPRModal, setShowPRModal] = useState(false);
+  const [prForm, setPRForm] = useState({
+    exercise: "",
+    weight: 0,
+    record_date: new Date().toISOString().split("T")[0],
+    video_url: "",
+    notes: "",
+  });
+  const [editingPRId, setEditingPRId] = useState<string | null>(null);
+  const [selectedAthleteId, setSelectedAthleteId] = useState<string>("");
+
+  return (
+    <div className="space-y-8">
+      {/* Page Header */}
+      <div className="mb-8">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl flex items-center justify-center shadow-lg">
+            <Trophy className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Records</h1>
+            <p className="text-gray-600">
+              Team leaderboards and personal achievements
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Team Leaderboard Section */}
+      <div className="bg-white rounded-xl border border-blue-200 p-6 shadow-sm">
+        <div className="flex items-center gap-3 mb-6">
+          <Trophy className="w-6 h-6 text-yellow-600" />
+          <h2 className="text-xl font-semibold text-gray-900">
+            Team Leaderboard
+          </h2>
+        </div>
+        <ManagerLeaderboard
+          managerId={profile.id}
+          refreshKey={groupsRefreshKey}
+        />
+      </div>
+
+      {/* Personal Records Section */}
+      <div className="bg-white rounded-xl border border-blue-200 p-6 shadow-sm">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <Trophy className="w-6 h-6 text-blue-600" />
+            <h2 className="text-xl font-semibold text-gray-900">
+              Personal Records
+            </h2>
+          </div>
+          {athletes.length > 0 && (
+            <div className="flex items-center gap-3">
+              <label className="text-sm font-medium text-gray-700">
+                View records for:
+              </label>
+              <div className="relative">
+                <select
+                  value={selectedAthleteId}
+                  onChange={(e) => setSelectedAthleteId(e.target.value)}
+                  className="appearance-none bg-white border border-blue-300 rounded-lg px-4 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                >
+                  <option value="">Select an athlete</option>
+                  {athletes.map((athlete) => (
+                    <option key={athlete.id} value={athlete.id}>
+                      {athlete.full_name || athlete.email}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-blue-400 pointer-events-none" />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {selectedAthleteId ? (
+          <div className="space-y-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="bg-blue-50 rounded-xl p-6 border border-blue-200">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Performance Report Cards
+                </h3>
+                <PersonalRecordsChart
+                  athleteId={selectedAthleteId}
+                  refreshKey={prRefreshKey}
+                />
+              </div>
+              <div className="bg-blue-50 rounded-xl p-6 border border-blue-200">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Records Overview
+                </h3>
+                <PersonalRecordsTable
+                  athleteId={selectedAthleteId}
+                  refreshKey={prRefreshKey}
+                  showModal={showPRModal}
+                  setShowModal={setShowPRModal}
+                  form={prForm}
+                  setForm={setPRForm}
+                  editingId={editingPRId}
+                  setEditingId={setEditingPRId}
+                  canEdit={true}
+                />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <User className="w-12 h-12 text-blue-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              Select an Athlete
+            </h3>
+            <p className="text-gray-600">
+              Choose an athlete from the dropdown above to view their personal
+              records and performance metrics.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ManagerDashboard({ profile: initialProfile }: Props) {
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
@@ -652,12 +1294,26 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
   const [athleteTab, setAthleteTab] = useState<
     "athletes" | "invite" | "groups"
   >("athletes");
+  // Add state for main tab navigation
+  const [mainTab, setMainTab] = useState<
+    "dashboard" | "records" | "statistics" | "daily-responses"
+  >("dashboard");
+
+  // Scroll to top when switching tabs
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [mainTab]);
+
   const [insightsMetricResponses, setInsightsMetricResponses] = useState<
     MetricResponseWithDetails[]
   >([]);
   // 1. Add new state for performanceReportAthlete
   const [performanceReportAthlete, setPerformanceReportAthlete] =
     useState<string>("");
+
+  // Notification system state
+  const [todayResponsesCount, setTodayResponsesCount] = useState<number>(0);
+  const [showNotification, setShowNotification] = useState<boolean>(false);
 
   // Debounced refresh to prevent excessive API calls
   const debouncedRefresh = useCallback(
@@ -769,6 +1425,60 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
     }
   }, [navigate]);
 
+  // Fetch today's responses count for notification
+  const fetchTodayResponsesCount = useCallback(async () => {
+    if (!profile?.id) return;
+
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      console.log("Fetching today's responses for date:", today);
+
+      // Get responses from all athletes managed by this manager
+      const { data: managedAthletes } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("manager_id", profile.id)
+        .eq("role", "athlete");
+
+      console.log("Managed athletes:", managedAthletes);
+
+      if (!managedAthletes || managedAthletes.length === 0) {
+        setTodayResponsesCount(0);
+        setShowNotification(false);
+        return;
+      }
+
+      const athleteIds = managedAthletes.map((a) => a.id);
+
+      const { data, error } = await supabase
+        .from("metric_responses")
+        .select("athlete_id")
+        .eq("date", today)
+        .in("athlete_id", athleteIds);
+
+      if (error) {
+        console.error("Error fetching today's responses count:", error);
+      } else {
+        // Count unique athletes who responded today
+        const uniqueAthletes = data
+          ? new Set(data.map((response) => response.athlete_id)).size
+          : 0;
+        console.log("Unique athletes who responded today:", uniqueAthletes);
+        setTodayResponsesCount(uniqueAthletes);
+        setShowNotification(uniqueAthletes > 0);
+      }
+    } catch (error) {
+      console.error("Error fetching today's responses count:", error);
+    }
+  }, [profile?.id]);
+
+  // Test function to simulate notification
+  const testNotification = useCallback(() => {
+    setTodayResponsesCount(3);
+    setShowNotification(true);
+    console.log("Test notification triggered with count: 3");
+  }, []);
+
   // Add new useEffect for time-based form status updates
   useEffect(() => {
     if (!formStatus || !profile?.id) return;
@@ -872,7 +1582,7 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
         supabase
           .from("profiles")
           .select(
-            "id, full_name, email, role, avatar_url, manager_id, group_id, created_at, updated_at"
+            "id, full_name, email, role, avatar_url, manager_id, group_id, created_at"
           )
           .in("id", athleteIds),
         supabase
@@ -914,7 +1624,6 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
           manager_id: profile.id,
           group_id: null,
           created_at: "",
-          updated_at: "",
         },
         metric: {
           title:
@@ -1310,13 +2019,17 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
       }
 
       // Fetch metrics and responses in parallel
-      await Promise.all([fetchMetrics(), fetchMetricResponses()]);
+      await Promise.all([
+        fetchMetrics(),
+        fetchMetricResponses(),
+        fetchTodayResponsesCount(),
+      ]);
     } catch (error) {
       console.error("Error in fetchInitialData:", error);
     } finally {
       setLoading(false);
     }
-  }, [profile.id, fetchMetricResponses]);
+  }, [profile.id, fetchMetricResponses, fetchTodayResponsesCount]);
 
   // Update the delete metric flow to use a confirmation modal
   const confirmDeleteMetric = (metric: Metric) => {
@@ -1517,7 +2230,7 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
       const { data: athleteProfile, error: athleteError } = await supabase
         .from("profiles")
         .select(
-          "id, full_name, email, role, avatar_url, manager_id, created_at"
+          "id, full_name, email, role, avatar_url, manager_id, group_id, created_at"
         )
         .eq("id", athleteId)
         .single();
@@ -1750,62 +2463,91 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
                 </button>
               </div>
               {/* Navigation Links */}
-              <div className="hidden sm:flex items-center">
-                {/* Records link moved to the left and uses Trophy icon */}
-                <Link
-                  to="#athlete-records"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    const recordsSection = document.querySelector(
-                      "#athlete-records-section"
-                    );
-                    if (recordsSection) {
-                      recordsSection.scrollIntoView({ behavior: "smooth" });
-                    }
-                  }}
+              <div className="hidden sm:flex items-center gap-1">
+                <button
+                  onClick={() => setMainTab("dashboard")}
                   className={clsx(
-                    "flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 ml-1",
-                    theme === "dark"
+                    "flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200",
+                    mainTab === "dashboard"
+                      ? theme === "dark"
+                        ? "bg-blue-800/60 text-blue-100 shadow-lg"
+                        : "bg-blue-200/70 text-blue-900 shadow-lg"
+                      : theme === "dark"
+                      ? "text-blue-200 hover:text-blue-100 hover:bg-blue-800/30"
+                      : "text-blue-700 hover:text-blue-900 hover:bg-blue-200/50"
+                  )}
+                >
+                  <Home className="h-4 w-4" />
+                  <span>Dashboard</span>
+                </button>
+                {/* Records link moved to the left and uses Trophy icon */}
+                <button
+                  onClick={() => setMainTab("records")}
+                  className={clsx(
+                    "flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200",
+                    mainTab === "records"
+                      ? theme === "dark"
+                        ? "bg-blue-800/60 text-blue-100 shadow-lg"
+                        : "bg-blue-200/70 text-blue-900 shadow-lg"
+                      : theme === "dark"
                       ? "text-blue-200 hover:text-blue-100 hover:bg-blue-800/30"
                       : "text-blue-700 hover:text-blue-900 hover:bg-blue-200/50"
                   )}
                 >
                   <Trophy className="h-4 w-4" />
                   <span>Records</span>
-                </Link>
-                <Link
-                  to="/statistics"
+                </button>
+                <button
+                  onClick={() => setMainTab("statistics")}
                   className={clsx(
                     "flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200",
-                    theme === "dark"
+                    mainTab === "statistics"
+                      ? theme === "dark"
+                        ? "bg-blue-800/60 text-blue-100 shadow-lg"
+                        : "bg-blue-200/70 text-blue-900 shadow-lg"
+                      : theme === "dark"
                       ? "text-blue-200 hover:text-blue-100 hover:bg-blue-800/30"
                       : "text-blue-700 hover:text-blue-900 hover:bg-blue-200/50"
                   )}
                 >
-                  <BarChart2 className="h-4 w-4" />
+                  <Activity className="h-4 w-4" />
                   <span>Statistics</span>
-                </Link>
-                <Link
-                  to="#daily-responses"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    const responsesSection = document.querySelector(
-                      "#daily-responses-section"
-                    );
-                    if (responsesSection) {
-                      responsesSection.scrollIntoView({ behavior: "smooth" });
+                </button>
+                <button
+                  onClick={() => {
+                    setMainTab("daily-responses");
+                    if (showNotification) {
+                      setShowNotification(false);
                     }
                   }}
                   className={clsx(
-                    "flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 ml-1",
-                    theme === "dark"
+                    "flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 ml-1 relative",
+                    mainTab === "daily-responses"
+                      ? theme === "dark"
+                        ? "bg-blue-800/60 text-blue-100 shadow-lg"
+                        : "bg-blue-200/70 text-blue-900 shadow-lg"
+                      : theme === "dark"
                       ? "text-blue-200 hover:text-blue-100 hover:bg-blue-800/30"
                       : "text-blue-700 hover:text-blue-900 hover:bg-blue-200/50"
                   )}
                 >
                   <CalendarIcon className="h-4 w-4" />
                   <span>Daily Responses</span>
-                </Link>
+                  {showNotification && todayResponsesCount > 0 && (
+                    <div
+                      className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center cursor-pointer animate-pulse"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowNotification(false);
+                      }}
+                      title={`${todayResponsesCount} athlete${
+                        todayResponsesCount !== 1 ? "s" : ""
+                      } responded today`}
+                    >
+                      {todayResponsesCount > 9 ? "9+" : todayResponsesCount}
+                    </div>
+                  )}
+                </button>
                 <button
                   onClick={() => setShowMetricsModal(true)}
                   className={clsx(
@@ -1892,48 +2634,79 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
                 <X className="w-6 h-6" />
               </button>
               {/* Navigation Links - fix contrast */}
-              <Link
-                to="#athlete-records"
-                onClick={(e) => {
-                  e.preventDefault();
+              <button
+                onClick={() => {
+                  setMainTab("dashboard");
                   setMobileMenuOpen(false);
-                  const recordsSection = document.querySelector(
-                    "#athlete-records-section"
-                  );
-                  if (recordsSection) {
-                    recordsSection.scrollIntoView({ behavior: "smooth" });
-                  }
                 }}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-base font-medium hover:bg-blue-100 dark:hover:bg-slate-800/40 text-gray-900 dark:text-blue-200"
+                className={clsx(
+                  "flex items-center gap-2 px-3 py-2 rounded-lg text-base font-medium transition-colors w-full text-left",
+                  mainTab === "dashboard"
+                    ? "bg-blue-100 dark:bg-slate-800/60 text-blue-900 dark:text-blue-100"
+                    : "hover:bg-blue-100 dark:hover:bg-slate-800/40 text-gray-900 dark:text-blue-200"
+                )}
+              >
+                <Home className="h-5 w-5 text-blue-600 dark:text-blue-300" />
+                Dashboard
+              </button>
+              <button
+                onClick={() => {
+                  setMainTab("records");
+                  setMobileMenuOpen(false);
+                }}
+                className={clsx(
+                  "flex items-center gap-2 px-3 py-2 rounded-lg text-base font-medium transition-colors w-full text-left",
+                  mainTab === "records"
+                    ? "bg-blue-100 dark:bg-slate-800/60 text-blue-900 dark:text-blue-100"
+                    : "hover:bg-blue-100 dark:hover:bg-slate-800/40 text-gray-900 dark:text-blue-200"
+                )}
               >
                 <Trophy className="h-5 w-5 text-blue-600 dark:text-blue-300" />
                 Records
-              </Link>
-              <Link
-                to="/statistics"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-base font-medium hover:bg-blue-100 dark:hover:bg-slate-800/40 text-gray-900 dark:text-blue-200"
-              >
-                <BarChart2 className="h-5 w-5 text-blue-600 dark:text-blue-300" />
-                Statistics
-              </Link>
-              <Link
-                to="#daily-responses"
-                onClick={(e) => {
-                  e.preventDefault();
+              </button>
+              <button
+                onClick={() => {
+                  setMainTab("statistics");
                   setMobileMenuOpen(false);
-                  const responsesSection = document.querySelector(
-                    "#daily-responses-section"
-                  );
-                  if (responsesSection) {
-                    responsesSection.scrollIntoView({ behavior: "smooth" });
+                }}
+                className={clsx(
+                  "flex items-center gap-2 px-3 py-2 rounded-lg text-base font-medium transition-colors w-full text-left",
+                  mainTab === "statistics"
+                    ? "bg-blue-100 dark:bg-slate-800/60 text-blue-900 dark:text-blue-100"
+                    : "hover:bg-blue-100 dark:hover:bg-slate-800/40 text-gray-900 dark:text-blue-200"
+                )}
+              >
+                <Activity className="h-5 w-5 text-blue-600 dark:text-blue-300" />
+                Statistics
+              </button>
+              <button
+                onClick={() => {
+                  setMainTab("daily-responses");
+                  setMobileMenuOpen(false);
+                  if (showNotification) {
+                    setShowNotification(false);
                   }
                 }}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-base font-medium hover:bg-blue-100 dark:hover:bg-slate-800/40 text-gray-900 dark:text-blue-200"
+                className={clsx(
+                  "flex items-center gap-2 px-3 py-2 rounded-lg text-base font-medium transition-colors w-full text-left relative",
+                  mainTab === "daily-responses"
+                    ? "bg-blue-100 dark:bg-slate-800/60 text-blue-900 dark:text-blue-100"
+                    : "hover:bg-blue-100 dark:hover:bg-slate-800/40 text-gray-900 dark:text-blue-200"
+                )}
               >
                 <CalendarIcon className="h-5 w-5 text-blue-600 dark:text-blue-300" />
                 Daily Responses
-              </Link>
+                {showNotification && todayResponsesCount > 0 && (
+                  <span
+                    className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium animate-pulse"
+                    title={`${todayResponsesCount} athlete${
+                      todayResponsesCount !== 1 ? "s" : ""
+                    } responded today`}
+                  >
+                    {todayResponsesCount > 9 ? "9+" : todayResponsesCount}
+                  </span>
+                )}
+              </button>
               <button
                 onClick={() => {
                   setShowMetricsModal(true);
@@ -2022,728 +2795,513 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Form Status Settings */}
-        <div
-          className={clsx(
-            "rounded-3xl shadow-lg p-8 mb-12 transition-all duration-300 backdrop-blur-xl border",
-            theme === "dark"
-              ? "bg-blue-900/40 ring-1 ring-blue-700/50 border-blue-700/30 shadow-2xl shadow-blue-500/10"
-              : "bg-blue-50/80 shadow-xl shadow-blue-900/10 border-blue-200/50"
-          )}
-        >
-          <div className="flex items-center justify-between mb-10">
-            <div className="flex items-center gap-6">
-              <div
-                className={clsx(
-                  "p-5 rounded-3xl shadow-lg",
-                  theme === "dark"
-                    ? "bg-gradient-to-br from-blue-500/20 to-indigo-600/20 text-blue-400 ring-1 ring-blue-500/30"
-                    : "bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-blue-500/25"
-                )}
-              >
-                <Calendar className="w-7 h-7" />
-              </div>
-              <div>
-                <h2
-                  className={clsx(
-                    "text-3xl font-bold tracking-tight",
-                    theme === "dark" ? "text-blue-100" : "text-blue-900"
-                  )}
-                >
-                  Form Status Settings
-                </h2>
-                <p
-                  className={clsx(
-                    "text-base mt-2",
-                    theme === "dark" ? "text-blue-200" : "text-blue-700"
-                  )}
-                >
-                  Configure when athletes can submit their daily feedback
-                </p>
-                {formStatus?.is_open && (
-                  <p
-                    className={clsx(
-                      "text-sm mt-3 flex items-center gap-2 font-medium",
-                      theme === "dark" ? "text-emerald-400" : "text-emerald-600"
-                    )}
-                  >
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-lg shadow-emerald-500/50" />
-                    Forms open until {formatTimeForInput(formStatus.close_time)}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-            <div>
-              <label
-                className={clsx(
-                  "block text-sm font-medium mb-2",
-                  theme === "dark" ? "text-blue-200" : "text-blue-800"
-                )}
-              >
-                Open Time
-              </label>
-              <input
-                type="time"
-                value={formatTimeForInput(formStatus?.open_time)}
-                onChange={(e) =>
-                  handleUpdateFormStatus(
-                    formStatus?.is_open || false,
-                    e.target.value,
-                    formStatus?.close_time || "23:59"
-                  )
-                }
-                className={clsx(
-                  "w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500/50 transition-all duration-200",
-                  theme === "dark"
-                    ? "bg-blue-950/50 border-blue-700 text-blue-100 focus:border-blue-500/50"
-                    : "bg-white border-blue-300 text-blue-900"
-                )}
-              />
-            </div>
-
-            <div>
-              <label
-                className={clsx(
-                  "block text-sm font-medium mb-2",
-                  theme === "dark" ? "text-blue-200" : "text-blue-800"
-                )}
-              >
-                Close Time
-              </label>
-              <input
-                type="time"
-                value={formatTimeForInput(formStatus?.close_time)}
-                onChange={(e) =>
-                  handleUpdateFormStatus(
-                    formStatus?.is_open || false,
-                    formStatus?.open_time || "00:00",
-                    e.target.value
-                  )
-                }
-                className={clsx(
-                  "w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500/50 transition-all duration-200",
-                  theme === "dark"
-                    ? "bg-blue-950/50 border-blue-700 text-blue-100 focus:border-blue-500/50"
-                    : "bg-white border-blue-300 text-blue-900"
-                )}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Notification Settings */}
-        <div
-          className={clsx(
-            "rounded-3xl shadow-lg p-8 mb-12 transition-all duration-300 backdrop-blur-xl border",
-            theme === "dark"
-              ? "bg-blue-900/40 ring-1 ring-blue-700/50 border-blue-700/30 shadow-2xl shadow-blue-500/10"
-              : "bg-blue-50/80 shadow-xl shadow-blue-900/10 border-blue-200/50"
-          )}
-        >
-          {/* Header */}
-          <div className="flex items-center gap-6 mb-8">
+        {mainTab === "dashboard" ? (
+          <>
+            {/* Form Status Settings */}
             <div
               className={clsx(
-                "p-5 rounded-3xl shadow-lg",
+                "rounded-3xl shadow-lg p-8 mb-12 transition-all duration-300 backdrop-blur-xl border",
                 theme === "dark"
-                  ? "bg-gradient-to-br from-blue-500/20 to-indigo-600/20 text-blue-400 ring-1 ring-blue-500/30"
-                  : "bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-blue-500/25"
+                  ? "bg-blue-900/40 ring-1 ring-blue-700/50 border-blue-700/30 shadow-2xl shadow-blue-500/10"
+                  : "bg-blue-50/80 shadow-xl shadow-blue-900/10 border-blue-200/50"
               )}
             >
-              <Bell className="w-7 h-7" />
-            </div>
-            <div>
-              <h2
-                className={clsx(
-                  "text-3xl font-bold tracking-tight",
-                  theme === "dark" ? "text-blue-100" : "text-blue-900"
-                )}
-              >
-                Notification Settings
-              </h2>
-              <p
-                className={clsx(
-                  "text-base mt-2",
-                  theme === "dark" ? "text-blue-200" : "text-blue-700"
-                )}
-              >
-                Manage daily reminder notifications for athletes
-              </p>
-            </div>
-          </div>
-
-          {/* Settings Content */}
-          <div className="space-y-6">
-            {/* Daily Reminder Time */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <label
-                    className={clsx(
-                      "block text-sm font-medium",
-                      theme === "dark" ? "text-slate-300" : "text-gray-700"
-                    )}
-                  >
-                    Daily Reminder Time
-                  </label>
-                  <p
-                    className={clsx(
-                      "text-xs mt-1",
-                      theme === "dark" ? "text-slate-400" : "text-gray-500"
-                    )}
-                  >
-                    Set the time when daily reminders will be sent to athletes
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="time"
-                    value={globalReminderTime}
-                    onChange={(e) => setGlobalReminderTime(e.target.value)}
-                    className={clsx(
-                      "px-3 py-1.5 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500/50 transition-all duration-200",
-                      theme === "dark"
-                        ? "bg-slate-900/50 border-slate-700 text-white focus:border-blue-500/50"
-                        : "bg-white border-gray-300 text-gray-900"
-                    )}
-                  />
-                  <button
-                    onClick={() =>
-                      handleUpdateGlobalReminderTime(globalReminderTime)
-                    }
-                    disabled={isUpdatingGlobalReminder}
-                    className={clsx(
-                      "px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200",
-                      isUpdatingGlobalReminder
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                        : theme === "dark"
-                        ? "bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 ring-1 ring-blue-400/30"
-                        : "bg-blue-600 text-white hover:bg-blue-700"
-                    )}
-                  >
-                    Update
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Enable Reminders */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <label
-                    className={clsx(
-                      "block text-sm font-medium",
-                      theme === "dark" ? "text-slate-300" : "text-gray-700"
-                    )}
-                  >
-                    Enable Reminders
-                  </label>
-                  <p
-                    className={clsx(
-                      "text-xs mt-1",
-                      theme === "dark" ? "text-slate-400" : "text-gray-500"
-                    )}
-                  >
-                    Athletes will receive email reminders to submit their
-                    training
-                  </p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formStatus?.enable_reminders ?? true}
-                    onChange={(e) => handleToggleReminders(e.target.checked)}
-                    className="sr-only peer"
-                  />
+              <div className="flex items-center justify-between mb-10">
+                <div className="flex items-center gap-6">
                   <div
                     className={clsx(
-                      "relative w-11 h-6 rounded-full peer",
+                      "p-5 rounded-3xl shadow-lg",
                       theme === "dark"
-                        ? "bg-slate-700 peer-checked:bg-blue-600"
-                        : "bg-gray-200 peer-checked:bg-blue-600",
-                      "peer-focus:outline-none peer-focus:ring-4",
-                      theme === "dark"
-                        ? "peer-focus:ring-blue-800"
-                        : "peer-focus:ring-blue-300",
-                      "after:content-[''] after:absolute after:top-[2px] after:left-[2px]",
-                      "after:bg-white after:rounded-full after:h-5 after:w-5",
-                      "after:transition-all peer-checked:after:translate-x-full"
-                    )}
-                  />
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Training Programs Section */}
-        <div className="mb-12">
-          <div className="flex items-center gap-6 mb-8">
-            <div
-              className={clsx(
-                "p-5 rounded-3xl shadow-lg",
-                theme === "dark"
-                  ? "bg-gradient-to-br from-blue-500/20 to-indigo-600/20 text-blue-400 ring-1 ring-blue-500/30"
-                  : "bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-blue-500/25"
-              )}
-            >
-              <Dumbbell className="w-7 h-7" />
-            </div>
-            <div>
-              <h2
-                className={clsx(
-                  "text-3xl font-bold tracking-tight",
-                  theme === "dark" ? "text-blue-100" : "text-blue-900"
-                )}
-              >
-                Training Programs
-              </h2>
-              <p
-                className={clsx(
-                  "text-base mt-2",
-                  theme === "dark" ? "text-blue-200" : "text-blue-700"
-                )}
-              >
-                Manage and assign training programs to athletes
-              </p>
-            </div>
-          </div>
-          <TrainingProgramManager
-            managerId={profile.id}
-            athletes={athletes}
-            theme={theme}
-          />
-        </div>
-
-        {/* Performance Report Section */}
-        <div
-          className={clsx(
-            "rounded-3xl shadow-lg p-8 mb-12 transition-all duration-300 backdrop-blur-xl border",
-            theme === "dark"
-              ? "bg-slate-800/60 ring-1 ring-slate-700/50 border-slate-700/30 shadow-2xl shadow-orange-500/5"
-              : "bg-white/70 shadow-xl shadow-orange-900/10 border-white/50"
-          )}
-        >
-          <div className="flex items-center gap-6 mb-8">
-            <div
-              className={clsx(
-                "p-5 rounded-3xl shadow-lg",
-                theme === "dark"
-                  ? "bg-gradient-to-br from-blue-500/20 to-indigo-600/20 text-blue-400 ring-1 ring-blue-500/30"
-                  : "bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-blue-500/25"
-              )}
-            >
-              <BarChart2 className="w-7 h-7" />
-            </div>
-            <div>
-              <h2
-                className={clsx(
-                  "text-3xl font-bold tracking-tight",
-                  theme === "dark" ? "text-blue-100" : "text-blue-900"
-                )}
-              >
-                Performance Report
-              </h2>
-              <p
-                className={clsx(
-                  "text-base mt-2",
-                  theme === "dark" ? "text-blue-200" : "text-blue-700"
-                )}
-              >
-                View detailed performance analytics and progress tracking
-              </p>
-            </div>
-          </div>
-          <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-4">
-            <label
-              className={clsx(
-                "font-medium text-sm",
-                theme === "dark" ? "text-blue-100" : "text-blue-900"
-              )}
-            >
-              Select Athlete:
-            </label>
-            <div className="relative">
-              <select
-                value={performanceReportAthlete}
-                onChange={(e) => setPerformanceReportAthlete(e.target.value)}
-                className={clsx(
-                  "px-4 py-3 pr-12 rounded-xl border text-sm min-w-[240px] shadow-lg transition-all duration-300 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 focus:shadow-xl cursor-pointer",
-                  theme === "dark"
-                    ? "bg-blue-900/70 border-blue-600/50 text-blue-50 hover:bg-blue-800/70 hover:border-blue-500/70 focus:bg-blue-800/80"
-                    : "bg-white border-blue-200 text-gray-900 hover:bg-blue-50 hover:border-blue-300 focus:bg-blue-50"
-                )}
-                style={{ appearance: "none" }}
-              >
-                <option value="">-- Select --</option>
-                {athletes.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.full_name}
-                  </option>
-                ))}
-              </select>
-              {/* Custom dropdown arrow */}
-              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                <svg
-                  className={clsx(
-                    "w-4 h-4 transition-colors duration-300",
-                    theme === "dark" ? "text-blue-200" : "text-blue-700"
-                  )}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2.5}
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
-              </div>
-            </div>
-          </div>
-          {performanceReportAthlete ? (
-            <WeightReport athleteId={performanceReportAthlete} theme={theme} />
-          ) : (
-            <div className="text-center text-gray-500 py-8">
-              Select an athlete to view their performance report.
-            </div>
-          )}
-        </div>
-
-        {/* Athletes List */}
-        <div
-          className={clsx(
-            "rounded-2xl shadow-sm overflow-hidden mb-8",
-            theme === "dark"
-              ? "bg-[#1E293B]/80 border border-slate-700/50 backdrop-blur-sm"
-              : "bg-white border border-gray-100"
-          )}
-        >
-          {/* Responsive horizontal pill tab bar */}
-          <div className="flex justify-center mt-4 mb-2">
-            <div
-              className={clsx(
-                "flex flex-row gap-2 max-w-4xl w-full rounded-lg shadow p-1",
-                theme === "dark"
-                  ? "bg-blue-900/40 border border-blue-700/50"
-                  : "bg-white border border-gray-200"
-              )}
-            >
-              <button
-                className={clsx(
-                  "flex-1 px-4 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 whitespace-nowrap focus:outline-none",
-                  athleteTab === "athletes"
-                    ? "bg-blue-600 text-white shadow"
-                    : theme === "dark"
-                    ? "bg-blue-800/30 text-blue-200 hover:bg-blue-700/40"
-                    : "bg-blue-50 text-blue-700"
-                )}
-                data-active={athleteTab === "athletes"}
-                onClick={() => setAthleteTab("athletes")}
-              >
-                <Users className="h-4 w-4 inline-block mr-1" /> Athletes
-              </button>
-              <button
-                className={clsx(
-                  "flex-1 px-4 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 whitespace-nowrap focus:outline-none",
-                  athleteTab === "groups"
-                    ? "bg-blue-600 text-white shadow"
-                    : theme === "dark"
-                    ? "bg-blue-800/30 text-blue-200 hover:bg-blue-700/40"
-                    : "bg-blue-50 text-blue-700"
-                )}
-                data-active={athleteTab === "groups"}
-                onClick={() => setAthleteTab("groups")}
-              >
-                <Users className="h-4 w-4 inline-block mr-1" /> Groups
-              </button>
-              <button
-                className={clsx(
-                  "flex-1 px-4 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 whitespace-nowrap focus:outline-none",
-                  athleteTab === "invite"
-                    ? "bg-blue-600 text-white shadow"
-                    : theme === "dark"
-                    ? "bg-blue-800/30 text-blue-200 hover:bg-blue-700/40"
-                    : "bg-blue-50 text-blue-700"
-                )}
-                data-active={athleteTab === "invite"}
-                onClick={() => setAthleteTab("invite")}
-              >
-                <UserPlus className="h-4 w-4 inline-block mr-1" /> Invite
-              </button>
-            </div>
-          </div>
-          {athleteTab === "athletes" && (
-            <div className="mt-4 overflow-x-auto w-full">
-              <table
-                className={clsx(
-                  "min-w-full rounded-xl shadow text-sm",
-                  theme === "dark"
-                    ? "bg-blue-900/30 border border-blue-700/50 divide-blue-700/50"
-                    : "bg-white border border-gray-200 divide-gray-200"
-                )}
-              >
-                <thead>
-                  <tr
-                    className={clsx(
-                      theme === "dark" ? "bg-blue-800/40" : "bg-gray-50"
+                        ? "bg-gradient-to-br from-blue-500/20 to-indigo-600/20 text-blue-400 ring-1 ring-blue-500/30"
+                        : "bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-blue-500/25"
                     )}
                   >
-                    <th
+                    <Calendar className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <h2
                       className={clsx(
-                        "px-6 py-3 text-left text-xs font-medium uppercase tracking-wider",
-                        theme === "dark" ? "text-blue-200" : "text-gray-500"
+                        "text-3xl font-bold tracking-tight",
+                        theme === "dark" ? "text-blue-100" : "text-blue-900"
                       )}
                     >
-                      Name
-                    </th>
-                    <th
+                      Form Status Settings
+                    </h2>
+                    <p
                       className={clsx(
-                        "px-6 py-3 text-left text-xs font-medium uppercase tracking-wider",
-                        theme === "dark" ? "text-blue-200" : "text-gray-500"
+                        "text-base mt-2",
+                        theme === "dark" ? "text-blue-200" : "text-blue-700"
                       )}
                     >
-                      Email
-                    </th>
-                    <th
-                      className={clsx(
-                        "px-6 py-3 text-right text-xs font-medium uppercase tracking-wider",
-                        theme === "dark" ? "text-blue-200" : "text-gray-500"
-                      )}
-                    >
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody
-                  className={clsx(
-                    "divide-y",
-                    theme === "dark" ? "divide-slate-700/50" : "divide-gray-200"
-                  )}
-                >
-                  {athletes.map((athlete) => (
-                    <tr
-                      key={athlete.id}
-                      className="transition hover:bg-blue-50"
-                    >
-                      <td className="px-6 py-2 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-8 w-8">
-                            <ProfilePicture profile={athlete} size="sm" />
-                          </div>
-                          <div className="ml-3">
-                            <div
-                              className={clsx(
-                                "text-sm font-medium",
-                                theme === "dark"
-                                  ? "text-white"
-                                  : "text-gray-900"
-                              )}
-                            >
-                              {athlete.full_name}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-2 whitespace-nowrap">
-                        <div
-                          className={clsx(
-                            "text-sm",
-                            theme === "dark"
-                              ? "text-slate-400"
-                              : "text-gray-500"
-                          )}
-                        >
-                          {athlete.email}
-                        </div>
-                      </td>
-                      <td className="px-6 py-2 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end space-x-2">
-                          <button
-                            onClick={() => handleShowInsights(athlete)}
-                            className={clsx(
-                              "inline-flex items-center px-3 py-1.5 rounded-xl font-medium shadow transition-all duration-200 text-xs",
-                              theme === "dark"
-                                ? "bg-gradient-to-r from-blue-500/20 to-indigo-500/20 text-blue-400 ring-1 ring-blue-500/30"
-                                : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
-                            )}
-                          >
-                            <Brain className="h-4 w-4 mr-1" />
-                            <span className="relative">AI Insights</span>
-                          </button>
-                          <button
-                            onClick={(e) => handleRemoveAthlete(athlete.id, e)}
-                            className={clsx(
-                              "inline-flex items-center px-2 py-1.5 rounded-lg text-xs font-medium transition-colors duration-200",
-                              theme === "dark"
-                                ? "text-red-400 hover:bg-red-500/10"
-                                : "text-red-600 hover:bg-red-50"
-                            )}
-                          >
-                            <Trash2 className="h-4 w-4 mr-1" /> Remove
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          {athleteTab === "invite" && (
-            <InviteAthleteModal
-              isOpen={true}
-              onClose={() => setAthleteTab("athletes")}
-              onInviteSuccess={() => setAthleteTab("athletes")}
-              managerId={profile.id}
-            />
-          )}
-          {athleteTab === "groups" && (
-            <div className="p-6">
-              <GroupsManagement
-                managerId={profile.id}
-                theme={theme}
-                onGroupsUpdate={() => {
-                  try {
-                    // Only refresh athletes list, not the entire page
-                    fetchAthletes();
-                    // Also refresh the leaderboard to show new groups
-                    setGroupsRefreshKey((prev) => prev + 1);
-                  } catch (error) {
-                    console.error("Error in onGroupsUpdate callback:", error);
-                  }
-                }}
-              />
-            </div>
-          )}
-        </div>
+                      Configure when athletes can submit their daily feedback
+                    </p>
+                    {formStatus?.is_open && (
+                      <p
+                        className={clsx(
+                          "text-sm mt-3 flex items-center gap-2 font-medium",
+                          theme === "dark"
+                            ? "text-emerald-400"
+                            : "text-emerald-600"
+                        )}
+                      >
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-lg shadow-emerald-500/50" />
+                        Forms open until{" "}
+                        {formatTimeForInput(formStatus.close_time)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
 
-        {/* Active Invitations Section */}
-        <div
-          className={clsx(
-            "mt-8 mb-10 rounded-2xl transition-all duration-200",
-            theme === "dark"
-              ? "bg-slate-800/50 border border-slate-700/50"
-              : "bg-white border border-gray-200/50"
-          )}
-        >
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div
-                  className={clsx(
-                    "w-10 h-10 rounded-xl flex items-center justify-center",
-                    theme === "dark" ? "bg-indigo-500/10" : "bg-indigo-50"
-                  )}
-                >
-                  <UserPlus
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                <div>
+                  <label
                     className={clsx(
-                      "h-5 w-5",
-                      theme === "dark" ? "text-indigo-400" : "text-indigo-600"
+                      "block text-sm font-medium mb-2",
+                      theme === "dark" ? "text-blue-200" : "text-blue-800"
+                    )}
+                  >
+                    Open Time
+                  </label>
+                  <input
+                    type="time"
+                    value={formatTimeForInput(formStatus?.open_time)}
+                    onChange={(e) =>
+                      handleUpdateFormStatus(
+                        formStatus?.is_open || false,
+                        e.target.value,
+                        formStatus?.close_time || "23:59"
+                      )
+                    }
+                    className={clsx(
+                      "w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500/50 transition-all duration-200",
+                      theme === "dark"
+                        ? "bg-blue-950/50 border-blue-700 text-blue-100 focus:border-blue-500/50"
+                        : "bg-white border-blue-300 text-blue-900"
                     )}
                   />
+                </div>
+
+                <div>
+                  <label
+                    className={clsx(
+                      "block text-sm font-medium mb-2",
+                      theme === "dark" ? "text-blue-200" : "text-blue-800"
+                    )}
+                  >
+                    Close Time
+                  </label>
+                  <input
+                    type="time"
+                    value={formatTimeForInput(formStatus?.close_time)}
+                    onChange={(e) =>
+                      handleUpdateFormStatus(
+                        formStatus?.is_open || false,
+                        formStatus?.open_time || "00:00",
+                        e.target.value
+                      )
+                    }
+                    className={clsx(
+                      "w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500/50 transition-all duration-200",
+                      theme === "dark"
+                        ? "bg-blue-950/50 border-blue-700 text-blue-100 focus:border-blue-500/50"
+                        : "bg-white border-blue-300 text-blue-900"
+                    )}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Notification Settings */}
+            <div
+              className={clsx(
+                "rounded-3xl shadow-lg p-8 mb-12 transition-all duration-300 backdrop-blur-xl border",
+                theme === "dark"
+                  ? "bg-blue-900/40 ring-1 ring-blue-700/50 border-blue-700/30 shadow-2xl shadow-blue-500/10"
+                  : "bg-blue-50/80 shadow-xl shadow-blue-900/10 border-blue-200/50"
+              )}
+            >
+              {/* Header */}
+              <div className="flex items-center gap-6 mb-8">
+                <div
+                  className={clsx(
+                    "p-5 rounded-3xl shadow-lg",
+                    theme === "dark"
+                      ? "bg-gradient-to-br from-blue-500/20 to-indigo-600/20 text-blue-400 ring-1 ring-blue-500/30"
+                      : "bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-blue-500/25"
+                  )}
+                >
+                  <Bell className="w-7 h-7" />
                 </div>
                 <div>
                   <h2
                     className={clsx(
-                      "text-lg font-semibold mb-4 flex items-center gap-2",
-                      theme === "dark" ? "text-white" : "text-gray-900"
+                      "text-3xl font-bold tracking-tight",
+                      theme === "dark" ? "text-blue-100" : "text-blue-900"
                     )}
                   >
-                    <Info
-                      className={clsx(
-                        "w-5 h-5",
-                        theme === "dark" ? "text-blue-400" : "text-blue-500"
-                      )}
-                    />
-                    Active Invitations
+                    Notification Settings
                   </h2>
                   <p
                     className={clsx(
-                      "text-sm",
-                      theme === "dark" ? "text-slate-400" : "text-gray-500"
+                      "text-base mt-2",
+                      theme === "dark" ? "text-blue-200" : "text-blue-700"
                     )}
                   >
-                    Manage your pending athlete invitations
+                    Manage daily reminder notifications for athletes
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => setShowInviteModal(true)}
-                className={clsx(
-                  "px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-all duration-200",
-                  theme === "dark"
-                    ? "bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20"
-                    : "bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
-                )}
-              >
-                <UserPlus className="h-4 w-4" />
-                Invite Athlete
-              </button>
+
+              {/* Settings Content */}
+              <div className="space-y-6">
+                {/* Daily Reminder Time */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <label
+                        className={clsx(
+                          "block text-sm font-medium",
+                          theme === "dark" ? "text-slate-300" : "text-gray-700"
+                        )}
+                      >
+                        Daily Reminder Time
+                      </label>
+                      <p
+                        className={clsx(
+                          "text-xs mt-1",
+                          theme === "dark" ? "text-slate-400" : "text-gray-500"
+                        )}
+                      >
+                        Set the time when daily reminders will be sent to
+                        athletes
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="time"
+                        value={globalReminderTime}
+                        onChange={(e) => setGlobalReminderTime(e.target.value)}
+                        className={clsx(
+                          "px-3 py-1.5 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500/50 transition-all duration-200",
+                          theme === "dark"
+                            ? "bg-slate-900/50 border-slate-700 text-white focus:border-blue-500/50"
+                            : "bg-white border-gray-300 text-gray-900"
+                        )}
+                      />
+                      <button
+                        onClick={() =>
+                          handleUpdateGlobalReminderTime(globalReminderTime)
+                        }
+                        disabled={isUpdatingGlobalReminder}
+                        className={clsx(
+                          "px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200",
+                          isUpdatingGlobalReminder
+                            ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                            : theme === "dark"
+                            ? "bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 ring-1 ring-blue-400/30"
+                            : "bg-blue-600 text-white hover:bg-blue-700"
+                        )}
+                      >
+                        Update
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Enable Reminders */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <label
+                        className={clsx(
+                          "block text-sm font-medium",
+                          theme === "dark" ? "text-slate-300" : "text-gray-700"
+                        )}
+                      >
+                        Enable Reminders
+                      </label>
+                      <p
+                        className={clsx(
+                          "text-xs mt-1",
+                          theme === "dark" ? "text-slate-400" : "text-gray-500"
+                        )}
+                      >
+                        Athletes will receive email reminders to submit their
+                        training
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formStatus?.enable_reminders ?? true}
+                        onChange={(e) =>
+                          handleToggleReminders(e.target.checked)
+                        }
+                        className="sr-only peer"
+                      />
+                      <div
+                        className={clsx(
+                          "relative w-11 h-6 rounded-full peer",
+                          theme === "dark"
+                            ? "bg-slate-700 peer-checked:bg-blue-600"
+                            : "bg-gray-200 peer-checked:bg-blue-600",
+                          "peer-focus:outline-none peer-focus:ring-4",
+                          theme === "dark"
+                            ? "peer-focus:ring-blue-800"
+                            : "peer-focus:ring-blue-300",
+                          "after:content-[''] after:absolute after:top-[2px] after:left-[2px]",
+                          "after:bg-white after:rounded-full after:h-5 after:w-5",
+                          "after:transition-all peer-checked:after:translate-x-full"
+                        )}
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {visibleInvitations.length > 0 ? (
-              <div
-                className={clsx(
-                  "rounded-xl overflow-hidden",
-                  theme === "dark" ? "bg-slate-900/50" : "bg-gray-50"
-                )}
-              >
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead
+            {/* Training Programs Section */}
+            <div className="mb-12">
+              <div className="flex items-center gap-6 mb-8">
+                <div
+                  className={clsx(
+                    "p-5 rounded-3xl shadow-lg",
+                    theme === "dark"
+                      ? "bg-gradient-to-br from-blue-500/20 to-indigo-600/20 text-blue-400 ring-1 ring-blue-500/30"
+                      : "bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-blue-500/25"
+                  )}
+                >
+                  <Dumbbell className="w-7 h-7" />
+                </div>
+                <div>
+                  <h2
+                    className={clsx(
+                      "text-3xl font-bold tracking-tight",
+                      theme === "dark" ? "text-blue-100" : "text-blue-900"
+                    )}
+                  >
+                    Training Programs
+                  </h2>
+                  <p
+                    className={clsx(
+                      "text-base mt-2",
+                      theme === "dark" ? "text-blue-200" : "text-blue-700"
+                    )}
+                  >
+                    Manage and assign training programs to athletes
+                  </p>
+                </div>
+              </div>
+              <TrainingProgramManager
+                managerId={profile.id}
+                athletes={athletes}
+                theme={theme}
+              />
+            </div>
+
+            {/* Performance Report Section */}
+            <div
+              className={clsx(
+                "rounded-3xl shadow-lg p-8 mb-12 transition-all duration-300 backdrop-blur-xl border",
+                theme === "dark"
+                  ? "bg-slate-800/60 ring-1 ring-slate-700/50 border-slate-700/30 shadow-2xl shadow-orange-500/5"
+                  : "bg-white/70 shadow-xl shadow-orange-900/10 border-white/50"
+              )}
+            >
+              <div className="flex items-center gap-6 mb-8">
+                <div
+                  className={clsx(
+                    "p-5 rounded-3xl shadow-lg",
+                    theme === "dark"
+                      ? "bg-gradient-to-br from-blue-500/20 to-indigo-600/20 text-blue-400 ring-1 ring-blue-500/30"
+                      : "bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-blue-500/25"
+                  )}
+                >
+                  <BarChart2 className="w-7 h-7" />
+                </div>
+                <div>
+                  <h2
+                    className={clsx(
+                      "text-3xl font-bold tracking-tight",
+                      theme === "dark" ? "text-blue-100" : "text-blue-900"
+                    )}
+                  >
+                    Performance Report
+                  </h2>
+                  <p
+                    className={clsx(
+                      "text-base mt-2",
+                      theme === "dark" ? "text-blue-200" : "text-blue-700"
+                    )}
+                  >
+                    View detailed performance analytics and progress tracking
+                  </p>
+                </div>
+              </div>
+              <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-4">
+                <label
+                  className={clsx(
+                    "font-medium text-sm",
+                    theme === "dark" ? "text-blue-100" : "text-blue-900"
+                  )}
+                >
+                  Select Athlete:
+                </label>
+                <div className="relative">
+                  <select
+                    value={performanceReportAthlete}
+                    onChange={(e) =>
+                      setPerformanceReportAthlete(e.target.value)
+                    }
+                    className={clsx(
+                      "px-4 py-3 pr-12 rounded-xl border text-sm min-w-[240px] shadow-lg transition-all duration-300 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 focus:shadow-xl cursor-pointer",
+                      theme === "dark"
+                        ? "bg-blue-900/70 border-blue-600/50 text-blue-50 hover:bg-blue-800/70 hover:border-blue-500/70 focus:bg-blue-800/80"
+                        : "bg-white border-blue-200 text-gray-900 hover:bg-blue-50 hover:border-blue-300 focus:bg-blue-50"
+                    )}
+                    style={{ appearance: "none" }}
+                  >
+                    <option value="">-- Select --</option>
+                    {athletes.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.full_name}
+                      </option>
+                    ))}
+                  </select>
+                  {/* Custom dropdown arrow */}
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <svg
                       className={clsx(
-                        theme === "dark" ? "bg-slate-800/50" : "bg-gray-50"
+                        "w-4 h-4 transition-colors duration-300",
+                        theme === "dark" ? "text-blue-200" : "text-blue-700"
                       )}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
                     >
-                      <tr>
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2.5}
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+              {performanceReportAthlete ? (
+                <WeightReport
+                  athleteId={performanceReportAthlete}
+                  theme={theme}
+                />
+              ) : (
+                <div className="text-center text-gray-500 py-8">
+                  Select an athlete to view their performance report.
+                </div>
+              )}
+            </div>
+
+            {/* Athletes List */}
+            <div
+              className={clsx(
+                "rounded-2xl shadow-sm overflow-hidden mb-8",
+                theme === "dark"
+                  ? "bg-[#1E293B]/80 border border-slate-700/50 backdrop-blur-sm"
+                  : "bg-white border border-gray-100"
+              )}
+            >
+              {/* Responsive horizontal pill tab bar */}
+              <div className="flex justify-center mt-4 mb-2">
+                <div
+                  className={clsx(
+                    "flex flex-row gap-2 max-w-4xl w-full rounded-lg shadow p-1",
+                    theme === "dark"
+                      ? "bg-blue-900/40 border border-blue-700/50"
+                      : "bg-white border border-gray-200"
+                  )}
+                >
+                  <button
+                    className={clsx(
+                      "flex-1 px-4 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 whitespace-nowrap focus:outline-none",
+                      athleteTab === "athletes"
+                        ? "bg-blue-600 text-white shadow"
+                        : theme === "dark"
+                        ? "bg-blue-800/30 text-blue-200 hover:bg-blue-700/40"
+                        : "bg-blue-50 text-blue-700"
+                    )}
+                    data-active={athleteTab === "athletes"}
+                    onClick={() => setAthleteTab("athletes")}
+                  >
+                    <Users className="h-4 w-4 inline-block mr-1" /> Athletes
+                  </button>
+                  <button
+                    className={clsx(
+                      "flex-1 px-4 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 whitespace-nowrap focus:outline-none",
+                      athleteTab === "groups"
+                        ? "bg-blue-600 text-white shadow"
+                        : theme === "dark"
+                        ? "bg-blue-800/30 text-blue-200 hover:bg-blue-700/40"
+                        : "bg-blue-50 text-blue-700"
+                    )}
+                    data-active={athleteTab === "groups"}
+                    onClick={() => setAthleteTab("groups")}
+                  >
+                    <Users className="h-4 w-4 inline-block mr-1" /> Groups
+                  </button>
+                  <button
+                    className={clsx(
+                      "flex-1 px-4 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 whitespace-nowrap focus:outline-none",
+                      athleteTab === "invite"
+                        ? "bg-blue-600 text-white shadow"
+                        : theme === "dark"
+                        ? "bg-blue-800/30 text-blue-200 hover:bg-blue-700/40"
+                        : "bg-blue-50 text-blue-700"
+                    )}
+                    data-active={athleteTab === "invite"}
+                    onClick={() => setAthleteTab("invite")}
+                  >
+                    <UserPlus className="h-4 w-4 inline-block mr-1" /> Invite
+                  </button>
+                </div>
+              </div>
+              {athleteTab === "athletes" && (
+                <div className="mt-4 overflow-x-auto w-full">
+                  <table
+                    className={clsx(
+                      "min-w-full rounded-xl shadow text-sm",
+                      theme === "dark"
+                        ? "bg-blue-900/30 border border-blue-700/50 divide-blue-700/50"
+                        : "bg-white border border-gray-200 divide-gray-200"
+                    )}
+                  >
+                    <thead>
+                      <tr
+                        className={clsx(
+                          theme === "dark" ? "bg-blue-800/40" : "bg-gray-50"
+                        )}
+                      >
                         <th
-                          scope="col"
                           className={clsx(
                             "px-6 py-3 text-left text-xs font-medium uppercase tracking-wider",
-                            theme === "dark"
-                              ? "text-slate-400"
-                              : "text-gray-500"
+                            theme === "dark" ? "text-blue-200" : "text-gray-500"
                           )}
                         >
-                          Invitation Code
+                          Name
                         </th>
                         <th
-                          scope="col"
                           className={clsx(
                             "px-6 py-3 text-left text-xs font-medium uppercase tracking-wider",
-                            theme === "dark"
-                              ? "text-slate-400"
-                              : "text-gray-500"
+                            theme === "dark" ? "text-blue-200" : "text-gray-500"
                           )}
                         >
-                          Status
+                          Email
                         </th>
                         <th
-                          scope="col"
                           className={clsx(
-                            "px-6 py-3 text-left text-xs font-medium uppercase tracking-wider",
-                            theme === "dark"
-                              ? "text-slate-400"
-                              : "text-gray-500"
-                          )}
-                        >
-                          Expires
-                        </th>
-                        <th
-                          scope="col"
-                          className={clsx(
-                            "px-6 py-3 text-left text-xs font-medium uppercase tracking-wider",
-                            theme === "dark"
-                              ? "text-slate-400"
-                              : "text-gray-500"
+                            "px-6 py-3 text-right text-xs font-medium uppercase tracking-wider",
+                            theme === "dark" ? "text-blue-200" : "text-gray-500"
                           )}
                         >
                           Actions
@@ -2758,477 +3316,409 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
                           : "divide-gray-200"
                       )}
                     >
-                      {visibleInvitations.map((invitation) => (
+                      {athletes.map((athlete) => (
                         <tr
-                          key={invitation.id}
-                          className={clsx(
-                            theme === "dark"
-                              ? "hover:bg-slate-800/50"
-                              : "hover:bg-gray-50"
-                          )}
+                          key={athlete.id}
+                          className="transition hover:bg-blue-50"
                         >
-                          <td
-                            className={clsx(
-                              "px-6 py-4 whitespace-nowrap text-sm",
-                              theme === "dark"
-                                ? "text-slate-300"
-                                : "text-gray-900"
-                            )}
-                          >
-                            <div className="flex items-center gap-2">
-                              <span>{invitation.invitation_code}</span>
-                              <button
-                                onClick={() =>
-                                  handleCopyLink(invitation.invitation_code)
-                                }
-                                className={clsx(
-                                  "p-1 rounded hover:bg-opacity-80 transition-colors",
-                                  theme === "dark"
-                                    ? "hover:bg-slate-700"
-                                    : "hover:bg-gray-100"
-                                )}
-                                title="Copy invitation link"
-                              >
-                                <Copy
+                          <td className="px-6 py-2 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="flex-shrink-0 h-8 w-8">
+                                <ProfilePicture profile={athlete} size="sm" />
+                              </div>
+                              <div className="ml-3">
+                                <div
                                   className={clsx(
-                                    "h-4 w-4",
+                                    "text-sm font-medium",
                                     theme === "dark"
-                                      ? "text-slate-400"
-                                      : "text-gray-500"
-                                  )}
-                                />
-                              </button>
-                              {showCopyNotification ===
-                                invitation.invitation_code && (
-                                <span
-                                  className={clsx(
-                                    "text-xs",
-                                    theme === "dark"
-                                      ? "text-slate-400"
-                                      : "text-gray-500"
+                                      ? "text-white"
+                                      : "text-gray-900"
                                   )}
                                 >
-                                  Copied!
-                                </span>
-                              )}
+                                  {athlete.full_name}
+                                </div>
+                              </div>
                             </div>
                           </td>
-                          <td
-                            className={clsx(
-                              "px-6 py-4 whitespace-nowrap text-sm",
-                              theme === "dark"
-                                ? "text-slate-300"
-                                : "text-gray-900"
-                            )}
-                          >
-                            <span
+                          <td className="px-6 py-2 whitespace-nowrap">
+                            <div
                               className={clsx(
-                                "px-2 py-1 rounded-full text-xs font-medium",
+                                "text-sm",
                                 theme === "dark"
-                                  ? "bg-emerald-500/10 text-emerald-400"
-                                  : "bg-emerald-100 text-emerald-800"
+                                  ? "text-slate-400"
+                                  : "text-gray-500"
                               )}
                             >
-                              {new Date(invitation.expires_at) > new Date()
-                                ? "Active"
-                                : "Expired"}
-                            </span>
+                              {athlete.email}
+                            </div>
                           </td>
-                          <td
-                            className={clsx(
-                              "px-6 py-4 whitespace-nowrap text-sm",
-                              theme === "dark"
-                                ? "text-slate-300"
-                                : "text-gray-900"
-                            )}
-                          >
-                            {new Date(invitation.expires_at).toLocaleString(
-                              undefined,
-                              {
-                                year: "numeric",
-                                month: "numeric",
-                                day: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              }
-                            )}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            <button
-                              onClick={() =>
-                                handleDeleteInvitation(invitation.id)
-                              }
-                              className={clsx(
-                                "p-1.5 rounded-lg transition-colors",
-                                theme === "dark"
-                                  ? "text-red-400 hover:bg-red-500/10"
-                                  : "text-red-600 hover:bg-red-50"
-                              )}
-                              title="Delete invitation"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
+                          <td className="px-6 py-2 whitespace-nowrap text-right text-sm font-medium">
+                            <div className="flex items-center justify-end space-x-2">
+                              <button
+                                onClick={() => handleShowInsights(athlete)}
+                                className={clsx(
+                                  "inline-flex items-center px-3 py-1.5 rounded-xl font-medium shadow transition-all duration-200 text-xs",
+                                  theme === "dark"
+                                    ? "bg-gradient-to-r from-blue-500/20 to-indigo-500/20 text-blue-400 ring-1 ring-blue-500/30"
+                                    : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
+                                )}
+                              >
+                                <Brain className="h-4 w-4 mr-1" />
+                                <span className="relative">AI Insights</span>
+                              </button>
+                              <button
+                                onClick={(e) =>
+                                  handleRemoveAthlete(athlete.id, e)
+                                }
+                                className={clsx(
+                                  "inline-flex items-center px-2 py-1.5 rounded-lg text-xs font-medium transition-colors duration-200",
+                                  theme === "dark"
+                                    ? "text-red-400 hover:bg-red-500/10"
+                                    : "text-red-600 hover:bg-red-50"
+                                )}
+                              >
+                                <Trash2 className="h-4 w-4 mr-1" /> Remove
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
-              </div>
-            ) : (
-              <div
-                className={clsx(
-                  "text-center py-12 rounded-xl",
-                  theme === "dark" ? "bg-slate-900/50" : "bg-gray-50"
-                )}
-              >
-                <UserPlus
-                  className={clsx(
-                    "mx-auto h-12 w-12",
-                    theme === "dark" ? "text-slate-600" : "text-gray-400"
-                  )}
+              )}
+              {athleteTab === "invite" && (
+                <InviteAthleteModal
+                  isOpen={true}
+                  onClose={() => setAthleteTab("athletes")}
+                  onInviteSuccess={() => setAthleteTab("athletes")}
+                  managerId={profile.id}
                 />
-                <h3
-                  className={clsx(
-                    "mt-2 text-sm font-medium",
-                    theme === "dark" ? "text-slate-300" : "text-gray-900"
-                  )}
-                >
-                  No active invitations
-                </h3>
-                <p
-                  className={clsx(
-                    "mt-1 text-sm",
-                    theme === "dark" ? "text-slate-400" : "text-gray-500"
-                  )}
-                >
-                  Get started by inviting your first athlete
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Daily Responses */}
-        <div
-          id="daily-responses-section"
-          className={clsx(
-            "rounded-2xl shadow-sm overflow-hidden mb-8",
-            theme === "dark"
-              ? "bg-blue-900/40 ring-1 ring-blue-700/50 backdrop-blur-xl"
-              : "bg-white/90 shadow-xl shadow-blue-900/5 backdrop-blur-xl"
-          )}
-        >
-          <div
-            className={clsx(
-              "px-8 py-6 border-b",
-              theme === "dark" ? "border-blue-700/50" : "border-gray-100"
-            )}
-          >
-            <div className="flex items-center gap-4">
-              <div
-                className={clsx(
-                  "p-4 rounded-2xl",
-                  theme === "dark"
-                    ? "bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/30"
-                    : "bg-gradient-to-br from-blue-500 to-indigo-600 text-white"
-                )}
-              >
-                <Calendar className="w-6 h-6" />
-              </div>
-              <h2
-                className={clsx(
-                  "text-2xl font-bold",
-                  theme === "dark" ? "text-blue-100" : "text-blue-900"
-                )}
-              >
-                Daily Responses
-              </h2>
+              )}
+              {athleteTab === "groups" && (
+                <div className="p-6">
+                  <GroupsManagement
+                    managerId={profile.id}
+                    theme={theme}
+                    onGroupsUpdate={() => {
+                      try {
+                        // Only refresh athletes list, not the entire page
+                        fetchAthletes();
+                        // Also refresh the leaderboard to show new groups
+                        setGroupsRefreshKey((prev) => prev + 1);
+                      } catch (error) {
+                        console.error(
+                          "Error in onGroupsUpdate callback:",
+                          error
+                        );
+                      }
+                    }}
+                  />
+                </div>
+              )}
             </div>
 
-            {/* Add the filters section here */}
-            <div className="mt-6 flex flex-row items-end justify-between gap-8">
-              <div className="sm:w-1/2">
-                <label
-                  className={clsx(
-                    "block text-sm font-medium mb-2",
-                    theme === "dark" ? "text-blue-200" : "text-blue-800"
-                  )}
-                >
-                  Date
-                </label>
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className={clsx(
-                    "w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-blue-500/50 transition-all duration-200",
-                    theme === "dark"
-                      ? "bg-blue-950/50 border-blue-700 text-blue-100"
-                      : "bg-white border-gray-300 text-gray-900"
-                  )}
-                />
-              </div>
-              <div className="sm:w-1/3 sm:text-right">
-                <label
-                  className={clsx(
-                    "block text-sm font-medium mb-2",
-                    theme === "dark" ? "text-blue-200" : "text-blue-800"
-                  )}
-                >
-                  Athlete
-                </label>
-                <select
-                  value={selectedAthlete}
-                  onChange={(e) => setSelectedAthlete(e.target.value)}
-                  className={clsx(
-                    "w-full px-4 py-2.5 rounded-lg border focus:ring-2 focus:ring-blue-500/50 transition-all duration-200 appearance-none flex items-center bg-no-repeat",
-                    theme === "dark"
-                      ? "bg-blue-950/50 border-blue-700 text-blue-100"
-                      : "bg-white border-gray-300 text-gray-900",
-                    "pr-10" // add right padding for arrow
-                  )}
-                  style={{
-                    backgroundImage:
-                      "url('data:image/svg+xml;utf8,<svg fill='none' stroke='%23333' stroke-width='2' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'><path stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'></path></svg>')",
-                    backgroundPosition: "right 0.75rem center",
-                    backgroundRepeat: "no-repeat",
-                    backgroundSize: "1.25em 1.25em",
-                  }}
-                >
-                  <option value="all">All Athletes</option>
-                  {athletes.map((athlete) => (
-                    <option key={athlete.id} value={athlete.id}>
-                      {athlete.full_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {metricResponses.length > 0 ? (
-            <GroupedMetricResponses responses={metricResponses} />
-          ) : (
-            <div className="p-8 text-center">
-              <div
-                className={clsx(
-                  "mx-auto flex items-center justify-center h-16 w-16 rounded-2xl mb-4",
-                  theme === "dark"
-                    ? "bg-blue-500/10 text-blue-400"
-                    : "bg-gradient-to-br from-blue-500 to-indigo-600 text-white"
-                )}
-              >
-                <Calendar className="h-8 w-8" />
-              </div>
-              <h3
-                className={clsx(
-                  "text-xl font-semibold mb-2",
-                  theme === "dark" ? "text-white" : "text-gray-900"
-                )}
-              >
-                No Responses Yet
-              </h3>
-              <p
-                className={clsx(
-                  "text-sm max-w-sm mx-auto",
-                  theme === "dark" ? "text-slate-400" : "text-gray-500"
-                )}
-              >
-                No feedback has been submitted for the selected date. Responses
-                will appear here once athletes submit their daily forms.
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Team Leaderboard Section */}
-        <div
-          id="team-leaderboard-section"
-          className={clsx(
-            "rounded-2xl shadow-sm overflow-hidden mb-8",
-            theme === "dark"
-              ? "bg-blue-900/40 ring-1 ring-blue-700/50 backdrop-blur-xl"
-              : "bg-white/90 shadow-xl shadow-blue-900/5 backdrop-blur-xl"
-          )}
-        >
-          <div className="p-8">
-            <div className="flex items-center gap-4 mb-6">
-              <div
-                className={clsx(
-                  "p-4 rounded-2xl",
-                  theme === "dark"
-                    ? "bg-yellow-500/20 text-yellow-400 ring-1 ring-yellow-500/30"
-                    : "bg-gradient-to-br from-yellow-400 to-yellow-600 text-white"
-                )}
-              >
-                <Trophy className="w-6 h-6" />
-              </div>
-              <h2
-                className={clsx(
-                  "text-2xl font-bold",
-                  theme === "dark" ? "text-blue-100" : "text-blue-900"
-                )}
-              >
-                Team Leaderboard
-              </h2>
-            </div>
-            <ManagerLeaderboard
-              managerId={profile.id}
-              refreshKey={groupsRefreshKey}
-            />
-          </div>
-        </div>
-
-        {/* Athlete Personal Records Section */}
-        <section
-          id="athlete-records-section"
-          className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 scroll-mt-24"
-        >
-          <div className="mb-8 flex items-center gap-3">
-            <div className="p-3 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-xl shadow-lg">
-              <svg
-                className="h-6 w-6 text-white"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 16h-1v-4h-1m1-4h.01M12 20.5c4.142 0 7.5-3.358 7.5-7.5S16.142 5.5 12 5.5 4.5 8.858 4.5 13s3.358 7.5 7.5 7.5z"
-                />
-              </svg>
-            </div>
-            <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-yellow-600 to-yellow-400 bg-clip-text text-transparent">
-              Athlete Personal Best
-            </h2>
-          </div>
-          <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-4">
-            <label
+            {/* Active Invitations Section */}
+            <div
               className={clsx(
-                "font-medium text-sm",
-                theme === "dark" ? "text-blue-100" : "text-blue-900"
+                "mt-8 mb-10 rounded-2xl transition-all duration-200",
+                theme === "dark"
+                  ? "bg-slate-800/50 border border-slate-700/50"
+                  : "bg-white border border-gray-200/50"
               )}
             >
-              Select Athlete:
-            </label>
-            <div className="relative">
-              <select
-                value={selectedAthlete}
-                onChange={(e) => setSelectedAthlete(e.target.value)}
-                className={clsx(
-                  "px-4 py-3 pr-12 rounded-xl border text-sm min-w-[240px] shadow-lg transition-all duration-300 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 focus:shadow-xl cursor-pointer",
-                  theme === "dark"
-                    ? "bg-blue-900/70 border-blue-600/50 text-blue-50 hover:bg-blue-800/70 hover:border-blue-500/70 focus:bg-blue-800/80"
-                    : "bg-white border-yellow-200 text-gray-900 hover:bg-yellow-50 hover:border-yellow-300 focus:bg-yellow-50"
-                )}
-                style={{ appearance: "none" }}
-              >
-                <option value="">-- Select --</option>
-                {athletes.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.full_name}
-                  </option>
-                ))}
-              </select>
-              {/* Custom dropdown arrow */}
-              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                <svg
-                  className={clsx(
-                    "w-4 h-4 transition-colors duration-300",
-                    theme === "dark" ? "text-blue-200" : "text-yellow-700"
-                  )}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2.5}
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
-              </div>
-            </div>
-          </div>
-          {selectedAthlete &&
-            selectedAthlete !== "" &&
-            selectedAthlete !== "all" && (
-              <div
-                className={clsx(
-                  "rounded-2xl shadow-lg p-2 sm:p-8 mt-8 mb-12 w-full max-w-full mx-auto flex flex-col items-center",
-                  theme === "dark"
-                    ? "bg-blue-900/40 ring-1 ring-blue-700/50 border border-blue-700/30"
-                    : "bg-white/90 border border-gray-100"
-                )}
-              >
-                <h3
-                  className={clsx(
-                    "text-xl font-bold mb-6 w-full text-center",
-                    theme === "dark" ? "text-blue-100" : "text-blue-900"
-                  )}
-                >
-                  Performance Report
-                </h3>
-
-                <div className="w-full">
-                  <h4
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={clsx(
+                        "w-10 h-10 rounded-xl flex items-center justify-center",
+                        theme === "dark" ? "bg-indigo-500/10" : "bg-indigo-50"
+                      )}
+                    >
+                      <UserPlus
+                        className={clsx(
+                          "h-5 w-5",
+                          theme === "dark"
+                            ? "text-indigo-400"
+                            : "text-indigo-600"
+                        )}
+                      />
+                    </div>
+                    <div>
+                      <h2
+                        className={clsx(
+                          "text-lg font-semibold mb-4 flex items-center gap-2",
+                          theme === "dark" ? "text-white" : "text-gray-900"
+                        )}
+                      >
+                        <Info
+                          className={clsx(
+                            "w-5 h-5",
+                            theme === "dark" ? "text-blue-400" : "text-blue-500"
+                          )}
+                        />
+                        Active Invitations
+                      </h2>
+                      <p
+                        className={clsx(
+                          "text-sm",
+                          theme === "dark" ? "text-slate-400" : "text-gray-500"
+                        )}
+                      >
+                        Manage your pending athlete invitations
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowInviteModal(true)}
                     className={clsx(
-                      "text-lg font-semibold mb-4",
-                      theme === "dark" ? "text-white" : "text-gray-900"
+                      "px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-all duration-200",
+                      theme === "dark"
+                        ? "bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20"
+                        : "bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
                     )}
                   >
-                    Personal Best Overview
-                  </h4>
-                  <div className="w-full flex justify-end mb-4">
-                    <button
-                      onClick={() => {
-                        setPRForm({
-                          exercise: "",
-                          weight: 0,
-                          record_date: "",
-                          video_url: "",
-                          notes: "",
-                        });
-                        setEditingPRId(null);
-                        setShowPRModal(true);
-                      }}
-                      className="px-5 py-2 rounded-lg font-medium text-sm bg-yellow-400 text-white hover:bg-yellow-500 transition shadow"
-                    >
-                      + Add Record
-                    </button>
-                  </div>
-                  <div className="w-full">
-                    <PersonalRecordsTable
-                      athleteId={selectedAthlete}
-                      showModal={showPRModal}
-                      setShowModal={(show) => {
-                        setShowPRModal(show);
-                        if (!show) setPRRefreshKey((k) => k + 1); // refresh after closing modal
-                      }}
-                      form={prForm}
-                      setForm={setPRForm}
-                      editingId={editingPRId}
-                      setEditingId={setEditingPRId}
-                      canEdit={true}
-                      refreshKey={prRefreshKey}
-                    />
-                  </div>
-                  <div className="my-6 border-t border-gray-200 w-full" />
-                  <div className="w-full">
-                    <PersonalRecordsChart
-                      athleteId={selectedAthlete}
-                      refreshKey={prRefreshKey}
-                    />
-                  </div>
+                    <UserPlus className="h-4 w-4" />
+                    Invite Athlete
+                  </button>
                 </div>
+
+                {visibleInvitations.length > 0 ? (
+                  <div
+                    className={clsx(
+                      "rounded-xl overflow-hidden",
+                      theme === "dark" ? "bg-slate-900/50" : "bg-gray-50"
+                    )}
+                  >
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead
+                          className={clsx(
+                            theme === "dark" ? "bg-slate-800/50" : "bg-gray-50"
+                          )}
+                        >
+                          <tr>
+                            <th
+                              scope="col"
+                              className={clsx(
+                                "px-6 py-3 text-left text-xs font-medium uppercase tracking-wider",
+                                theme === "dark"
+                                  ? "text-slate-400"
+                                  : "text-gray-500"
+                              )}
+                            >
+                              Invitation Code
+                            </th>
+                            <th
+                              scope="col"
+                              className={clsx(
+                                "px-6 py-3 text-left text-xs font-medium uppercase tracking-wider",
+                                theme === "dark"
+                                  ? "text-slate-400"
+                                  : "text-gray-500"
+                              )}
+                            >
+                              Status
+                            </th>
+                            <th
+                              scope="col"
+                              className={clsx(
+                                "px-6 py-3 text-left text-xs font-medium uppercase tracking-wider",
+                                theme === "dark"
+                                  ? "text-slate-400"
+                                  : "text-gray-500"
+                              )}
+                            >
+                              Expires
+                            </th>
+                            <th
+                              scope="col"
+                              className={clsx(
+                                "px-6 py-3 text-left text-xs font-medium uppercase tracking-wider",
+                                theme === "dark"
+                                  ? "text-slate-400"
+                                  : "text-gray-500"
+                              )}
+                            >
+                              Actions
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody
+                          className={clsx(
+                            "divide-y",
+                            theme === "dark"
+                              ? "divide-slate-700/50"
+                              : "divide-gray-200"
+                          )}
+                        >
+                          {visibleInvitations.map((invitation) => (
+                            <tr
+                              key={invitation.id}
+                              className={clsx(
+                                theme === "dark"
+                                  ? "hover:bg-slate-800/50"
+                                  : "hover:bg-gray-50"
+                              )}
+                            >
+                              <td
+                                className={clsx(
+                                  "px-6 py-4 whitespace-nowrap text-sm",
+                                  theme === "dark"
+                                    ? "text-slate-300"
+                                    : "text-gray-900"
+                                )}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span>{invitation.invitation_code}</span>
+                                  <button
+                                    onClick={() =>
+                                      handleCopyLink(invitation.invitation_code)
+                                    }
+                                    className={clsx(
+                                      "p-1 rounded hover:bg-opacity-80 transition-colors",
+                                      theme === "dark"
+                                        ? "hover:bg-slate-700"
+                                        : "hover:bg-gray-100"
+                                    )}
+                                    title="Copy invitation link"
+                                  >
+                                    <Copy
+                                      className={clsx(
+                                        "h-4 w-4",
+                                        theme === "dark"
+                                          ? "text-slate-400"
+                                          : "text-gray-500"
+                                      )}
+                                    />
+                                  </button>
+                                  {showCopyNotification ===
+                                    invitation.invitation_code && (
+                                    <span
+                                      className={clsx(
+                                        "text-xs",
+                                        theme === "dark"
+                                          ? "text-slate-400"
+                                          : "text-gray-500"
+                                      )}
+                                    >
+                                      Copied!
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td
+                                className={clsx(
+                                  "px-6 py-4 whitespace-nowrap text-sm",
+                                  theme === "dark"
+                                    ? "text-slate-300"
+                                    : "text-gray-900"
+                                )}
+                              >
+                                <span
+                                  className={clsx(
+                                    "px-2 py-1 rounded-full text-xs font-medium",
+                                    theme === "dark"
+                                      ? "bg-emerald-500/10 text-emerald-400"
+                                      : "bg-emerald-100 text-emerald-800"
+                                  )}
+                                >
+                                  {new Date(invitation.expires_at) > new Date()
+                                    ? "Active"
+                                    : "Expired"}
+                                </span>
+                              </td>
+                              <td
+                                className={clsx(
+                                  "px-6 py-4 whitespace-nowrap text-sm",
+                                  theme === "dark"
+                                    ? "text-slate-300"
+                                    : "text-gray-900"
+                                )}
+                              >
+                                {new Date(invitation.expires_at).toLocaleString(
+                                  undefined,
+                                  {
+                                    year: "numeric",
+                                    month: "numeric",
+                                    day: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  }
+                                )}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                <button
+                                  onClick={() =>
+                                    handleDeleteInvitation(invitation.id)
+                                  }
+                                  className={clsx(
+                                    "p-1.5 rounded-lg transition-colors",
+                                    theme === "dark"
+                                      ? "text-red-400 hover:bg-red-500/10"
+                                      : "text-red-600 hover:bg-red-50"
+                                  )}
+                                  title="Delete invitation"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    className={clsx(
+                      "text-center py-12 rounded-xl",
+                      theme === "dark" ? "bg-slate-900/50" : "bg-gray-50"
+                    )}
+                  >
+                    <UserPlus
+                      className={clsx(
+                        "mx-auto h-12 w-12",
+                        theme === "dark" ? "text-slate-600" : "text-gray-400"
+                      )}
+                    />
+                    <h3
+                      className={clsx(
+                        "mt-2 text-sm font-medium",
+                        theme === "dark" ? "text-slate-300" : "text-gray-900"
+                      )}
+                    >
+                      No active invitations
+                    </h3>
+                    <p
+                      className={clsx(
+                        "mt-1 text-sm",
+                        theme === "dark" ? "text-slate-400" : "text-gray-500"
+                      )}
+                    >
+                      Get started by inviting your first athlete
+                    </p>
+                  </div>
+                )}
               </div>
-            )}
-        </section>
+            </div>
+
+            {/* Athlete Personal Records Section - Moved to Statistics Tab */}
+          </>
+        ) : mainTab === "records" ? (
+          <RecordsTab
+            profile={profile}
+            athletes={athletes}
+            prRefreshKey={prRefreshKey}
+            setPRRefreshKey={setPRRefreshKey}
+            groupsRefreshKey={groupsRefreshKey}
+          />
+        ) : mainTab === "daily-responses" ? (
+          <DailyResponsesTab profile={profile} athletes={athletes} />
+        ) : mainTab === "statistics" ? (
+          <Statistics profile={profile} />
+        ) : null}
       </main>
 
       {showMetricsModal && !showDeleteConfirmation && (
@@ -3318,7 +3808,7 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
                     "Create metrics to track athlete performance and well-being (max 10 metrics)",
                     "Choose between rating (1-5 scale) or text response types",
                     "Add clear descriptions to help athletes understand what to report",
-                    "Monitor responses in the Daily Responses section",
+                    "View responses in the dedicated Daily Responses page",
                   ].map((text, index) => (
                     <div key={index} className="flex items-start gap-3">
                       <div

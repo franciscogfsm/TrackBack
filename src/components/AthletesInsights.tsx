@@ -170,28 +170,27 @@ export default function AthletesInsights({
 
   if (loading) {
     return (
-      <div className="relative p-8 bg-gradient-to-br from-blue-900/50 to-purple-900/50 backdrop-blur-xl rounded-xl border border-white/10 shadow-xl">
-        <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 animate-pulse"></div>
-        <div className="relative flex items-center gap-4">
+      <div className="bg-white rounded-xl border border-blue-200 p-6 shadow-sm">
+        <div className="flex items-center gap-4 mb-6">
           <div className="relative">
-            <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center">
-              <Brain className="w-7 h-7 text-blue-400" />
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+              <Brain className="w-6 h-6 text-white" />
             </div>
             <div className="absolute -top-1 -right-1">
               <div className="animate-spin">
-                <Sparkles className="w-4 h-4 text-blue-400" />
+                <Sparkles className="w-4 h-4 text-blue-600" />
               </div>
             </div>
           </div>
           <div>
-            <h3 className="text-xl font-bold text-white">
+            <h3 className="text-lg font-semibold text-gray-900">
               {athleteId
                 ? "Comprehensive AI Analysis in Progress"
                 : "AI Analysis in Progress"}
             </h3>
             <div className="flex items-center gap-2 mt-1">
-              <div className="h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse"></div>
-              <p className="text-blue-200 text-sm">
+              <div className="h-1.5 w-1.5 rounded-full bg-blue-600 animate-pulse"></div>
+              <p className="text-sm text-gray-600">
                 {athleteId
                   ? "Analyzing complete training history and patterns..."
                   : "Analyzing performance patterns..."}
@@ -199,11 +198,11 @@ export default function AthletesInsights({
             </div>
           </div>
         </div>
-        <div className="mt-6 space-y-3">
+        <div className="space-y-3">
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="h-24 bg-white/5 rounded-lg animate-pulse"
+              className="h-20 bg-blue-50 rounded-lg animate-pulse border border-blue-100"
               style={{ animationDelay: `${i * 150}ms` }}
             ></div>
           ))}
@@ -214,14 +213,16 @@ export default function AthletesInsights({
 
   if (error) {
     return (
-      <div className="p-6 bg-gradient-to-br from-red-900/50 to-orange-900/50 backdrop-blur-xl rounded-xl border border-red-500/20 shadow-xl">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-red-500/20 rounded-xl flex items-center justify-center">
-            <AlertCircle className="w-7 h-7 text-red-400" />
+      <div className="bg-white rounded-xl border border-red-200 p-6 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center border border-red-200">
+            <AlertCircle className="w-6 h-6 text-red-600" />
           </div>
           <div>
-            <h3 className="text-xl font-bold text-white">Analysis Error</h3>
-            <p className="text-red-200 text-sm mt-1">{error}</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">
+              Analysis Error
+            </h3>
+            <p className="text-sm text-red-600">{error}</p>
           </div>
         </div>
       </div>
@@ -230,19 +231,21 @@ export default function AthletesInsights({
 
   if (!insights || insights.length === 0) {
     return (
-      <div className="bg-blue-600/20 border border-blue-500/30 rounded-lg p-4">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-            <Brain className="w-6 h-6 text-blue-400" />
+      <div className="bg-white rounded-xl border border-blue-200 p-6 shadow-sm">
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
+            <Brain className="w-6 h-6 text-white" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold text-white">AI Assistant</h3>
-              <span className="text-xs text-blue-200">
+            <div className="flex items-center gap-3 mb-2">
+              <h3 className="text-lg font-semibold text-gray-900">
+                AI Assistant
+              </h3>
+              <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full border border-blue-200">
                 Performance Insights
               </span>
             </div>
-            <p className="text-sm text-white/80 mt-2">
+            <p className="text-sm text-gray-600 leading-relaxed">
               No performance data available yet. Add some training metrics to
               get AI-powered insights and coaching recommendations.
             </p>
@@ -255,26 +258,26 @@ export default function AthletesInsights({
   return (
     <div className="space-y-6">
       {/* Quick Summary Header */}
-      <div className="bg-gradient-to-r from-slate-900/80 to-slate-800/80 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
+      <div className="bg-white rounded-xl border border-blue-200 p-6 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
               <Brain className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white">
+              <h2 className="text-xl font-bold text-gray-900">
                 AI Coaching Insights
               </h2>
-              <p className="text-sm text-white/60">
+              <p className="text-sm text-gray-600">
                 Data-driven recommendations for optimal performance
               </p>
             </div>
           </div>
           <div className="text-right">
-            <div className="text-2xl font-bold text-white">
+            <div className="text-2xl font-bold text-blue-600">
               {insights.length}
             </div>
-            <div className="text-xs text-white/60 uppercase tracking-wide">
+            <div className="text-xs text-blue-500 uppercase tracking-wide font-medium">
               Action Items
             </div>
           </div>
@@ -297,18 +300,13 @@ export default function AthletesInsights({
             <div
               key={index}
               className={clsx(
-                "group relative overflow-hidden rounded-2xl border transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl",
+                "group relative overflow-hidden rounded-xl border transition-all duration-300 hover:shadow-lg",
                 isUrgent
-                  ? "bg-gradient-to-br from-red-900/60 to-red-800/60 border-red-500/30 shadow-red-500/20"
+                  ? "bg-red-50 border-red-200"
                   : isPositive
-                  ? "bg-gradient-to-br from-emerald-900/60 to-emerald-800/60 border-emerald-500/30 shadow-emerald-500/20"
-                  : index === 0
-                  ? "bg-gradient-to-br from-blue-900/60 to-blue-800/60 border-blue-500/30 shadow-blue-500/20"
-                  : index === 1
-                  ? "bg-gradient-to-br from-purple-900/60 to-purple-800/60 border-purple-500/30 shadow-purple-500/20"
-                  : index === 2
-                  ? "bg-gradient-to-br from-indigo-900/60 to-indigo-800/60 border-indigo-500/30 shadow-indigo-500/20"
-                  : "bg-gradient-to-br from-teal-900/60 to-teal-800/60 border-teal-500/30 shadow-teal-500/20"
+                  ? "bg-emerald-50 border-emerald-200"
+                  : "bg-white border-blue-200",
+                "shadow-sm"
               )}
               style={{
                 animation: `slideInUp 600ms ${index * 150}ms both`,
@@ -317,7 +315,7 @@ export default function AthletesInsights({
               {/* Urgency Indicator */}
               {isUrgent && (
                 <div className="absolute top-4 right-4 z-10">
-                  <div className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+                  <div className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg">
                     <AlertTriangle className="w-3 h-3" />
                     URGENT
                   </div>
@@ -329,24 +327,24 @@ export default function AthletesInsights({
                 <div className="flex items-start gap-4 mb-6">
                   <div
                     className={clsx(
-                      "w-14 h-14 rounded-xl flex items-center justify-center shadow-lg",
+                      "w-12 h-12 rounded-xl flex items-center justify-center shadow-sm border",
                       isUrgent
-                        ? "bg-red-500/20"
+                        ? "bg-red-100 border-red-200"
                         : isPositive
-                        ? "bg-emerald-500/20"
+                        ? "bg-emerald-100 border-emerald-200"
                         : index === 0
-                        ? "bg-blue-500/20"
+                        ? "bg-blue-100 border-blue-200"
                         : index === 1
-                        ? "bg-purple-500/20"
+                        ? "bg-purple-100 border-purple-200"
                         : index === 2
-                        ? "bg-indigo-500/20"
-                        : "bg-teal-500/20"
+                        ? "bg-indigo-100 border-indigo-200"
+                        : "bg-teal-100 border-teal-200"
                     )}
                   >
                     {getInsightIcon(insight.area, isUrgent, isPositive)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-bold text-white mb-2 leading-tight">
+                    <h3 className="text-lg font-bold text-gray-900 mb-2 leading-tight">
                       {insight.area.replace(/[🚨💪🎯📊📈🔄🧘⚡💬]/g, "").trim()}
                     </h3>
                     <div className="flex items-center gap-2">
@@ -357,13 +355,13 @@ export default function AthletesInsights({
                               className={clsx(
                                 "w-2 h-2 rounded-full",
                                 insight.confidence >= 0.8
-                                  ? "bg-green-400"
+                                  ? "bg-green-500"
                                   : insight.confidence >= 0.6
-                                  ? "bg-yellow-400"
-                                  : "bg-red-400"
+                                  ? "bg-yellow-500"
+                                  : "bg-red-500"
                               )}
                             ></div>
-                            <span className="text-xs text-white/70">
+                            <span className="text-xs text-gray-500">
                               {Math.round(insight.confidence * 100)}% confidence
                             </span>
                           </>
@@ -376,13 +374,13 @@ export default function AthletesInsights({
                 {/* Current Status */}
                 <div className="mb-6">
                   <div className="flex items-center gap-2 mb-3">
-                    <BarChart3 className="w-4 h-4 text-white/70" />
-                    <h4 className="text-sm font-semibold text-white/90 uppercase tracking-wide">
+                    <BarChart3 className="w-4 h-4 text-blue-600" />
+                    <h4 className="text-sm font-semibold text-blue-800 uppercase tracking-wide">
                       Current Analysis
                     </h4>
                   </div>
-                  <div className="bg-black/20 rounded-xl p-4 border border-white/10">
-                    <p className="text-white/90 text-sm leading-relaxed">
+                  <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                    <p className="text-gray-900 text-sm leading-relaxed">
                       {formatTrendText(insight.trend)}
                     </p>
                   </div>
@@ -391,22 +389,22 @@ export default function AthletesInsights({
                 {/* Action Plan */}
                 <div className="mb-6">
                   <div className="flex items-center gap-2 mb-3">
-                    <Target className="w-4 h-4 text-white/70" />
-                    <h4 className="text-sm font-semibold text-white/90 uppercase tracking-wide">
+                    <Target className="w-4 h-4 text-blue-600" />
+                    <h4 className="text-sm font-semibold text-blue-800 uppercase tracking-wide">
                       Recommended Actions
                     </h4>
                   </div>
                   <div
                     className={clsx(
-                      "rounded-xl p-4 border",
+                      "rounded-lg p-4 border",
                       isUrgent
-                        ? "bg-red-500/10 border-red-400/30"
+                        ? "bg-red-50 border-red-200"
                         : isPositive
-                        ? "bg-emerald-500/10 border-emerald-400/30"
-                        : "bg-white/5 border-white/20"
+                        ? "bg-emerald-50 border-emerald-200"
+                        : "bg-blue-50 border-blue-200"
                     )}
                   >
-                    <p className="text-white text-sm leading-relaxed font-medium">
+                    <p className="text-gray-900 text-sm leading-relaxed font-medium">
                       {formatRecommendationText(
                         insight.recommendation ||
                           "Continue current training approach and monitor progress closely. Schedule a check-in to discuss any concerns."
@@ -427,10 +425,10 @@ export default function AthletesInsights({
                       className={clsx(
                         "px-3 py-1 rounded-full text-xs font-medium border",
                         isUrgent
-                          ? "bg-red-500/15 text-red-200 border-red-400/40"
+                          ? "bg-red-100 text-red-700 border-red-200"
                           : isPositive
-                          ? "bg-emerald-500/15 text-emerald-200 border-emerald-400/40"
-                          : "bg-white/10 text-white/80 border-white/20"
+                          ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+                          : "bg-blue-100 text-blue-700 border-blue-200"
                       )}
                     >
                       {tag}
@@ -464,12 +462,12 @@ export default function AthletesInsights({
 // Enhanced helper functions for better UI
 function getInsightIcon(area: string, isUrgent: boolean, isPositive: boolean) {
   const iconClass = clsx(
-    "w-7 h-7",
+    "w-6 h-6",
     isUrgent
-      ? "text-red-300"
+      ? "text-red-600"
       : isPositive
-      ? "text-emerald-300"
-      : "text-white/80"
+      ? "text-emerald-600"
+      : "text-blue-600"
   );
 
   if (area.includes("Risk") || area.includes("🚨"))

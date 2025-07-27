@@ -301,10 +301,14 @@ export interface DailyFormStatus {
   id: string;
   manager_id: string;
   is_open: boolean;
+  open_time: string | null;
+  close_time: string | null;
   global_reminder_time: string; // Format: "HH:MM" in 24-hour format
   enable_reminders: boolean;
+  manually_closed?: boolean;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
+  date?: string;
 }
 
 export interface TrainingSession {

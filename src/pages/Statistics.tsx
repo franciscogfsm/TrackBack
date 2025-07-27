@@ -33,7 +33,7 @@ import {
   ChevronUp,
   ChevronDown,
 } from "lucide-react";
-import PersonalRecordsChart from "../components/PersonalRecordsChart";
+import clsx from "clsx";
 
 // Register ChartJS components
 ChartJS.register(
@@ -268,36 +268,36 @@ const WeeklyLoadTable = ({ trainingSessions }: WeeklyLoadTableProps) => {
   const strain = weeklyLoad * trainingMonotony;
 
   return (
-    <div className="bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200">
+    <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
       {/* Header */}
-      <div className="bg-red-600 text-white py-3 px-4 text-center font-bold text-lg">
-        RATE OF PERCEIVED EXERTION (RPE) WEEK
+      <div className="bg-blue-600 text-white py-3 px-4 text-center font-bold text-lg">
+        WEEKLY TRAINING LOAD OVERVIEW
       </div>
 
       {/* Table */}
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead>
-            <tr className="bg-gray-50">
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-32">
+            <tr className="bg-white border-b border-gray-200">
+              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-32">
                 DAY
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-24">
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-24">
                 AM/PM
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 Type of Session
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-28">
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider w-28">
                 RPE (1-10)
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-32">
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider w-32">
                 Duration (min)
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-28">
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider w-28">
                 Unit Load
               </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-32">
+              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider w-32">
                 DAILY LOAD
               </th>
             </tr>
@@ -339,7 +339,7 @@ const WeeklyLoadTable = ({ trainingSessions }: WeeklyLoadTableProps) => {
                     </td>
                     <td
                       rowSpan={2}
-                      className="px-6 py-3 whitespace-nowrap text-sm font-bold text-gray-900 align-middle bg-gray-50"
+                      className="px-6 py-3 whitespace-nowrap text-sm font-bold text-gray-900 align-middle bg-blue-50 border-l border-blue-200"
                     >
                       {dayData.dailyLoad || "0"}
                     </td>
@@ -370,41 +370,55 @@ const WeeklyLoadTable = ({ trainingSessions }: WeeklyLoadTableProps) => {
             })}
           </tbody>
           <tfoot>
-            <tr className="bg-red-600 text-white font-bold">
+            <tr className="bg-blue-600 text-white font-bold">
               <td colSpan={6} className="px-6 py-3 text-right">
                 WEEKLY LOAD
               </td>
               <td className="px-6 py-3">{weeklyLoad || 0}</td>
             </tr>
-            <tr className="bg-white">
-              <td colSpan={6} className="px-6 py-3 text-right font-medium">
+            <tr className="bg-white border-t-2 border-blue-200">
+              <td
+                colSpan={6}
+                className="px-6 py-3 text-right font-medium text-gray-900"
+              >
                 Mean Daily training Load
               </td>
-              <td className="px-6 py-3">{Math.round(meanDailyLoad) || 0}</td>
+              <td className="px-6 py-3 text-gray-900">
+                {Math.round(meanDailyLoad) || 0}
+              </td>
             </tr>
-            <tr className="bg-white">
-              <td colSpan={6} className="px-6 py-3 text-right font-medium">
+            <tr className="bg-white border-t border-gray-200">
+              <td
+                colSpan={6}
+                className="px-6 py-3 text-right font-medium text-gray-900"
+              >
                 Standard Deviation
               </td>
-              <td className="px-6 py-3">
+              <td className="px-6 py-3 text-gray-900">
                 {!isNaN(standardDeviation) ? Math.round(standardDeviation) : 0}
               </td>
             </tr>
-            <tr className="bg-green-50">
-              <td colSpan={6} className="px-6 py-3 text-right font-medium">
+            <tr className="bg-green-50 border border-green-200">
+              <td
+                colSpan={6}
+                className="px-6 py-3 text-right font-medium text-gray-900"
+              >
                 TRAINING MONOTONY
               </td>
-              <td className="px-6 py-3">
+              <td className="px-6 py-3 text-gray-900">
                 {!isNaN(trainingMonotony)
                   ? trainingMonotony.toFixed(2)
                   : "0.00"}
               </td>
             </tr>
-            <tr className="bg-blue-50">
-              <td colSpan={6} className="px-6 py-3 text-right font-medium">
+            <tr className="bg-blue-50 border border-blue-200">
+              <td
+                colSpan={6}
+                className="px-6 py-3 text-right font-medium text-gray-900"
+              >
                 STRAIN
               </td>
-              <td className="px-6 py-3">
+              <td className="px-6 py-3 text-gray-900">
                 {!isNaN(strain) ? Math.round(strain) : 0}
               </td>
             </tr>
@@ -1191,193 +1205,167 @@ export default function Statistics({ profile }: StatsProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <header className="bg-gradient-to-r from-indigo-700 to-purple-700 shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => navigate("/")}
-                className="inline-flex items-center text-white hover:text-gray-200"
-              >
-                <ArrowLeft className="h-5 w-5 mr-2" />
-                Back to Dashboard
-              </button>
-              <h1 className="text-2xl font-bold text-white flex items-center">
-                <BarChart2 className="h-6 w-6 mr-2" />
-                Performance Statistics
-              </h1>
-            </div>
-            <div>
-              <span className="text-white font-medium">
-                {profile.full_name}
-              </span>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <h2 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-            <TrendingUp className="h-5 w-5 mr-2 text-indigo-500" />
-            Filter Data
-          </h2>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
-            <div>
-              <label
-                htmlFor="athlete-select"
-                className="block text-sm font-medium text-gray-700 mb-1 flex items-center"
-              >
-                <User className="h-4 w-4 mr-1 text-gray-500" />
-                Athlete
-              </label>
-              <select
-                id="athlete-select"
-                value={selectedAthlete}
-                onChange={(e) => setSelectedAthlete(e.target.value)}
-                className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm w-full"
-                required
-              >
-                <option value="" disabled>
-                  Select an Athlete
+    <div className="space-y-8">
+      {/* Filters */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+          <TrendingUp className="h-5 w-5 mr-2 text-indigo-500" />
+          Filter Data
+        </h2>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+          <div>
+            <label
+              htmlFor="athlete-select"
+              className="block text-sm font-medium text-gray-700 mb-1 flex items-center"
+            >
+              <User className="h-4 w-4 mr-1 text-gray-500" />
+              Athlete
+            </label>
+            <select
+              id="athlete-select"
+              value={selectedAthlete}
+              onChange={(e) => setSelectedAthlete(e.target.value)}
+              className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm w-full"
+              required
+            >
+              <option value="" disabled>
+                Select an Athlete
+              </option>
+              {athletes.map((athlete) => (
+                <option key={athlete.id} value={athlete.id}>
+                  {athlete.full_name}
                 </option>
-                {athletes.map((athlete) => (
-                  <option key={athlete.id} value={athlete.id}>
-                    {athlete.full_name}
-                  </option>
-                ))}
-              </select>
-            </div>
+              ))}
+            </select>
+          </div>
 
-            <div>
-              <label
-                htmlFor="start-date"
-                className="block text-sm font-medium text-gray-700 mb-1 flex items-center"
-              >
-                <Calendar className="h-4 w-4 mr-1 text-gray-500" />
-                Start Date
-              </label>
-              <input
-                id="start-date"
-                type="date"
-                value={dateRange.start}
-                onChange={(e) =>
-                  setDateRange({ ...dateRange, start: e.target.value })
-                }
-                className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm w-full"
-              />
-            </div>
+          <div>
+            <label
+              htmlFor="start-date"
+              className="block text-sm font-medium text-gray-700 mb-1 flex items-center"
+            >
+              <Calendar className="h-4 w-4 mr-1 text-gray-500" />
+              Start Date
+            </label>
+            <input
+              id="start-date"
+              type="date"
+              value={dateRange.start}
+              onChange={(e) =>
+                setDateRange({ ...dateRange, start: e.target.value })
+              }
+              className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm w-full"
+            />
+          </div>
 
-            <div>
-              <label
-                htmlFor="end-date"
-                className="block text-sm font-medium text-gray-700 mb-1 flex items-center"
-              >
-                <Calendar className="h-4 w-4 mr-1 text-gray-500" />
-                End Date
-              </label>
-              <input
-                id="end-date"
-                type="date"
-                value={dateRange.end}
-                onChange={(e) =>
-                  setDateRange({ ...dateRange, end: e.target.value })
-                }
-                className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm w-full"
-              />
+          <div>
+            <label
+              htmlFor="end-date"
+              className="block text-sm font-medium text-gray-700 mb-1 flex items-center"
+            >
+              <Calendar className="h-4 w-4 mr-1 text-gray-500" />
+              End Date
+            </label>
+            <input
+              id="end-date"
+              type="date"
+              value={dateRange.end}
+              onChange={(e) =>
+                setDateRange({ ...dateRange, end: e.target.value })
+              }
+              className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm w-full"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Weekly Load Chart Section */}
+      {selectedAthlete && allExerciseRecords.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+          <WeeklyLoadChart records={allExerciseRecords} />
+        </div>
+      )}
+
+      {/* Chart section */}
+      <div className="space-y-8">
+        {/* Week Navigation */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => navigateWeek("prev")}
+              className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+              <ChevronLeft className="w-5 h-5 mr-1" />
+              Previous Week
+            </button>
+            <div className="text-center">
+              {currentWeek && (
+                <>
+                  <div className="text-sm font-medium text-gray-900">
+                    {currentWeek.start.toLocaleDateString("en-US", {
+                      month: "long",
+                      day: "numeric",
+                    })}
+                    {" - "}
+                    {currentWeek.end.toLocaleDateString("en-US", {
+                      month: "long",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </div>
+                  {trainingSessions.length > 0 && (
+                    <div className="text-xs text-blue-600 font-medium mt-1">
+                      {trainingSessions.length} sessions this week
+                    </div>
+                  )}
+                </>
+              )}
             </div>
+            <button
+              onClick={() => navigateWeek("next")}
+              className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+              Next Week
+              <ChevronRight className="w-5 h-5 ml-1" />
+            </button>
           </div>
         </div>
 
-        {/* Weekly Load Chart Section */}
-        {selectedAthlete && allExerciseRecords.length > 0 && (
-          <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-            <WeeklyLoadChart records={allExerciseRecords} />
-          </div>
-        )}
+        {/* Weekly Load Table */}
+        <WeeklyLoadTable trainingSessions={trainingSessions} />
 
-        {/* Chart section */}
-        <div className="space-y-8">
-          {/* Week Navigation */}
-          <div className="bg-white rounded-lg shadow-md p-4 border border-gray-200">
-            <div className="flex items-center justify-between">
-              <button
-                onClick={() => navigateWeek("prev")}
-                className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                <ChevronLeft className="w-5 h-5 mr-1" />
-                Previous Week
-              </button>
-              <div className="text-center">
-                {currentWeek && (
-                  <>
-                    <div className="text-sm font-medium text-gray-900">
-                      {currentWeek.start.toLocaleDateString("en-US", {
-                        month: "long",
-                        day: "numeric",
-                      })}
-                      {" - "}
-                      {currentWeek.end.toLocaleDateString("en-US", {
-                        month: "long",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </div>
-                    {trainingSessions.length > 0 && (
-                      <div className="text-xs text-blue-600 font-medium mt-1">
-                        {trainingSessions.length} sessions this week
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-              <button
-                onClick={() => navigateWeek("next")}
-                className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                Next Week
-                <ChevronRight className="w-5 h-5 ml-1" />
-              </button>
-            </div>
-          </div>
+        {/* Training Load Analysis */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <TrendingUp className="h-5 w-5 mr-2 text-indigo-500" />
+            Training Load Analysis
+          </h2>
 
-          {/* Weekly Load Table */}
-          <WeeklyLoadTable trainingSessions={trainingSessions} />
+          {trainingLoads.length > 0 ? (
+            trainingLoads.map((athleteLoad) => {
+              // Debugging logs
+              console.log(
+                "currentWeekEndDateString:",
+                currentWeekEndDateString
+              );
+              console.log(
+                "athleteLoad.data dates:",
+                athleteLoad.data.map((d) => d.date)
+              );
+              const currentWeekData = athleteLoad.data.find(
+                (d) => d.date === currentWeekEndDateString
+              );
+              console.log("Found currentWeekData:", currentWeekData);
 
-          {/* Training Load Analysis */}
-          <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-            <h2 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-              <TrendingUp className="h-5 w-5 mr-2 text-indigo-500" />
-              Training Load Analysis
-            </h2>
+              return (
+                <div key={athleteLoad.athleteId} className="mb-8 last:mb-0">
+                  <h3 className="text-md font-medium text-gray-900 mb-4">
+                    {athleteLoad.name}
+                  </h3>
 
-            {trainingLoads.length > 0 ? (
-              trainingLoads.map((athleteLoad) => {
-                // Debugging logs
-                console.log(
-                  "currentWeekEndDateString:",
-                  currentWeekEndDateString
-                );
-                console.log(
-                  "athleteLoad.data dates:",
-                  athleteLoad.data.map((d) => d.date)
-                );
-                const currentWeekData = athleteLoad.data.find(
-                  (d) => d.date === currentWeekEndDateString
-                );
-                console.log("Found currentWeekData:", currentWeekData);
-
-                return (
-                  <div key={athleteLoad.athleteId} className="mb-8 last:mb-0">
-                    <h3 className="text-md font-medium text-gray-900 mb-4">
-                      {athleteLoad.name}
-                    </h3>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                      {/* Remove Daily Load Card */}
-                      {/*
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    {/* Remove Daily Load Card */}
+                    {/*
                       <div className="bg-gray-50 p-4 rounded-lg">
                         <h4 className="text-sm font-medium text-gray-500">
                           Daily Load
@@ -1388,219 +1376,110 @@ export default function Statistics({ profile }: StatsProps) {
                       </div>
                       */}
 
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h4 className="text-sm font-medium text-gray-500">
-                          Weekly Load
-                        </h4>
-                        <p className="text-2xl font-semibold text-gray-900">
-                          {athleteLoad.data
-                            .find((d) => d.date === currentWeekEndDateString)
-                            ?.weeklyLoad.toFixed(0) || 0}
-                        </p>
-                      </div>
-
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h4 className="text-sm font-medium text-gray-500">
-                          Chronic Load
-                        </h4>
-                        <p className="text-2xl font-semibold text-gray-900">
-                          {athleteLoad.data
-                            .find((d) => d.date === currentWeekEndDateString)
-                            ?.chronicLoad.toFixed(0) || 0}
-                        </p>
-                      </div>
-
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h4 className="text-sm font-medium text-gray-500">
-                          ACWR
-                        </h4>
-                        <p
-                          className={`text-2xl font-semibold ${getACWRColor(
-                            athleteLoad.data.find(
-                              (d) => d.date === currentWeekEndDateString
-                            )?.acwr || 0
-                          )}`}
-                        >
-                          {athleteLoad.data
-                            .find((d) => d.date === currentWeekEndDateString)
-                            ?.acwr.toFixed(2) || "0.00"}
-                        </p>
-                      </div>
+                    <div className="bg-white border border-gray-200 p-4 rounded-lg shadow-sm">
+                      <h4 className="text-sm font-medium text-gray-600">
+                        Weekly Load
+                      </h4>
+                      <p className="text-2xl font-semibold text-gray-900">
+                        {athleteLoad.data
+                          .find((d) => d.date === currentWeekEndDateString)
+                          ?.weeklyLoad.toFixed(0) || 0}
+                      </p>
                     </div>
 
-                    {/* ACWR Chart */}
-                    <div className="mt-4">
-                      <h4 className="text-sm font-medium text-gray-500 mb-2">
-                        ACWR Trend
+                    <div className="bg-white border border-gray-200 p-4 rounded-lg shadow-sm">
+                      <h4 className="text-sm font-medium text-gray-600">
+                        Chronic Load
                       </h4>
-                      <div className="h-64">
-                        <Line
-                          data={{
-                            labels: athleteLoad.data.map((d) => d.date),
-                            datasets: [
-                              {
-                                label: "ACWR",
-                                data: athleteLoad.data.map((d) => d.acwr),
-                                borderColor: "rgb(79, 70, 229)",
-                                tension: 0.4,
-                              },
-                            ],
-                          }}
-                          options={{
-                            maintainAspectRatio: false,
-                            scales: {
-                              y: {
-                                beginAtZero: true,
-                                max: 2,
-                              },
-                            },
-                            plugins: {
-                              annotation: {
-                                annotations: {
-                                  greenZone: {
-                                    type: "box",
-                                    yMin: 0.8,
-                                    yMax: 1.3,
-                                    backgroundColor: "rgba(34, 197, 94, 0.1)",
-                                    borderWidth: 0,
-                                  },
-                                  yellowZone1: {
-                                    type: "box",
-                                    yMin: 0.6,
-                                    yMax: 0.8,
-                                    backgroundColor: "rgba(234, 179, 8, 0.1)",
-                                    borderWidth: 0,
-                                  },
-                                  yellowZone2: {
-                                    type: "box",
-                                    yMin: 1.3,
-                                    yMax: 1.5,
-                                    backgroundColor: "rgba(234, 179, 8, 0.1)",
-                                    borderWidth: 0,
-                                  },
-                                  redZone1: {
-                                    type: "box",
-                                    yMin: 0,
-                                    yMax: 0.6,
-                                    backgroundColor: "rgba(239, 68, 68, 0.1)",
-                                    borderWidth: 0,
-                                  },
-                                  redZone2: {
-                                    type: "box",
-                                    yMin: 1.5,
-                                    yMax: 2,
-                                    backgroundColor: "rgba(239, 68, 68, 0.1)",
-                                    borderWidth: 0,
-                                  },
-                                },
-                              },
-                            },
-                          }}
-                        />
-                      </div>
+                      <p className="text-2xl font-semibold text-gray-900">
+                        {athleteLoad.data
+                          .find((d) => d.date === currentWeekEndDateString)
+                          ?.chronicLoad.toFixed(0) || 0}
+                      </p>
+                    </div>
+
+                    <div className="bg-white border border-gray-200 p-4 rounded-lg shadow-sm">
+                      <h4 className="text-sm font-medium text-gray-600">
+                        ACWR
+                      </h4>
+                      <p
+                        className={`text-2xl font-semibold ${getACWRColor(
+                          athleteLoad.data.find(
+                            (d) => d.date === currentWeekEndDateString
+                          )?.acwr || 0
+                        )}`}
+                      >
+                        {athleteLoad.data
+                          .find((d) => d.date === currentWeekEndDateString)
+                          ?.acwr.toFixed(2) || "0.00"}
+                      </p>
                     </div>
                   </div>
-                );
-              })
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-gray-500">
-                  No training load data available for the selected period.
-                </p>
-              </div>
-            )}
-          </div>
 
-          {/* Metric Charts - Only show if there's data */}
-          {athleteStats.length > 0 && (
-            <>
-              {/* Overall Averages */}
-              <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-                <h2 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-                  <BarChart2 className="h-5 w-5 mr-2 text-indigo-500" />
-                  Overall Averages
-                </h2>
-                <div className="h-80">
-                  <Bar
-                    data={getAverageChartData()}
-                    options={{
-                      maintainAspectRatio: false,
-                      scales: {
-                        y: {
-                          beginAtZero: true,
-                          max: 5,
-                        },
-                      },
-                      plugins: {
-                        legend: {
-                          position: "top",
-                        },
-                        tooltip: {
-                          backgroundColor: "rgba(79, 70, 229, 0.9)",
-                          padding: 12,
-                          titleFont: {
-                            size: 14,
-                            weight: "bold",
-                          },
-                          bodyFont: {
-                            size: 13,
-                          },
-                        },
-                      },
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* Individual Metric Trends */}
-              {metrics
-                .filter((m) => m.type === "rating")
-                .filter((metric) => {
-                  return athleteStats.some((athlete) =>
-                    athlete.metrics.some((m) => m.metricId === metric.id)
-                  );
-                })
-                .map((metric) => (
-                  <div
-                    key={metric.id}
-                    className="bg-white rounded-lg shadow-md p-6 border border-gray-200"
-                  >
-                    <h2 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-                      <TrendingUp className="h-5 w-5 mr-2 text-indigo-500" />
-                      {metric.title} - Trend Over Time
-                    </h2>
-                    <div className="h-80">
+                  {/* ACWR Chart */}
+                  <div className="mt-4">
+                    <h4 className="text-sm font-medium text-gray-500 mb-2">
+                      ACWR Trend
+                    </h4>
+                    <div className="h-64">
                       <Line
-                        data={getMetricChartData(metric.id)}
+                        data={{
+                          labels: athleteLoad.data.map((d) => d.date),
+                          datasets: [
+                            {
+                              label: "ACWR",
+                              data: athleteLoad.data.map((d) => d.acwr),
+                              borderColor: "rgb(79, 70, 229)",
+                              tension: 0.4,
+                            },
+                          ],
+                        }}
                         options={{
                           maintainAspectRatio: false,
                           scales: {
                             y: {
                               beginAtZero: true,
-                              max: 5,
-                              grid: {
-                                color: "rgba(0, 0, 0, 0.05)",
-                              },
-                            },
-                            x: {
-                              grid: {
-                                color: "rgba(0, 0, 0, 0.05)",
-                              },
+                              max: 2,
                             },
                           },
                           plugins: {
-                            legend: {
-                              position: "top",
-                            },
-                            tooltip: {
-                              backgroundColor: "rgba(79, 70, 229, 0.9)",
-                              padding: 12,
-                              titleFont: {
-                                size: 14,
-                                weight: "bold",
-                              },
-                              bodyFont: {
-                                size: 13,
+                            annotation: {
+                              annotations: {
+                                greenZone: {
+                                  type: "box",
+                                  yMin: 0.8,
+                                  yMax: 1.3,
+                                  backgroundColor: "rgba(34, 197, 94, 0.1)",
+                                  borderWidth: 0,
+                                },
+                                yellowZone1: {
+                                  type: "box",
+                                  yMin: 0.6,
+                                  yMax: 0.8,
+                                  backgroundColor: "rgba(234, 179, 8, 0.1)",
+                                  borderWidth: 0,
+                                },
+                                yellowZone2: {
+                                  type: "box",
+                                  yMin: 1.3,
+                                  yMax: 1.5,
+                                  backgroundColor: "rgba(234, 179, 8, 0.1)",
+                                  borderWidth: 0,
+                                },
+                                redZone1: {
+                                  type: "box",
+                                  yMin: 0,
+                                  yMax: 0.6,
+                                  backgroundColor: "rgba(239, 68, 68, 0.1)",
+                                  borderWidth: 0,
+                                },
+                                redZone2: {
+                                  type: "box",
+                                  yMin: 1.5,
+                                  yMax: 2,
+                                  backgroundColor: "rgba(239, 68, 68, 0.1)",
+                                  borderWidth: 0,
+                                },
                               },
                             },
                           },
@@ -1608,11 +1487,122 @@ export default function Statistics({ profile }: StatsProps) {
                       />
                     </div>
                   </div>
-                ))}
-            </>
+                </div>
+              );
+            })
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-500">
+                No training load data available for the selected period.
+              </p>
+            </div>
           )}
         </div>
-      </main>
+
+        {/* Metric Charts - Only show if there's data */}
+        {athleteStats.length > 0 && (
+          <>
+            {/* Overall Averages */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <BarChart2 className="h-5 w-5 mr-2 text-indigo-500" />
+                Overall Averages
+              </h2>
+              <div className="h-80">
+                <Bar
+                  data={getAverageChartData()}
+                  options={{
+                    maintainAspectRatio: false,
+                    scales: {
+                      y: {
+                        beginAtZero: true,
+                        max: 5,
+                      },
+                    },
+                    plugins: {
+                      legend: {
+                        position: "top",
+                      },
+                      tooltip: {
+                        backgroundColor: "rgba(79, 70, 229, 0.9)",
+                        padding: 12,
+                        titleFont: {
+                          size: 14,
+                          weight: "bold",
+                        },
+                        bodyFont: {
+                          size: 13,
+                        },
+                      },
+                    },
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Individual Metric Trends */}
+            {metrics
+              .filter((m) => m.type === "rating")
+              .filter((metric) => {
+                return athleteStats.some((athlete) =>
+                  athlete.metrics.some((m) => m.metricId === metric.id)
+                );
+              })
+              .map((metric) => (
+                <div
+                  key={metric.id}
+                  className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+                >
+                  <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <TrendingUp className="h-5 w-5 mr-2 text-indigo-500" />
+                    {metric.title} - Trend Over Time
+                  </h2>
+                  <div className="h-80">
+                    <Line
+                      data={getMetricChartData(metric.id)}
+                      options={{
+                        maintainAspectRatio: false,
+                        scales: {
+                          y: {
+                            beginAtZero: true,
+                            max: 5,
+                            grid: {
+                              color: "rgba(0, 0, 0, 0.05)",
+                            },
+                          },
+                          x: {
+                            grid: {
+                              color: "rgba(0, 0, 0, 0.05)",
+                            },
+                          },
+                        },
+                        plugins: {
+                          legend: {
+                            position: "top",
+                          },
+                          tooltip: {
+                            backgroundColor: "rgba(79, 70, 229, 0.9)",
+                            padding: 12,
+                            titleFont: {
+                              size: 14,
+                              weight: "bold",
+                            },
+                            bodyFont: {
+                              size: 13,
+                            },
+                          },
+                        },
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+          </>
+        )}
+
+        {/* Personal Records Section - Moved to Records page */}
+        {/* Team Leaderboard Section - Moved to Records page */}
+      </div>
     </div>
   );
 }
