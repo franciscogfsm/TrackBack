@@ -683,15 +683,6 @@ export default function Statistics({ profile }: StatsProps) {
   const [program, setProgram] = useState<TrainingProgram | null>(null);
   const [planAExercises, setPlanAExercises] = useState<string[]>([]);
   const [planBExercises, setPlanBExercises] = useState<string[]>([]);
-  const [openChartKeys, setOpenChartKeys] = useState<Record<string, boolean>>(
-    {}
-  );
-  const [exerciseHistories, setExerciseHistories] = useState<
-    Record<string, any[]>
-  >({});
-  const [exerciseLoading, setExerciseLoading] = useState<
-    Record<string, boolean>
-  >({});
   const [allExerciseRecords, setAllExerciseRecords] = useState<any[]>([]);
 
   // Add a new constant for the current week's end date string
@@ -699,41 +690,19 @@ export default function Statistics({ profile }: StatsProps) {
     ? formatDate(currentWeek.end)
     : "";
 
-  // Add a new function to find the most recent week with data
-  const findMostRecentWeekWithData = async (athleteId: string) => {
+  // Function to get current week (always show current week by default)
+  const getCurrentWeek = () => {
     const today = new Date();
-    const thirtyDaysAgo = new Date(today);
-    thirtyDaysAgo.setDate(today.getDate() - 30);
-
-    const { data: sessions, error } = await supabase
-      .from("training_sessions")
-      .select("date")
-      .eq("athlete_id", athleteId)
-      .gte("date", thirtyDaysAgo.toISOString().split("T")[0])
-      .lte("date", today.toISOString().split("T")[0])
-      .order("date", { ascending: false });
-
-    if (error || !sessions || sessions.length === 0) {
-      // If no data found, return current week
-      return getWeekDates(today);
-    }
-
-    // Get the most recent date with data
-    const mostRecentDate = new Date(sessions[0].date);
-    return getWeekDates(mostRecentDate);
+    return getWeekDates(today);
   };
 
-  // Update useEffect to initialize the current week
+  // Update useEffect to initialize the current week (always current week)
   useEffect(() => {
-    const initializeWeek = async () => {
-      if (!profile?.id) return;
+    if (!profile?.id) return;
 
-      const athleteId = selectedAthlete || profile.id;
-      const mostRecentWeek = await findMostRecentWeekWithData(athleteId);
-      setCurrentWeek(mostRecentWeek);
-    };
-
-    initializeWeek();
+    // Always start with current week
+    const currentWeek = getCurrentWeek();
+    setCurrentWeek(currentWeek);
   }, [profile?.id, selectedAthlete]);
 
   // Update the training sessions fetch effect
@@ -760,7 +729,7 @@ export default function Statistics({ profile }: StatsProps) {
     fetchTrainingSessions();
   }, [profile?.id, currentWeek, selectedAthlete]);
 
-  // Update the navigateWeek function
+  // Update the navigateWeek function to allow navigation to any week
   const navigateWeek = async (direction: "prev" | "next") => {
     if (!currentWeek) return;
 
@@ -768,19 +737,8 @@ export default function Statistics({ profile }: StatsProps) {
     newStart.setDate(newStart.getDate() + (direction === "next" ? 7 : -7));
     const newWeek = getWeekDates(newStart);
 
-    // Check if there's data for the new week
-    const { data } = await supabase
-      .from("training_sessions")
-      .select("date")
-      .eq("athlete_id", selectedAthlete || profile.id)
-      .gte("date", formatDate(newWeek.start))
-      .lte("date", formatDate(newWeek.end))
-      .limit(1);
-
-    // Only update if there's data or we're navigating back to a previous week
-    if ((data && data.length > 0) || direction === "prev") {
-      setCurrentWeek(newWeek);
-    }
+    // Always allow navigation (no restriction based on data availability)
+    setCurrentWeek(newWeek);
   };
 
   useEffect(() => {
@@ -852,6 +810,7 @@ export default function Statistics({ profile }: StatsProps) {
     athletes.length,
     metrics.length,
     currentWeek,
+    dateRange, // Add dateRange dependency so metric charts update when filter changes
   ]);
 
   // Update the fetchStats function
@@ -999,13 +958,13 @@ export default function Statistics({ profile }: StatsProps) {
         setTrainingLoads(loads);
       }
 
-      // Rest of the function for metric responses...
+      // Rest of the function for metric responses (use date range filter instead of current week)...
       const { data: responses, error: responsesError } = await supabase
         .from("metric_responses")
         .select("*")
         .eq("athlete_id", selectedAthleteId)
-        .gte("date", currentWeek.start.toISOString().split("T")[0])
-        .lte("date", currentWeek.end.toISOString().split("T")[0])
+        .gte("date", dateRange.start)
+        .lte("date", dateRange.end)
         .order("date");
 
       if (responsesError) throw responsesError;
@@ -1158,34 +1117,11 @@ export default function Statistics({ profile }: StatsProps) {
     fetchProgram();
   }, [selectedAthlete]);
 
-  // Helper to fetch exercise history
-  const fetchExerciseHistory = async (athleteId: string, exercise: string) => {
-    const { data, error } = await supabase
-      .from("exercise_records")
-      .select("id, athlete_id, exercise_name, weight, reps, date, series_data")
-      .eq("athlete_id", athleteId)
-      .eq("exercise_name", exercise)
-      .order("date", { ascending: true });
-    if (error) return [];
-    return data || [];
-  };
-
-  // Handler to open/close chart and fetch data if needed
-  const handleToggleChart = async (exercise: string) => {
-    setOpenChartKeys((prev) => ({ ...prev, [exercise]: !prev[exercise] }));
-    if (!exerciseHistories[exercise] && selectedAthlete) {
-      setExerciseLoading((prev) => ({ ...prev, [exercise]: true }));
-      const history = await fetchExerciseHistory(selectedAthlete, exercise);
-      setExerciseHistories((prev) => ({ ...prev, [exercise]: history }));
-      setExerciseLoading((prev) => ({ ...prev, [exercise]: false }));
-    }
-  };
-
   // Fetch all exercise records for the selected athlete when athlete changes
   useEffect(() => {
     const fetchAllRecords = async () => {
       if (!selectedAthlete) return;
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("exercise_records")
         .select(
           "id, athlete_id, exercise_name, weight, reps, date, series_data"
@@ -1216,7 +1152,7 @@ export default function Statistics({ profile }: StatsProps) {
           <div>
             <label
               htmlFor="athlete-select"
-              className="block text-sm font-medium text-gray-700 mb-1 flex items-center"
+              className="text-sm font-medium text-gray-700 mb-1 flex items-center"
             >
               <User className="h-4 w-4 mr-1 text-gray-500" />
               Athlete
@@ -1242,7 +1178,7 @@ export default function Statistics({ profile }: StatsProps) {
           <div>
             <label
               htmlFor="start-date"
-              className="block text-sm font-medium text-gray-700 mb-1 flex items-center"
+              className="text-sm font-medium text-gray-700 mb-1 flex items-center"
             >
               <Calendar className="h-4 w-4 mr-1 text-gray-500" />
               Start Date
@@ -1261,7 +1197,7 @@ export default function Statistics({ profile }: StatsProps) {
           <div>
             <label
               htmlFor="end-date"
-              className="block text-sm font-medium text-gray-700 mb-1 flex items-center"
+              className="text-sm font-medium text-gray-700 mb-1 flex items-center"
             >
               <Calendar className="h-4 w-4 mr-1 text-gray-500" />
               End Date
