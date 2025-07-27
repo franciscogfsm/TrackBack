@@ -1965,55 +1965,63 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
                 </button>
               </div>
               {/* Navigation Links */}
-              <div className="hidden sm:flex items-center gap-1">
+              <div className="hidden sm:flex items-center gap-3">
                 <button
                   onClick={() => setMainTab("dashboard")}
                   className={clsx(
-                    "flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200",
+                    "flex items-center justify-center p-3 rounded-xl transition-all duration-300 relative group overflow-hidden",
                     mainTab === "dashboard"
                       ? theme === "dark"
-                        ? "bg-blue-800/60 text-blue-100 shadow-lg"
-                        : "bg-blue-200/70 text-blue-900 shadow-lg"
+                        ? "bg-gradient-to-br from-blue-500/20 to-blue-600/20 text-blue-100 shadow-lg shadow-blue-500/20 ring-1 ring-blue-400/30"
+                        : "bg-gradient-to-br from-blue-100/80 to-blue-200/80 text-blue-900 shadow-lg shadow-blue-200/50 ring-1 ring-blue-300/50"
                       : theme === "dark"
-                      ? "text-blue-200 hover:text-blue-100 hover:bg-blue-800/30"
-                      : "text-blue-700 hover:text-blue-900 hover:bg-blue-200/50"
+                      ? "text-blue-200 hover:text-blue-100 hover:bg-blue-800/30 hover:shadow-lg"
+                      : "text-blue-700 hover:text-blue-900 hover:bg-blue-200/50 hover:shadow-md"
                   )}
+                  title="Dashboard"
                 >
-                  <Home className="h-4 w-4" />
-                  <span>Dashboard</span>
+                  <Home className="h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
+                  {mainTab === "dashboard" && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-400/0 via-blue-400/10 to-blue-400/0 animate-pulse" />
+                  )}
                 </button>
-                {/* Records link moved to the left and uses Trophy icon */}
                 <button
                   onClick={() => setMainTab("records")}
                   className={clsx(
-                    "flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200",
+                    "flex items-center justify-center p-3 rounded-xl transition-all duration-300 relative group overflow-hidden",
                     mainTab === "records"
                       ? theme === "dark"
-                        ? "bg-blue-800/60 text-blue-100 shadow-lg"
-                        : "bg-blue-200/70 text-blue-900 shadow-lg"
+                        ? "bg-gradient-to-br from-yellow-500/20 to-yellow-600/20 text-yellow-100 shadow-lg shadow-yellow-500/20 ring-1 ring-yellow-400/30"
+                        : "bg-gradient-to-br from-yellow-100/80 to-yellow-200/80 text-yellow-900 shadow-lg shadow-yellow-200/50 ring-1 ring-yellow-300/50"
                       : theme === "dark"
-                      ? "text-blue-200 hover:text-blue-100 hover:bg-blue-800/30"
-                      : "text-blue-700 hover:text-blue-900 hover:bg-blue-200/50"
+                      ? "text-blue-200 hover:text-blue-100 hover:bg-blue-800/30 hover:shadow-lg"
+                      : "text-blue-700 hover:text-blue-900 hover:bg-blue-200/50 hover:shadow-md"
                   )}
+                  title="Records"
                 >
-                  <Trophy className="h-4 w-4" />
-                  <span>Records</span>
+                  <Trophy className="h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
+                  {mainTab === "records" && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/0 via-yellow-400/10 to-yellow-400/0 animate-pulse" />
+                  )}
                 </button>
                 <button
                   onClick={() => setMainTab("statistics")}
                   className={clsx(
-                    "flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200",
+                    "flex items-center justify-center p-3 rounded-xl transition-all duration-300 relative group overflow-hidden",
                     mainTab === "statistics"
                       ? theme === "dark"
-                        ? "bg-blue-800/60 text-blue-100 shadow-lg"
-                        : "bg-blue-200/70 text-blue-900 shadow-lg"
+                        ? "bg-gradient-to-br from-purple-500/20 to-purple-600/20 text-purple-100 shadow-lg shadow-purple-500/20 ring-1 ring-purple-400/30"
+                        : "bg-gradient-to-br from-purple-100/80 to-purple-200/80 text-purple-900 shadow-lg shadow-purple-200/50 ring-1 ring-purple-300/50"
                       : theme === "dark"
-                      ? "text-blue-200 hover:text-blue-100 hover:bg-blue-800/30"
-                      : "text-blue-700 hover:text-blue-900 hover:bg-blue-200/50"
+                      ? "text-blue-200 hover:text-blue-100 hover:bg-blue-800/30 hover:shadow-lg"
+                      : "text-blue-700 hover:text-blue-900 hover:bg-blue-200/50 hover:shadow-md"
                   )}
+                  title="Statistics"
                 >
-                  <Activity className="h-4 w-4" />
-                  <span>Statistics</span>
+                  <Activity className="h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
+                  {mainTab === "statistics" && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-purple-400/0 via-purple-400/10 to-purple-400/0 animate-pulse" />
+                  )}
                 </button>
                 <button
                   onClick={() => {
@@ -2023,21 +2031,24 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
                     }
                   }}
                   className={clsx(
-                    "flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 ml-1 relative",
+                    "flex items-center justify-center p-3 rounded-xl transition-all duration-300 relative group",
                     mainTab === "daily-responses"
                       ? theme === "dark"
-                        ? "bg-blue-800/60 text-blue-100 shadow-lg"
-                        : "bg-blue-200/70 text-blue-900 shadow-lg"
+                        ? "bg-gradient-to-br from-green-500/20 to-green-600/20 text-green-100 shadow-lg shadow-green-500/20 ring-1 ring-green-400/30"
+                        : "bg-gradient-to-br from-green-100/80 to-green-200/80 text-green-900 shadow-lg shadow-green-200/50 ring-1 ring-green-300/50"
                       : theme === "dark"
-                      ? "text-blue-200 hover:text-blue-100 hover:bg-blue-800/30"
-                      : "text-blue-700 hover:text-blue-900 hover:bg-blue-200/50"
+                      ? "text-blue-200 hover:text-blue-100 hover:bg-blue-800/30 hover:shadow-lg"
+                      : "text-blue-700 hover:text-blue-900 hover:bg-blue-200/50 hover:shadow-md"
                   )}
+                  title="Daily Responses"
                 >
-                  <CalendarIcon className="h-4 w-4" />
-                  <span>Daily Responses</span>
+                  <CalendarIcon className="h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
+                  {mainTab === "daily-responses" && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-green-400/0 via-green-400/10 to-green-400/0 animate-pulse rounded-xl" />
+                  )}
                   {showNotification && todayResponsesCount > 0 && (
                     <div
-                      className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center cursor-pointer animate-pulse"
+                      className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-semibold rounded-full h-6 w-6 flex items-center justify-center cursor-pointer animate-bounce shadow-lg ring-2 ring-white"
                       onClick={(e) => {
                         e.stopPropagation();
                         setShowNotification(false);
@@ -2053,20 +2064,23 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
                 <button
                   onClick={() => setShowMetricsModal(true)}
                   className={clsx(
-                    "flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 ml-1",
+                    "flex items-center justify-center p-3 rounded-xl transition-all duration-300 relative group overflow-hidden",
                     theme === "dark"
-                      ? "text-blue-200 hover:text-blue-100 hover:bg-blue-800/30"
-                      : "text-blue-700 hover:text-blue-900 hover:bg-blue-200/50"
+                      ? "text-blue-200 hover:text-blue-100 hover:bg-blue-800/30 hover:shadow-lg"
+                      : "text-blue-700 hover:text-blue-900 hover:bg-blue-200/50 hover:shadow-md"
                   )}
+                  title="Metrics"
                 >
-                  <Settings className="h-4 w-4" />
-                  <span>Metrics</span>
+                  <Settings className="h-5 w-5 transition-transform duration-300 group-hover:rotate-90" />
                 </button>
               </div>
+              {/* Improved Divider */}
               <div
                 className={clsx(
-                  "h-5 w-px mx-2",
-                  theme === "dark" ? "bg-blue-400/30" : "bg-blue-300"
+                  "h-8 w-px mx-4",
+                  theme === "dark"
+                    ? "bg-gradient-to-b from-transparent via-blue-400/30 to-transparent"
+                    : "bg-gradient-to-b from-transparent via-blue-300/50 to-transparent"
                 )}
               ></div>
               {/* User Menu */}

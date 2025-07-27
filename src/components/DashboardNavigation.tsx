@@ -6,9 +6,6 @@ import {
   Activity,
   TrendingUp,
   Calendar,
-  BarChart2,
-  Settings,
-  Menu,
   X,
 } from "lucide-react";
 import clsx from "clsx";
@@ -88,8 +85,8 @@ const NavigationItem: React.FC<NavigationItemProps> = ({
     <button
       onClick={onClick}
       className={clsx(
-        "group relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200",
-        showText ? "w-full justify-start" : "justify-center",
+        "group relative flex items-center gap-3 rounded-xl transition-all duration-200",
+        showText ? "w-full justify-start px-4 py-3" : "justify-center p-3",
         isActive
           ? theme === "dark"
             ? "bg-white/10 text-white shadow-lg shadow-black/20"
@@ -104,7 +101,8 @@ const NavigationItem: React.FC<NavigationItemProps> = ({
     >
       <div
         className={clsx(
-          "p-2 rounded-lg transition-all duration-200",
+          "flex items-center justify-center rounded-lg transition-all duration-200",
+          showText ? "p-2" : "p-2.5",
           isActive
             ? `bg-gradient-to-br ${viewConfig.color} text-white shadow-md`
             : theme === "dark"
@@ -112,7 +110,7 @@ const NavigationItem: React.FC<NavigationItemProps> = ({
             : "bg-white/10 group-hover:bg-white/20"
         )}
       >
-        <Icon className="w-5 h-5" />
+        <Icon className={clsx(showText ? "w-5 h-5" : "w-5 h-5")} />
       </div>
       {showText && (
         <div className="flex-1 text-left">
@@ -133,13 +131,23 @@ const NavigationItem: React.FC<NavigationItemProps> = ({
           </div>
         </div>
       )}
-      {isActive && (
+      {isActive && !showText && (
+        <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-white rounded-full shadow-sm" />
+      )}
+      {isActive && showText && (
         <div
           className={clsx(
             "absolute inset-0 rounded-xl ring-2 pointer-events-none",
             `ring-gradient-to-br ${viewConfig.color} ring-opacity-50`
           )}
         />
+      )}
+      {/* Tooltip for icon-only mode */}
+      {!showText && (
+        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
+          {viewConfig.name}
+          <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-t-2 border-transparent border-t-gray-900"></div>
+        </div>
       )}
     </button>
   );
@@ -206,7 +214,7 @@ export const DashboardNavigation: React.FC<DashboardNavigationProps> = ({
   }
 
   return (
-    <div className="hidden lg:flex items-center space-x-1">
+    <div className="hidden lg:flex items-center space-x-2">
       {navigationItems.map((view) => (
         <NavigationItem
           key={view}
@@ -236,7 +244,7 @@ export const CompactNavigation: React.FC<CompactNavigationProps> = ({
 
   return (
     <div className="flex lg:hidden overflow-x-auto pb-2 scrollbar-hide">
-      <div className="flex space-x-2 min-w-max px-4">
+      <div className="flex space-x-3 min-w-max px-4">
         {navigationItems.map((view) => {
           const viewConfig = DASHBOARD_VIEWS[view];
           const Icon = viewConfig.icon;
@@ -246,7 +254,7 @@ export const CompactNavigation: React.FC<CompactNavigationProps> = ({
               key={view}
               onClick={() => onViewChange(view)}
               className={clsx(
-                "flex flex-col items-center gap-2 px-4 py-3 rounded-xl transition-all duration-200 min-w-[80px]",
+                "flex flex-col items-center gap-2 px-3 py-3 rounded-xl transition-all duration-200 min-w-[70px]",
                 currentView === view
                   ? theme === "dark"
                     ? "bg-white/10 text-white"
@@ -266,7 +274,7 @@ export const CompactNavigation: React.FC<CompactNavigationProps> = ({
                     : "bg-white/10"
                 )}
               >
-                <Icon className="w-5 h-5" />
+                <Icon className="w-4 h-4" />
               </div>
               <span className="text-xs font-medium">{viewConfig.name}</span>
             </button>
