@@ -48,7 +48,8 @@ export default function DailyResponsesTab({
   profile,
   athletes,
 }: DailyResponsesTabProps) {
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [responses, setResponses] = useState<MetricResponseWithDetails[]>([]);
   const [metrics, setMetrics] = useState<CustomMetric[]>([]);
   const [filters, setFilters] = useState<FilterState>({
@@ -88,7 +89,11 @@ export default function DailyResponsesTab({
   };
 
   const fetchResponses = async () => {
-    setLoading(true);
+    // Only show loading on initial load or when athletes data is empty
+    if (responses.length === 0 || athletes.length === 0) {
+      setLoading(true);
+    }
+
     try {
       // Get athlete IDs to filter by
       const athleteIds = filters.athleteId
@@ -98,6 +103,7 @@ export default function DailyResponsesTab({
       if (athleteIds.length === 0) {
         setResponses([]);
         setLoading(false);
+        setInitialLoading(false);
         return;
       }
 
@@ -145,6 +151,7 @@ export default function DailyResponsesTab({
       setResponses([]);
     } finally {
       setLoading(false);
+      setInitialLoading(false);
     }
   };
 
@@ -212,7 +219,7 @@ export default function DailyResponsesTab({
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
 
-  if (loading) {
+  if (loading || initialLoading) {
     return (
       <div className="space-y-8">
         <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
@@ -389,7 +396,22 @@ export default function DailyResponsesTab({
                     {/* Athlete Header */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <ProfilePicture profile={entry.athlete} size="md" />
+                        <ProfilePicture
+                          profile={
+                            athletes.find((a) => a.id === entry.athlete.id) || {
+                              id: entry.athlete.id,
+                              full_name: entry.athlete.full_name,
+                              email: "",
+                              avatar_url: entry.athlete.avatar_url || null,
+                              role: "athlete" as const,
+                              manager_id: "",
+                              group_id: null,
+                              created_at: "",
+                              updated_at: "",
+                            }
+                          }
+                          size="md"
+                        />
                         <div>
                           <h3 className="text-lg font-semibold text-gray-900">
                             {entry.athlete.full_name}

@@ -803,7 +803,7 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
 
   // Scroll to top when switching tabs
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: "instant" });
   }, [mainTab]);
 
   const [insightsMetricResponses, setInsightsMetricResponses] = useState<
