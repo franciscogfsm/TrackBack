@@ -190,6 +190,17 @@ export default function TrainingProgramManager({
       return;
     }
 
+    // Check if a program already exists for this group
+    const existingProgram = programs.find((p) => p.group_id === programGroup);
+    if (existingProgram) {
+      alert(
+        `A training program already exists for this group (${getGroupName(
+          programGroup
+        )}). Please select a different group or edit the existing program.`
+      );
+      return;
+    }
+
     if (isCreating) {
       console.log("Already creating, ignoring click");
       return;
@@ -239,7 +250,6 @@ export default function TrainingProgramManager({
       setPrograms([data, ...programs]);
       setCurrentProgram(data);
       setIsEditing(false);
-      setIsCreating(false);
       setIsCreating(false);
 
       console.log("State updated, should exit editing mode");
@@ -334,6 +344,20 @@ export default function TrainingProgramManager({
     if (newExerciseB.trim()) {
       setPlanBExercises([...planBExercises, newExerciseB.trim()]);
       setNewExerciseB("");
+    }
+  };
+
+  const handleKeyPressA = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleAddExerciseA();
+    }
+  };
+
+  const handleKeyPressB = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleAddExerciseB();
     }
   };
 
@@ -440,11 +464,26 @@ export default function TrainingProgramManager({
               {groups.length === 0 ? (
                 <option value="">No groups available</option>
               ) : (
-                groups.map((group) => (
-                  <option key={group.id} value={group.id}>
-                    {group.name}
-                  </option>
-                ))
+                <>
+                  <option value="">Select a group</option>
+                  {groups.map((group) => {
+                    const hasProgram = programs.some(
+                      (p) => p.group_id === group.id
+                    );
+                    return (
+                      <option
+                        key={group.id}
+                        value={group.id}
+                        disabled={!currentProgram && hasProgram}
+                      >
+                        {group.name}
+                        {!currentProgram && hasProgram
+                          ? " (Already has program)"
+                          : ""}
+                      </option>
+                    );
+                  })}
+                </>
               )}
             </select>
             <p
@@ -457,6 +496,9 @@ export default function TrainingProgramManager({
                 ? `This program will only be visible to athletes in ${getGroupName(
                     programGroup
                   )} and will be named '${getGroupName(programGroup)}'`
+                : !currentProgram &&
+                  groups.some((g) => programs.some((p) => p.group_id === g.id))
+                ? "Some groups already have programs assigned. Select an available group or edit existing programs."
                 : "Please select a group to assign this program to"}
             </p>
           </div>
@@ -507,12 +549,13 @@ export default function TrainingProgramManager({
                     type="text"
                     value={newExerciseA}
                     onChange={(e) => setNewExerciseA(e.target.value)}
-                    placeholder="Add new exercise"
+                    onKeyPress={handleKeyPressA}
+                    placeholder="Type exercise name and press Enter"
                     className={clsx(
                       "flex-1 px-3 sm:px-4 py-2 rounded-lg border text-sm sm:text-base",
                       theme === "dark"
-                        ? "bg-blue-900/50 border-blue-700 text-blue-100"
-                        : "bg-blue-50 border-blue-300 text-blue-900"
+                        ? "bg-blue-900/50 border-blue-700 text-blue-100 placeholder:text-blue-300"
+                        : "bg-blue-50 border-blue-300 text-blue-900 placeholder:text-blue-500"
                     )}
                   />
                   <button
@@ -523,6 +566,7 @@ export default function TrainingProgramManager({
                         ? "text-blue-400 hover:bg-blue-500/10"
                         : "text-blue-600 hover:bg-blue-50"
                     )}
+                    title="Add exercise"
                   >
                     <Plus className="h-4 w-4" />
                   </button>
@@ -575,12 +619,13 @@ export default function TrainingProgramManager({
                     type="text"
                     value={newExerciseB}
                     onChange={(e) => setNewExerciseB(e.target.value)}
-                    placeholder="Add new exercise"
+                    onKeyPress={handleKeyPressB}
+                    placeholder="Type exercise name and press Enter"
                     className={clsx(
                       "flex-1 px-3 sm:px-4 py-2 rounded-lg border text-sm sm:text-base",
                       theme === "dark"
-                        ? "bg-blue-900/50 border-blue-700 text-blue-100"
-                        : "bg-blue-50 border-blue-300 text-blue-900"
+                        ? "bg-blue-900/50 border-blue-700 text-blue-100 placeholder:text-blue-300"
+                        : "bg-blue-50 border-blue-300 text-blue-900 placeholder:text-blue-500"
                     )}
                   />
                   <button
@@ -591,6 +636,7 @@ export default function TrainingProgramManager({
                         ? "text-blue-400 hover:bg-blue-500/10"
                         : "text-blue-600 hover:bg-blue-50"
                     )}
+                    title="Add exercise"
                   >
                     <Plus className="h-4 w-4" />
                   </button>
