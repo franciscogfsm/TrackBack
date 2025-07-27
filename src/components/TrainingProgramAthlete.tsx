@@ -50,20 +50,46 @@ export default function TrainingProgramAthlete({ athleteId, theme }: Props) {
   }, [athleteId, selectedDate]);
 
   const fetchProgram = async () => {
-    const { data, error } = await supabase
-      .from("training_programs")
-      .select("*")
-      .eq("is_active", true)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
+    try {
+      // First, get the athlete's group_id
+      const { data: athleteData, error: athleteError } = await supabase
+        .from("profiles")
+        .select("group_id")
+        .eq("id", athleteId)
+        .single();
 
-    if (error) {
-      console.error("Error fetching program:", error);
-      return;
+      if (athleteError) {
+        console.error("Error fetching athlete:", athleteError);
+        return;
+      }
+
+      if (!athleteData?.group_id) {
+        console.log("Athlete has no group assigned");
+        setProgram(null);
+        return;
+      }
+
+      // Then fetch the training program for that group
+      const { data, error } = await supabase
+        .from("training_programs")
+        .select("*")
+        .eq("group_id", athleteData.group_id)
+        .eq("is_active", true)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error) {
+        console.error("Error fetching program:", error);
+        setProgram(null);
+        return;
+      }
+
+      setProgram(data);
+    } catch (error) {
+      console.error("Error in fetchProgram:", error);
+      setProgram(null);
     }
-
-    setProgram(data);
   };
 
   const fetchRecords = async () => {
@@ -733,8 +759,8 @@ export default function TrainingProgramAthlete({ athleteId, theme }: Props) {
                   : "bg-gray-100 text-gray-700 border border-gray-200"
               )}
             >
-              No training plans available. Please check back later or contact
-              your manager.
+              No training program assigned to your group. Please contact your
+              manager to get assigned to a group with a training program.
             </div>
           ) : (
             <>

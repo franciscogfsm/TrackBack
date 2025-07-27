@@ -235,6 +235,38 @@ export interface Database {
           created_at?: string;
         };
       };
+      training_programs: {
+        Row: {
+          id: string;
+          manager_id: string;
+          plan_a_exercises: string[];
+          plan_b_exercises: string[];
+          group_id: string | null;
+          created_at: string;
+          updated_at: string;
+          is_active: boolean;
+        };
+        Insert: {
+          id?: string;
+          manager_id: string;
+          plan_a_exercises: string[];
+          plan_b_exercises: string[];
+          group_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          is_active?: boolean;
+        };
+        Update: {
+          id?: string;
+          manager_id?: string;
+          plan_a_exercises?: string[];
+          plan_b_exercises?: string[];
+          group_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          is_active?: boolean;
+        };
+      };
     };
     Views: {
       [_ in never]: never;
@@ -359,6 +391,7 @@ export type TrainingProgram = {
   manager_id: string;
   plan_a_exercises: string[];
   plan_b_exercises: string[];
+  group_id: string | null;
   created_at: string;
   updated_at: string;
   is_active: boolean;
