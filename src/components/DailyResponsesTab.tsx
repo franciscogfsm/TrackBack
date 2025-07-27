@@ -15,6 +15,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import clsx from "clsx";
+import ProfilePicture from "./ProfilePicture";
 
 interface DailyResponsesTabProps {
   profile: Profile;
@@ -388,9 +389,7 @@ export default function DailyResponsesTab({
                     {/* Athlete Header */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-medium text-lg">
-                          {entry.athlete.full_name.charAt(0)}
-                        </div>
+                        <ProfilePicture profile={entry.athlete} size="md" />
                         <div>
                           <h3 className="text-lg font-semibold text-gray-900">
                             {entry.athlete.full_name}
