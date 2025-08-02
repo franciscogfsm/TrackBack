@@ -1031,12 +1031,6 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
     return () => clearInterval(interval);
   }, [formStatus, profile]);
 
-  useEffect(() => {
-    if (profile?.id) {
-      fetchMetricResponses();
-    }
-  }, [selectedDate, selectedAthlete]);
-
   const fetchMetricResponses = useCallback(async () => {
     try {
       // First get the manager's athletes
@@ -1143,6 +1137,12 @@ function ManagerDashboard({ profile: initialProfile }: Props) {
       setMetricResponses([]);
     }
   }, [profile.id, selectedDate]);
+
+  useEffect(() => {
+    if (profile?.id) {
+      fetchMetricResponses();
+    }
+  }, [selectedDate, selectedAthlete, fetchMetricResponses]);
 
   const verifyAthleteAddition = async (athleteId: string) => {
     const { data, error } = await supabase
