@@ -8,7 +8,6 @@ import type {
 import {
   Calendar,
   MessageCircle,
-  Star,
   Filter,
   ChevronDown,
   Clock,
@@ -446,53 +445,57 @@ export default function DailyResponsesTab({
                         {entry.responses.map((response) => (
                           <div
                             key={response.id}
-                            className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:border-gray-300 transition-colors"
+                            className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:border-gray-300 transition-colors flex flex-col min-h-[120px]"
                           >
-                            <div className="mb-3">
-                              <h4 className="font-medium text-gray-900 mb-1">
+                            <div className="flex-1 mb-4">
+                              <h4 className="font-medium text-gray-900 mb-1 line-clamp-2">
                                 {response.metric.title}
                               </h4>
                               {response.metric.description && (
-                                <p className="text-xs text-gray-500">
+                                <p className="text-xs text-gray-500 line-clamp-2">
                                   {response.metric.description}
                                 </p>
                               )}
                             </div>
 
-                            {response.metric.type === "rating" ? (
-                              <div className="space-y-2">
-                                <div className="flex items-center gap-2">
-                                  <div
-                                    className={clsx(
-                                      "px-3 py-1 rounded-full text-sm font-semibold",
-                                      getRatingColor(response.rating_value || 0)
-                                    )}
-                                  >
-                                    {response.rating_value}/5
+                            <div className="mt-auto">
+                              {response.metric.type === "rating" ? (
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <div
+                                      className={clsx(
+                                        "px-3 py-1 rounded-full text-sm font-semibold",
+                                        getRatingColor(
+                                          response.rating_value || 0
+                                        )
+                                      )}
+                                    >
+                                      {response.rating_value}/5
+                                    </div>
+                                  </div>
+                                  <div className="flex gap-1">
+                                    {[1, 2, 3, 4, 5].map((circle) => (
+                                      <div
+                                        key={circle}
+                                        className={clsx(
+                                          "w-4 h-4 rounded-full border-2 transition-all duration-200",
+                                          circle <= (response.rating_value || 0)
+                                            ? "bg-blue-500 border-blue-500"
+                                            : "bg-transparent border-gray-300"
+                                        )}
+                                      />
+                                    ))}
                                   </div>
                                 </div>
-                                <div className="flex">
-                                  {[1, 2, 3, 4, 5].map((star) => (
-                                    <Star
-                                      key={star}
-                                      className={clsx(
-                                        "w-5 h-5",
-                                        star <= (response.rating_value || 0)
-                                          ? "text-yellow-400 fill-current"
-                                          : "text-gray-300"
-                                      )}
-                                    />
-                                  ))}
+                              ) : (
+                                <div className="bg-white p-3 rounded border border-gray-200">
+                                  <p className="text-sm text-gray-700">
+                                    {response.text_value ||
+                                      "No response provided"}
+                                  </p>
                                 </div>
-                              </div>
-                            ) : (
-                              <div className="bg-white p-3 rounded border border-gray-200">
-                                <p className="text-sm text-gray-700">
-                                  {response.text_value ||
-                                    "No response provided"}
-                                </p>
-                              </div>
-                            )}
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>
